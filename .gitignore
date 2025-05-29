@@ -8,6 +8,10 @@
 /plots
 /notebooks
 /_research
+/ignore
+/archive
+/outputs
+/reference
 
 ################################################################################
 #                                    Julia                                     #
