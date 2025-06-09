@@ -53,6 +53,7 @@ p = snowcrab_parameters(
     yrs=yrs,
     areal_units_type="tesselation",
     carstm_model_label= sexid,
+    dimensionality = "space-time-cyclic",
     selection = list(
       type = "presence_absence",
       biologicals=list( spec_bio=bio.taxonomy::taxonomy.recode( from="spec", to="parsimonious", tolookup=2526 ) ),
@@ -70,56 +71,65 @@ if (0) {
 }
 
 p$ny = length(p$yrs)
-p$nw = 12
-p$nt = p$ny * p$nw 
-p$tres = 1/ p$nw # time resolution .. predictions are made with models that use seasonal components 
+p$nt = p$ny # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
+p$nw = 12 
+p$tres = 1/ p$nw # time resolution .. predictions are made with models that use seasonal components
+p$dyears = discretize_data( span=c(0, 1, p$nw), toreturn="lower" )  # left breaks .. get 12 intervals of decimal years... fractional year breaks
+
+p$dyear_centre = discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ) 
+
+# used for creating timeslices and predictions  .. needs to match the values in aegis_parameters()
+p$prediction_dyear = lubridate::decimal_date( lubridate::ymd("0000/Sep/01"))
+# output timeslices for predictions in decimla years, yes all of them here
+p$prediction_ts = p$yrs + p$prediction_dyear
 
 p = temporal_parameters(p=p, dimensionality="space-time-cyclic", timezone="America/Halifax")
 
-# override prediction time values (decimal-year), # output timeslices for predictions in decimla years, yes all of them here
-tout = expand.grid( yr=p$yrs, dyear=1:p$nw, KEEP.OUT.ATTRS=FALSE )
-p$prediction_ts = sort( tout$yr + tout$dyear/p$nw - p$tres/2 )# mid-points
-
-
-p$space_name = sppoly$AUID
+p$space_name = sppoly$AUID 
 p$space_id = 1:nrow(sppoly)  # must match M$space
 
 p$time_name = as.character(p$yrs)
 p$time_id =  1:p$ny
 
-p$cyclic_name = as.character(p$cyclic_levels)
-p$cyclic_id = 1:p$nw
 
-
-# over-ride defaults to get sabove to continue and get size data
+# over-ride defaults to get above to continue and get size data
 p = parameters_add(p, list(
   project_name = project_name,
   project_directory = project_directory,
   data_root = project_directory,
-  datadir = project_directory,   # all unprocessed inputs (and simple manipulations) ..
-  project.outputdir = file.path( project_directory, "outputs" ), #interpolations and mapping
+  datadir = project_directory,   # all unprocessed inputs (and simple manipulations) ..    
+  project.outputdir = file.path( project_directory, "outputs" ), # interpolations and mapping
   modeldir = file.path( project_directory, "outputs", "modelled" )  # all model outputs
 ) )
 
 source( file.path(project_directory, "R", "sizestructure_db.R") )
 source( file.path(project_directory, "R", "model_size_data_carstm.R" ))
-
-xrange = c(5, 170)  # size range (CW)
-dx = 5 #  width of carapace with discretization to produce "cwd"
-
+ 
 redo_datafiles = FALSE
 # redo_datafiles = TRUE
 
+# use a log scale for size info .. full range .. it will be reduced to data range in the next step
 
-M = model_size_data_carstm(p=p, sppoly=sppoly, xrange=xrange, dx=dx, sexid=sexid,  redo=redo_datafiles )
+M = model_size_data_carstm(p=p, sppoly=sppoly, nspan=30, sexid=sexid, redo=redo_datafiles )  
 
+# as numeric is simpler 
+cyclic_levels = discretize_data( brks=p$dyears, toreturn="midpoints" )   # default midpoints; same as:
+ 
+p$cyclic_name = as.character(p$cyclic_levels)
+p$cyclic_id = 1:p$nw
+
+M$cyclic = match( M$dyri, p$cyclic_levels ) 
+M$cyclic_space = M$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
+
+M$mat = as.factor( as.numeric(as.character(M$mat)))
+M$mat_group = M$mat
+setcm = NULL; gc()
 
 # M = M[ yr>2010, ]  # for testing
 
 plot(jitter(pa) ~ cw, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
-plot(jitter(pa) ~ year, M, pch="." )
-
-    # males -- hvariance compression: 2002
+plot(jitter(pa) ~ year, M, pch="." )  
+    # males -- hvariance compression: 2002  
     # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
 
 plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
@@ -131,110 +141,164 @@ plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in
 # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
 plot(jitter(pa) ~ t, M, pch=".")
 plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
-
-
+ 
 # , group=mat_group, control.group=list(model="iid" )
 
-# ' + f(inla.group( cw, method="quantile", n=15 ), model="rw2", scale.model=TRUE, group=mat_group, control.group=list(model="iid" ) ) ',
-     
+M$cw2 = M$cw
+M$time_cw = M$time
 
 p$formula = as.formula( paste(
-  ' pa ~ 1 ',
-      ' + offset( data_offset ) + mat ',
-      ' + f(inla.group( cw, method="quantile", n=11 ), model="rw2", scale.model=TRUE) ',
-      ' + f( time, model="ar1",  hyper=H$ar1 ) ',
-      # ' + f( cyclic, model="ar1", hyper=H$ar1 )',
-      # ' + f( cyclic, model="seasonal", scale.model=TRUE, season.length=12, hyper=H$iid  )',
-      ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2)',
-      ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2)',
-      #' + f( inla.group( substrate.grainsize, method="quantile", n=9), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-      # ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-      # ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2",  scale.model=TRUE, hyper=H$rw2) ',
-      # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2",  scale.model=TRUE, hyper=H$rw2) ',
-      ' + f( space, model="bym2", graph=slot(sppoly, "nb"),  scale.model=TRUE, hyper=H$bym2 ) ',
-      ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"),  scale.model=TRUE, group=time_space, hyper=H$bym2,  control.group=list(model="ar1", hyper=H$ar1_group)) '
+' pa ~ 1 ',
+    ' + offset( data_offset ) + mat ', 
+    # ' + f( inla.group( cw, method="quantile", n=11 ), model="rw2", scale.model=TRUE) ', 
+    ' + f( inla.group( cw2, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=mat_group, hyper=H$rw2, control.group=list(model="iid", hyper=H$iid)) ', 
+    ' + f( time, model="ar1",  hyper=H$ar1 ) ',
+    ' + f( cyclic, model="ar1", hyper=H$ar1 )',
+    # ' + f( cyclic, model="seasonal", scale.model=TRUE, season.length=12, hyper=H$iid  )',
+    ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    #' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    # ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    # ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
+    ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="ar1", hyper=H$ar1_group)) '
+    # ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="iid", hyper=H$iid)) '
 ) )
+ 
 
+# on user scale
 
+obs = 1:nrow(M)
+if (exists("tag", M)) {
+  obso = which(M[["tag"]]=="observations")
+  if (length(obso) > 3) obs = obso
+  obso = NULL
+}   
+
+yl = M$pa[obs]
+
+# for binomial, prob=0,1, becomes infinite so minor fix for hyper parameter prior approximation
+tweak = 0.05 # tail truncation prob
+yl [ yl==1 ] = 1 - tweak
+yl [ yl==0 ] = tweak
+ 
+yl =  inla.link.logit( yl / M$data_offset[obs] )   # necessary in case of log(0)
+ 
+ll = which(is.finite(yl))
+
+mqi = quantile( yl[ll], probs=c(0.025, 0.5, 0.975) )
+
+MS = c( 
+  mean=mean(yl[ll]), 
+  sd=sd(yl[ll]), 
+  min=min(yl[ll]), 
+  max=max(yl[ll]),  
+  lb=mqi[1], 
+  median=mqi[2], 
+  ub=mqi[3]  
+)  # on data /user scale not internal link
+
+H = inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, median(yl[ll], na.rm=TRUE) )  
 
 # model pa using all data
-carstm_model( p=p, data=M, sppoly=sppoly,
-  # theta = c( 0.8917, 2.0052, 4.5021, -0.0000, 1.5400, -2.4689, 1.1762, 2.6536, 2.9546, -2.1406, 3.5352, -0.7465, 3.2443, 2.4420 ),
-  nposteriors=1,
-  redo_fit=TRUE,
-  toget = c("summary", "random_spatial", "predictions"),
-  posterior_simulations_to_retain = c("summary"),
-  family = "binomial",  # "binomial",  # "nbinomial", "betabinomial", "zeroinflatedbinomial0" , "zeroinflatednbinomial0"
-  # redo_fit=FALSE,
-  # debug = "summary",
-  debug = "predictions",
-  # control.family=list(control.link=list(model="logit")),  # default for binomial .. no need to specify
-  control.inla = list( strategy="adaptive", int.strategy="eb", h=0.05 ),
-  # num.threads="4:3",
-  verbose=TRUE
+
+fit = inla( 
+    formula=p$formula, 
+    data=M, 
+    family="binomial", 
+    verbose=TRUE, 
+    control.inla = list( strategy="adaptive", int.strategy="eb", h=0.05 ),
+    control.predictor = list(compute = TRUE,  link = 1), 
+    control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+    num.threads="4:3"
 )
 
+fn = file.path("~", "tmp", paste("fit2_", sexid, ".rds", sep="") )
+
+saveRDS( fit, file=fn )
+# fit = readRDS(fn)
+
+  plot(fit)
 
 #  p$carstm_directory = file.path(p$modeldir, p$carstm_model_label)
 
-  # modelinfo = carstm_model(p = p, DS = "carstm_modelinfo")
-  fit = carstm_model(p = p, DS = "modelled_fit")
-  vn = "pa"
+#  modelinfo = carstm_model(p = p, DS = "carstm_modelinfo") 
+#  fit = carstm_model(p = p, DS = "modelled_fit")
 
   iobs = which(M$tag == "observations")
   ipreds = which(M$tag == "predictions")
-
+  
   O = M[iobs, ]
   O$fitted_mean = fit$summary.fitted.values[["mean"]][iobs]
   O$fitted_sd = fit$summary.fitted.values[["sd"]][iobs]
-
-  cor(O$pa, O$fitted_mean)
-
-
-  P = M[ipreds, ]
+ 
+  cor(O$pa, O$fitted_mean)  # 0.668 M, 0.43 F
+ 
+  P = M[ipreds, ] 
   P$prediction_mean = fit$summary.fitted.values[["mean"]][ipreds]
   P$prediction_sd = fit$summary.fitted.values[["mean"]][ipreds]
-
+  
 
  #  fit = M = NULL; gc()
+  
+  P = P[, .(AUID, year, cyclic, cw, mat, prediction_mean, prediction_sd)]
 
-P = P[, .(AUID, year, cyclic, cw, mat, prediction_mean, prediction_sd)]
+  O = O[ pa==1,]
 
-O = O[ pa==1,]
+  O$logcw = discretize_data( O$logcw, brks=breaks ) 
 
+  O = P[ O, on=.(AUID, year, cyclic, cw, mat)]
 
-breaks = seq(xrange[1], xrange[2], by=dx)
-mids = breaks[-length(breaks)] + dx/2
+  O$relative_rate = O$fitted_mean / O$prediction_mean
 
-O$cw = discretize_data( O$cw, brks=breaks, labels=mids, resolution=dx )
+  hist(O$relative_rate, "fd")
+  summary(O$relative_rate)
+  plot( O$fitted_mean, O$prediction_mean, pch="." )
+  
+  plot( exp(O$fitted_mean), exp(O$prediction_mean), pch=".")
+  
+  cor( exp(O$fitted_mean), exp(O$prediction_mean), use="pairwise.complete.obs") # 0.732 M, -0.00157 F
+  O$odds_ratio = exp(O$fitted_mean) / exp(O$prediction_mean)   # predicted logit for individual / predicted logit for size/location/time/etc..
+  summary(O$odds_ratio)
+  hist(O$odds_ratio, "fd")  # +/- 100% M (range: 0.4 to 2.0); F (range: 0.5 to 2.5)
+  hist( log(O$odds_ratio) , "fd")
+  
+  pg = data.table( sppoly)[,c("AUID", "cfanorth_surfacearea", "cfasouth_surfacearea", "cfa23_surfacearea", "cfa24_surfacearea", "cfa4x_surfacearea", "au_sa_km2", "strata_to_keep" )]
+  O = pg[ O, on="AUID" ]
+  
+  O$w = O$odds_ratio * O$cfanorth_surfacearea
+  attr(O$w, "units") = NULL
 
-O = P[ O, on=.(AUID, year, cyclic, cw, mat)]
-
-O$relative_rate = O$fitted_mean / O$prediction_mean
-
-
-
-model_summary = carstm_model(p = p, DS = "carstm_summary")
-
-
-S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
-
-# posterior predictive check
-carstm_posterior_predictive_check(p=p, M=M[ , ]  )
-
-# EXAMINE POSTERIORS AND PRIORS
-res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
-
-outputdir = file.path(p$modeldir, p$carstm_model_label)
-
-res_vars = c( names( res$hypers), names(res$fixed) )
-for (i in 1:length(res_vars) ) {
-  o = carstm_prior_posterior_compare( res, vn=res_vars[i], outputdir=outputdir  )
-  dev.new(); print(o)
-}
+  yrp = "2019"
+  x11(); ggplot(O[yr==yrp & w>0,], aes(cw, weight=w ) ) + geom_histogram( bins = 29 )
+  x11(); ggplot(O[yr==yrp & w>0,], aes(cw ) ) + geom_histogram( bins = 29 )
 
 
-plot( jitter(M$pa), fit$summary.fitted.values$mean, pch="." )
+  model_summary = carstm_model(p = p, DS = "carstm_summary") 
+
+
+  S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
+
+    # posterior predictive check
+    carstm_posterior_predictive_check(p=p, M=M[ , ]  )
+
+    # EXAMINE POSTERIORS AND PRIORS
+    res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
+
+    outputdir = file.path(p$modeldir, p$carstm_model_label)
+
+    res_vars = c( names( res$hypers), names(res$fixed) )
+    for (i in 1:length(res_vars) ) {
+      o = carstm_prior_posterior_compare( res, vn=res_vars[i], outputdir=outputdir  )  
+      dev.new(); print(o)
+    }     
+
+
+
+ 
+
+plot( jitter(M$pa), fit$summary.fitted.values$mean, pch="." ) 
 cor( jitter(M$pa), fit$summary.fitted.values$mean ) # 0.5441
 
 
@@ -252,48 +316,86 @@ plot( o$ID, (o$mean) )
 
 o = fit$summary.fixed
 plot( (o$mean) )
+ 
+
+
+## to add spatial effects:
+ yrs = 1999:2024
+
+  spec_bio = bio.taxonomy::taxonomy.recode( from="spec", to="parsimonious", tolookup=2526 )
+  
+  snowcrab_filter_class = "fb"     # fishable biomass (including soft-shelled )  "m.mat" "f.mat" "imm"
+   
+  carstm_model_label= paste( "male_size_structure" )
+  carstm_model_label= paste( "female_size_structure" )
+ 
+ 
+ 
+    io = which(M$tag=="observations")
+    ip = which(M$tag=="predictions")
+    iq = unique( c( which( M$totno > 0), ip ) )
+    iw = unique( c( which( M$totno > 5), ip ) )  # need a good sample to estimate mean size
+ 
+    carstm_model( p=p, data=M[ , ], sppoly=sppoly, 
+      # theta=c( 2.7291,1.8146,2.9382,0.0132,3.8666,-0.0211,4.2673,5.5037,6.1421,0.2391,4.2522,0.7666,-0.0100,0.8763 ),
+      nposteriors=5000,
+      toget = c("summary", "random_spatial", "predictions"),
+      posterior_simulations_to_retain = c("predictions"),
+      family = "poisson",
+      verbose=TRUE,
+      # redo_fit=FALSE, 
+      # debug = "summary",
+      # debug = "predictions",
+      num.threads="4:3"  
+    ) 
+
+    # posterior predictive check
+    carstm_posterior_predictive_check(p=p, M=M[ , ]  )
+
+    # EXAMINE POSTERIORS AND PRIORS
+    res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
+
+    outputdir = file.path(p$modeldir, p$carstm_model_label)
+
+    res_vars = c( names( res$hypers), names(res$fixed) )
+    for (i in 1:length(res_vars) ) {
+      o = carstm_prior_posterior_compare( res, vn=res_vars[i], outputdir=outputdir  )  
+      dev.new(); print(o)
+    }     
 
  
-# for mapping below, some bathymetry and polygons
-additional_features = snowcrab_mapping_features(p)
 
-  ylab = "Probability"
-  fn_root_prefix = "Predicted_presence_absence"
-  fn_root = "habitat"
-  # title= paste( snowcrab_filter_class, "Probability")
-
-outputdir = file.path( p$modeldir, p$carstm_model_label, "figures" )
-if ( !file.exists(outputdir)) dir.create( outputdir, recursive=TRUE, showWarnings=FALSE )
-
-
-    #   # to compute habitat prob
-    #   sims = carstm_posterior_simulations( pH=p, pa_threshold=0.05, qmax=0.95 )
-    #   SM = aggregate_simulations(
-    #     sims=sims,
-    #     sppoly=sppoly,
-    #     fn=carstm_filenames( p, returnvalue="filename", fn="aggregated_timeseries" ),
-    #     yrs=p$yrs,
-    #     method="mean",
-    #     redo=TRUE
-    #   )
-    #   outputdir = file.path( carstm_filenames( p, returnvalue="output_directory"), "aggregated_habitat_timeseries" )
-    #   ylabel = "Habitat probability"
-    #   fn_ts = "habitat_M0.png"
-    #   vn = paste("habitat", "predicted", sep=".")
-    #   outputdir2 = file.path( carstm_filenames( p, returnvalue="output_directory"), "predicted_habitat" )
-
-
-
-
-# to load currently saved results
-res = carstm_model( p=p,  DS="carstm_summary" )  # parameters in p and direct summary
-res$direct
-res = NULL; gc()
-
+  # for mapping below, some bathymetry and polygons
+  additional_features = snowcrab_mapping_features(p)  
+  
+        ylab = "Probability"
+        fn_root_prefix = "Predicted_presence_absence"
+        fn_root = "habitat"
+        # title= paste( snowcrab_filter_class, "Probability")  
+     
+    outputdir = file.path( p$modeldir, p$carstm_model_label, "figures" )
+      if ( !file.exists(outputdir)) dir.create( outputdir, recursive=TRUE, showWarnings=FALSE )
 
 # plots with 95% PI
 carstm_plot_marginaleffects( p, outputdir, fn_root )
 
+          #   # to compute habitat prob
+          #   sims = carstm_posterior_simulations( pH=p, pa_threshold=0.05, qmax=0.95 )
+          #   SM = aggregate_simulations( 
+          #     sims=sims, 
+          #     sppoly=sppoly, 
+          #     fn=carstm_filenames( p, returnvalue="filename", fn="aggregated_timeseries" ), 
+          #     yrs=p$yrs, 
+          #     method="mean", 
+          #     redo=TRUE 
+          #   ) 
+          #   outputdir = file.path( carstm_filenames( p, returnvalue="output_directory"), "aggregated_habitat_timeseries" )
+          #   ylabel = "Habitat probability"
+          #   fn_ts = "habitat_M0.png"
+          #   vn = paste("habitat", "predicted", sep=".")
+          #   outputdir2 = file.path( carstm_filenames( p, returnvalue="output_directory"), "predicted_habitat" )
+ 
+      
 
 # maps of some of the results
 outputdirmap = file.path(p$modeldir, p$carstm_model_label, "maps" )
@@ -301,10 +403,20 @@ outputdirmap = file.path(p$modeldir, p$carstm_model_label, "maps" )
 carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features,
   toplot="random_spatial", probs=c(0.025, 0.975) )
 
-carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features,
-  toplot="predictions", probs=c(0.1, 0.9))
+      # plots with 95% PI 
+      carstm_plot_marginaleffects( p, outputdir, fn_root ) 
+   
 
-}
+      # maps of some of the results
+      outputdirmap = file.path(p$modeldir, p$carstm_model_label, "maps" )
+       
+      carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features, 
+        toplot="random_spatial", probs=c(0.025, 0.975) ) 
+   
+      carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features, 
+        toplot="predictions", probs=c(0.1, 0.9)) 
+  
+  }
 
 
 
@@ -396,9 +508,6 @@ p$varsnames = c( "imodes", "sigmasq_mean",  "alpha_mean",  "Nkmm" )
 
 p$nposteriors = 2000
 
-xrange = c(8, 170)  # size range (CW)
-
-dx = 2 #  width of carapace with discretization to produce "cwd"
 
 
 # try an individual-based model first:

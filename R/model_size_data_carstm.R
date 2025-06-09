@@ -1,5 +1,5 @@
 
-model_size_data_carstm = function(p, sppoly, xrange=c(5, 170), dx=5, sexid="male", redo=FALSE) { 
+model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE) { 
 
   outdir = p$project.outputdir
   fn = file.path( outdir, paste( "size_distributions_tabulated_data_zeros_", sexid, ".RDS", sep="" )  )
@@ -27,7 +27,7 @@ model_size_data_carstm = function(p, sppoly, xrange=c(5, 170), dx=5, sexid="male
     female = "1"  
   )
  
-  setcm = snowcrab.db( p=p, DS="carstm_inputs", sppoly=sppoly, redo=TRUE, savefile=TRUE )
+  setcm = snowcrab.db( p=p, DS="carstm_inputs", sppoly=sppoly, redo=redo, savefile=TRUE )
 
   setDT(setcm)
   setnames(setcm, "id", "sid") 
@@ -78,52 +78,49 @@ model_size_data_carstm = function(p, sppoly, xrange=c(5, 170), dx=5, sexid="male
   detcm = detcm[ sex %in% sexcd , ]  
   detcm = detcm[ mat %in% c("0", "1") , ]
   detcm$cw = detcm$len * 10  # mm -> cm
+  detcm$logcw = log(detcm$cw)
 
-  detcm = detcm[, .(sid, mat, cw, mass, cf_det_no)]  # mass in kg
+  detcm = detcm[, .(sid, mat, logcw, mass, cf_det_no)]  # mass in kg
 
   # trim a few strange data points
-  o = lm( log(mass) ~ log(cw), detcm)
+  o = lm( log(mass) ~ logcw, detcm)
   todrop = which(abs(o$residuals) > 0.5)
   if (length(todrop)>0) detcm = detcm[-todrop,]
 
+
+  span = switch(sexid,
+    male   = c( log(5), log(155), nspan),
+    female = c( log(5), log(95),  nspan)
+  )
+
+
+  todrop = detcm[ logcw < span[1], which=TRUE ] 
+  if (length(todrop)>0) detcm = detcm[-todrop,]
+
+  todrop = detcm[ logcw > span[2], which=TRUE ] 
+  if (length(todrop)>0) detcm = detcm[-todrop,]
+  
   if (sexid == "female") {
-      
-    todrop = detcm[ cw > 90, which=TRUE ] 
+
+    todrop = detcm[ logcw > log(80) & mat=="0", which=TRUE ] 
     if (length(todrop)>0) detcm = detcm[-todrop,]
 
-    todrop = detcm[ cw > 80 & mat=="0", which=TRUE ] 
-    if (length(todrop)>0) detcm = detcm[-todrop,]
-
-    todrop = detcm[ cw > 90 & mat=="1", which=TRUE ] 
-    if (length(todrop)>0) detcm = detcm[-todrop,]
-
-    todrop = detcm[ cw > 150 & mat=="1", which=TRUE ] 
-    if (length(todrop)>0) detcm = detcm[-todrop,]
-
-    todrop = detcm[ cw <35 & mat=="1", which=TRUE ] 
+    todrop = detcm[ logcw < log(35) & mat=="1", which=TRUE ] 
     if (length(todrop)>0) detcm = detcm[-todrop,]
   
   }
 
   if (sexid == "male") {
 
-    todrop = detcm[ cw > 135 & mat=="0", which=TRUE ] 
+    todrop = detcm[ logcw > log(135) & mat=="0", which=TRUE ] 
     if (length(todrop)>0) detcm = detcm[-todrop,]
  
-    todrop = detcm[ cw < 49 & mat=="1", which=TRUE ] 
+    todrop = detcm[ logcw < log(49) & mat=="1", which=TRUE ] 
     if (length(todrop)>0) detcm = detcm[-todrop,]
+
   }
 
-  # detcm$shell = factor( detcm$shell )
-  
-  # discretize
-  breaks = seq(xrange[1], xrange[2], by=dx)
-  if (sexid=="female") breaks = breaks[ breaks < max(detcm$cw, na.rm=TRUE)]
-  mids = breaks[-length(breaks)] + dx/2
-
-
-
-  detcm$cwd = discretize_data( detcm$cw, brks=breaks, labels=mids, resolution=dx )  
+  detcm$cwd = discretize_data( detcm$logcw, span=span  )  # this will truncate sizes
   detcm = detcm[ is.finite(cwd) ,]
   detcm$N = 1
   # length(unique(det$sid)) # 8258
@@ -134,12 +131,12 @@ model_size_data_carstm = function(p, sppoly, xrange=c(5, 170), dx=5, sexid="male
   # add zeros at sampling locations: CJ required to get zero counts dim(N) # 1237368
   Z0 = CJ( 
     mat=c("0", "1"), 
-    cwd=discretize_data( mids, brks=breaks, labels=mids, resolution=dx ), 
+    cwd = discretize_data(span=span),  # midpoints
     sid=setcm$sid, 
     unique=TRUE 
   )
   Z0$mass = NA
-  Z0$cw = Z0$cwd
+  Z0$logcw = Z0$cwd
   Z0$N = 0
 
   Z0 = setcm[,.(sid, data_offset)][ Z0, on=.(sid)] 
@@ -162,14 +159,7 @@ model_size_data_carstm = function(p, sppoly, xrange=c(5, 170), dx=5, sexid="male
   Z$zid = NULL
   Z0 = NULL 
   gc()
-
-  vn = "cw"
-  i = which(!is.finite(Z[[vn]]))
-  if (length(i) > 0 ) {
-    msid = data.table(sid = Z$sid[i])
-    Z[[vn]][i] = as.numeric( as.character( Z[["cwd"]][i] ) )  # this is only the discretized approximation
-  }
-
+ 
   Z = Z[ year %in%  p$yrs, ] # n=494 541
   
   pred$pid = paste( pred$AUID, pred$year, pred$dyri, sep="_")
@@ -177,7 +167,7 @@ model_size_data_carstm = function(p, sppoly, xrange=c(5, 170), dx=5, sexid="male
   # to capture zeros
   P0 = CJ( 
     mat=c("0", "1"), 
-    cwd=discretize_data( mids, brks=breaks, labels=mids, resolution=dx ), 
+    cwd=discretize_data( span=span ), 
     pid=pred$pid, 
     mass=NA,
     N =NA,
@@ -185,7 +175,7 @@ model_size_data_carstm = function(p, sppoly, xrange=c(5, 170), dx=5, sexid="male
     unique=TRUE 
   )
 
-  P0$cw = P0$cwd
+  P0$logcw = P0$cwd
 
   pred = P0[ pred, on=.(pid), allow.cartesian=TRUE]
   setnames(pred, "pid", "sid" )
@@ -196,32 +186,30 @@ model_size_data_carstm = function(p, sppoly, xrange=c(5, 170), dx=5, sexid="male
   # a final round of data trimming based upon size, sex, maturity and time of year
   if (sexid == "female") {
       
-    todrop = Z[ cw > 90, which=TRUE ] 
+    todrop = Z[ logcw > log(95), which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
 
-    todrop = Z[ cw > 80 & mat=="0", which=TRUE ] 
+    todrop = Z[ logcw > log(80) & mat=="0", which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
 
-    todrop = Z[ cw > 90 & mat=="1", which=TRUE ] 
-    if (length(todrop)>0) Z = Z[-todrop,]
-
-    todrop = Z[ cw > 150 & mat=="1", which=TRUE ] 
-    if (length(todrop)>0) Z = Z[-todrop,]
-
-    todrop = Z[ cw <35 & mat=="1", which=TRUE ] 
+    todrop = Z[ logcw < log(35) & mat=="1", which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
   
   }
 
   if (sexid == "male") {
 
-    todrop = Z[ cw > 135 & mat=="0", which=TRUE ] 
+    todrop = Z[ logcw > log(155), which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
+
+    todrop = Z[ logcw > log(135) & mat=="0", which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
  
-    todrop = Z[ cw < 49 & mat=="1", which=TRUE ] 
+    todrop = Z[ logcw < log(49) & mat=="1", which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
   }
  
+
   data_dyears = range(Z[tag=="observations", "cyclic"] ) 
   todrop = which(Z$cyclic < data_dyears[1] | Z$cyclic > data_dyears[2] )
   if (length(todrop)>0) Z = Z[-todrop,]
