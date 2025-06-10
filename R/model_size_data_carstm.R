@@ -27,7 +27,7 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
     female = "1"  
   )
  
-  setcm = snowcrab.db( p=p, DS="carstm_inputs", sppoly=sppoly, redo=redo, savefile=TRUE )
+  setcm = snowcrab.db( p=p, DS="carstm_inputs", sppoly=sppoly, redo=FALSE, savefile=TRUE )
 
   setDT(setcm)
   setnames(setcm, "id", "sid") 

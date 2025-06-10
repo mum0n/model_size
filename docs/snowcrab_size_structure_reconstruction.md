@@ -109,8 +109,14 @@ redo_datafiles = FALSE
 # redo_datafiles = TRUE
 
 # use a log scale for size info .. full range .. it will be reduced to data range in the next step
+# male: 30+ bins seem sufficient to describe the shape
+# female: 30+ bins seem sufficient to describe the shape
 
-M = model_size_data_carstm(p=p, sppoly=sppoly, nspan=30, sexid=sexid, redo=redo_datafiles )  
+nspan = 40
+M = model_size_data_carstm(p=p, sppoly=sppoly, nspan=nspan, sexid=sexid, redo=redo_datafiles )  
+
+hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
+
 
 # as numeric is simpler 
 cyclic_levels = discretize_data( brks=p$dyears, toreturn="midpoints" )   # default midpoints; same as:
@@ -127,7 +133,7 @@ setcm = NULL; gc()
 
 # M = M[ yr>2010, ]  # for testing
 
-plot(jitter(pa) ~ cw, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
+plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
 plot(jitter(pa) ~ year, M, pch="." )  
     # males -- hvariance compression: 2002  
     # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
