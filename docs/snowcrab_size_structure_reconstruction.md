@@ -31,44 +31,26 @@ Here we attempt to factor in all such biases into one model.
 project_name = "model_size"
 project_directory = file.path( homedir, "projects", project_name )
 
-source( file.path( project_directory, "R", "loadfunctions.r") )
-
-loadfunctions( "aegis")
-loadfunctions( "bio.snowcrab")
-
-# require(bio.snowcrab)
-require(ggplot2)
-require(data.table)
-
 year_start = 1999
 year_assessment = 2024
-
 yrs = year_start:year_assessment
 
+# choose one:
 sexid="male"
 sexid="female"
 
-p = snowcrab_parameters(
-    project_class="carstm",
-    yrs=yrs,
-    areal_units_type="tesselation",
-    carstm_model_label= sexid,
-    dimensionality = "space-time-cyclic",
-    selection = list(
-      type = "presence_absence",
-      biologicals=list( spec_bio=bio.taxonomy::taxonomy.recode( from="spec", to="parsimonious", tolookup=2526 ) ),
-      biologicals_using_snowcrab_filter_class=sexid
-    )
+carstm_model_label = sexid
+
+selection = list(
+  type = "presence_absence",
+  biologicals=list( spec_bio=bio.taxonomy::taxonomy.recode( from="spec", to="parsimonious", tolookup=2526 ) ),
+  biologicals_using_snowcrab_filter_class=sexid
 )
 
+source( file.path( project_directory, "scripts", "startup.r") )
+
+
 sppoly = areal_units( p=p )
-
-
-if (0) {
-  # direct access:
-  aufn = project.datadirectory( "bio.snowcrab", "areal_units", "snowcrab~tesselation~1~snowcrab~8~1~none~snowcrab_managementareas.rdata")
-  load(aufn)
-}
 
 p$ny = length(p$yrs)
 p$nt = p$ny # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
@@ -86,56 +68,60 @@ p$prediction_ts = p$yrs + p$prediction_dyear
 p = temporal_parameters(p=p, dimensionality="space-time-cyclic", timezone="America/Halifax")
 
 p$space_name = sppoly$AUID 
-p$space_id = 1:nrow(sppoly)  # must match M$space
+p$space_id = 1:length(p$space_name)  # must match M$space
 
 p$time_name = as.character(p$yrs)
 p$time_id =  1:p$ny
 
+cyclic_levels = discretize_data( brks=p$dyears, toreturn="midpoints" )   # default midpoints; same as:
+p$cyclic_name = as.character(p$cyclic_levels)
+p$cyclic_id = 1:p$nw
 
-# over-ride defaults to get above to continue and get size data
-p = parameters_add(p, list(
-  project_name = project_name,
-  project_directory = project_directory,
-  data_root = project_directory,
-  datadir = project_directory,   # all unprocessed inputs (and simple manipulations) ..    
-  project.outputdir = file.path( project_directory, "outputs" ), # interpolations and mapping
-  modeldir = file.path( project_directory, "outputs", "modelled" )  # all model outputs
+
+# note ranges in CW will be log transformed later
+p$span = switch(sexid,
+    male   = c( 5, 155, 40),
+    female = c( 5, 95,  40)
+)
+
+p$formula = as.formula( paste(
+' pa ~ 1 ',
+    ' + offset( data_offset ) + mat ', 
+    ' + f( inla.group( cwd, method="quantile", n=13 ), model="rw2", scale.model=TRUE) ', 
+    ' + f( inla.group( cwd2, method="quantile", n=13 ), model="rw2", scale.model=TRUE, group=mat_group, hyper=H$rw2, control.group=list(model="iid", hyper=H$iid)) ', 
+    ' + f( time, model="ar1",  hyper=H$ar1 ) ',
+    ' + f( cyclic, model="ar1", hyper=H$ar1 )',
+    # ' + f( cyclic, model="seasonal", scale.model=TRUE, season.length=12, hyper=H$iid  )',
+    ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
+    ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="ar1", hyper=H$ar1_group)) '
+    # ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="iid", hyper=H$iid)) '
 ) )
 
-source( file.path(project_directory, "R", "sizestructure_db.R") )
-source( file.path(project_directory, "R", "model_size_data_carstm.R" ))
  
-redo_datafiles = FALSE
-# redo_datafiles = TRUE
 
+# individual level data from snow crab surveys and prediction surface
 # use a log scale for size info .. full range .. it will be reduced to data range in the next step
 # male: 30+ bins seem sufficient to describe the shape
 # female: 30+ bins seem sufficient to describe the shape
 
-nspan = 40
-M = model_size_data_carstm(p=p, sppoly=sppoly, nspan=nspan, sexid=sexid, redo=redo_datafiles )  
+redo_datafiles = FALSE
+# redo_datafiles = TRUE
+
+M = model_size_data_carstm(p=p, sexid=sexid, sppoly=sppoly, redo=redo_datafiles, carstm_set_redo=redo_datafiles )  
+
 
 hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
 
 
-# as numeric is simpler 
-cyclic_levels = discretize_data( brks=p$dyears, toreturn="midpoints" )   # default midpoints; same as:
- 
-p$cyclic_name = as.character(p$cyclic_levels)
-p$cyclic_id = 1:p$nw
-
-M$cyclic = match( M$dyri, p$cyclic_levels ) 
-M$cyclic_space = M$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
-
-M$mat = as.factor( as.numeric(as.character(M$mat)))
-M$mat_group = M$mat
-setcm = NULL; gc()
-
-# M = M[ yr>2010, ]  # for testing
-
 plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
 plot(jitter(pa) ~ year, M, pch="." )  
-    # males -- hvariance compression: 2002  
+    # males -- variance compression: 2002  
     # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
 
 plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
@@ -147,116 +133,76 @@ plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in
 # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
 plot(jitter(pa) ~ t, M, pch=".")
 plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
- 
-# , group=mat_group, control.group=list(model="iid" )
+  
 
-M$cw2 = M$cw
-M$time_cw = M$time
+# action = "redo"
+action = "load"
 
-p$formula = as.formula( paste(
-' pa ~ 1 ',
-    ' + offset( data_offset ) + mat ', 
-    # ' + f( inla.group( cw, method="quantile", n=11 ), model="rw2", scale.model=TRUE) ', 
-    ' + f( inla.group( cw2, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=mat_group, hyper=H$rw2, control.group=list(model="iid", hyper=H$iid)) ', 
-    ' + f( time, model="ar1",  hyper=H$ar1 ) ',
-    ' + f( cyclic, model="ar1", hyper=H$ar1 )',
-    # ' + f( cyclic, model="seasonal", scale.model=TRUE, season.length=12, hyper=H$iid  )',
-    ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    #' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    # ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    # ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
-    ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="ar1", hyper=H$ar1_group)) '
-    # ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="iid", hyper=H$iid)) '
-) )
- 
+fit = model_size_presence_absence( p=p, sexid=sexid, sppoly=sppoly, action=action ) 
+summary(fit)
 
-# on user scale
+fit = NULL; gc()
 
-obs = 1:nrow(M)
-if (exists("tag", M)) {
-  obso = which(M[["tag"]]=="observations")
-  if (length(obso) > 3) obs = obso
-  obso = NULL
-}   
 
-yl = M$pa[obs]
+# action = "redo"
+action = "load"
 
-# for binomial, prob=0,1, becomes infinite so minor fix for hyper parameter prior approximation
-tweak = 0.05 # tail truncation prob
-yl [ yl==1 ] = 1 - tweak
-yl [ yl==0 ] = tweak
- 
-yl =  inla.link.logit( yl / M$data_offset[obs] )   # necessary in case of log(0)
- 
-ll = which(is.finite(yl))
+O = individual_sampling_weights( p=p, sexid=sexid, sppoly=sppoly, action=action ) 
 
-mqi = quantile( yl[ll], probs=c(0.025, 0.5, 0.975) )
 
-MS = c( 
-  mean=mean(yl[ll]), 
-  sd=sd(yl[ll]), 
-  min=min(yl[ll]), 
-  max=max(yl[ll]),  
-  lb=mqi[1], 
-  median=mqi[2], 
-  ub=mqi[3]  
-)  # on data /user scale not internal link
-
-H = inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, median(yl[ll], na.rm=TRUE) )  
-
-# model pa using all data
-
-fit = inla( 
-    formula=p$formula, 
-    data=M, 
-    family="binomial", 
-    verbose=TRUE, 
-    control.inla = list( strategy="adaptive", int.strategy="eb", h=0.05 ),
-    control.predictor = list(compute = TRUE,  link = 1), 
-    control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
-    num.threads="4:3"
-)
-
-fn = file.path("~", "tmp", paste("fit2_", sexid, ".rds", sep="") )
-
-saveRDS( fit, file=fn )
-# fit = readRDS(fn)
-
-  plot(fit)
 
 #  p$carstm_directory = file.path(p$modeldir, p$carstm_model_label)
 
 #  modelinfo = carstm_model(p = p, DS = "carstm_modelinfo") 
 #  fit = carstm_model(p = p, DS = "modelled_fit")
 
-  iobs = which(M$tag == "observations")
-  ipreds = which(M$tag == "predictions")
-  
-  O = M[iobs, ]
-  O$fitted_mean = fit$summary.fitted.values[["mean"]][iobs]
-  O$fitted_sd = fit$summary.fitted.values[["sd"]][iobs]
- 
-  cor(O$pa, O$fitted_mean)  # 0.668 M, 0.43 F
- 
-  P = M[ipreds, ] 
-  P$prediction_mean = fit$summary.fitted.values[["mean"]][ipreds]
-  P$prediction_sd = fit$summary.fitted.values[["mean"]][ipreds]
-  
+cor(O$pa, O$fitted_mean)  
 
- #  fit = M = NULL; gc()
-  
-  P = P[, .(AUID, year, cyclic, cw, mat, prediction_mean, prediction_sd)]
+    if (0){ 
 
-  O = O[ pa==1,]
+        male 11 and no group mat 
+        cor 0.7329
 
-  O$logcw = discretize_data( O$logcw, brks=breaks ) 
+        Deviance Information Criterion (DIC) ...............: 605046.98
+        Deviance Information Criterion (DIC, saturated) ....: 603874.13
+        Effective number of parameters .....................: 9584.17
 
-  O = P[ O, on=.(AUID, year, cyclic, cw, mat)]
+        Watanabe-Akaike information criterion (WAIC) ...: 606534.62
+        Effective number of parameters .................: 10811.25
 
-  O$relative_rate = O$fitted_mean / O$prediction_mean
+        Marginal log-Likelihood:  -302117.80
+
+
+        male 13 and group mat:
+
+        cor=0.7804
+
+        Deviance Information Criterion (DIC) ...............: 532406.39
+        Deviance Information Criterion (DIC, saturated) ....: 531233.54
+        Effective number of parameters .....................: 10986.52
+
+        Watanabe-Akaike information criterion (WAIC) ...: 567799.45
+        Effective number of parameters .................: 28804.10
+
+        Marginal log-Likelihood:  -264656.11
+
+
+        female 13 and group mat
+
+        cor = 0.8136
+
+        Deviance Information Criterion (DIC) ...............: 350406.27
+        Deviance Information Criterion (DIC, saturated) ....: 349374.65
+        Effective number of parameters .....................: 7448.05
+
+        Watanabe-Akaike information criterion (WAIC) ...: 350224.72
+        Effective number of parameters .................: 7056.97
+
+        Marginal log-Likelihood:  -175462.54
+         
+
+    }
+
 
   hist(O$relative_rate, "fd")
   summary(O$relative_rate)
@@ -264,24 +210,25 @@ saveRDS( fit, file=fn )
   
   plot( exp(O$fitted_mean), exp(O$prediction_mean), pch=".")
   
+  cor( (O$fitted_mean), (O$prediction_mean), use="pairwise.complete.obs") 
   cor( exp(O$fitted_mean), exp(O$prediction_mean), use="pairwise.complete.obs") # 0.732 M, -0.00157 F
-  O$odds_ratio = exp(O$fitted_mean) / exp(O$prediction_mean)   # predicted logit for individual / predicted logit for size/location/time/etc..
-  summary(O$odds_ratio)
-  hist(O$odds_ratio, "fd")  # +/- 100% M (range: 0.4 to 2.0); F (range: 0.5 to 2.5)
-  hist( log(O$odds_ratio) , "fd")
-  
-  pg = data.table( sppoly)[,c("AUID", "cfanorth_surfacearea", "cfasouth_surfacearea", "cfa23_surfacearea", "cfa24_surfacearea", "cfa4x_surfacearea", "au_sa_km2", "strata_to_keep" )]
-  O = pg[ O, on="AUID" ]
-  
-  O$w = O$odds_ratio * O$cfanorth_surfacearea
-  attr(O$w, "units") = NULL
 
+ 
+  O$w = O$relative_rate * O$cfanorth_surfacearea
   yrp = "2019"
-  x11(); ggplot(O[yr==yrp & w>0,], aes(cw, weight=w ) ) + geom_histogram( bins = 29 )
-  x11(); ggplot(O[yr==yrp & w>0,], aes(cw ) ) + geom_histogram( bins = 29 )
+  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = span[3] )
+  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw) ) ) + geom_histogram( bins = span[3] )
 
 
-  model_summary = carstm_model(p = p, DS = "carstm_summary") 
+  O$w = O$relative_rate * O$au_sa_km2 
+  x11(); ggplot(O[w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = span[3] )
+  x11(); ggplot(O[w>0,], aes( log(cw) ) ) + geom_histogram( bins = span[3] )
+
+
+
+# ----
+
+# snippets and ideas
 
 
   S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )

@@ -111,41 +111,31 @@ Most/all functions for the initial data extraction are found in bio.snowcrab and
 #| echo: false
 #| label: setup-R-environment
  
-require(bio.snowcrab)
 
-year.assessment = 2024 
-p = snowcrab_parameters(
-    project_class="carstm", 
-    yrs=1999:year.assessment,   
-    areal_units_type="tesselation",
-    carstm_model_label=  paste( "default", "fb", sep="_" )  # default for fb (fishable biomass)
-)
+# homedir="C:/home/jae/"  # on MSwindows
 
-require(ggplot2)
-require(data.table)
+project_name = "model_size"
+project_directory = file.path( homedir, "projects", project_name )
 
-loadfunctions( "aegis")
-loadfunctions( "bio.snowcrab")
+year_start = 1999
+year_assessment = 2024
+yrs = year_start:year_assessment
 
-# overwrite/ over-ride defaults
-p$project_name ="model_size"
-p$project_directory = file.path( homedir, "projects", "model_size" ) 
-p$data_root = p$project_directory
-p$datadir = p$data_root   # all unprocessed inputs (and simple manipulations) ..   #  usually the datadir is a subdirectory: "data" of data_root as in snowcrab.db, .. might cause problems
-p$project.outputdir = file.path( p$data_root, "outputs" ) #required for interpolations and mapping
-p$modeldir = file.path( p$data_root, "outputs", "modelled" )  # all model outputs
+# choose one:
+sexid="male"
+sexid="female"
 
-source( file.path(p$project_directory, "R", "sizestructure_db.R") )
+carstm_model_label =  paste( "default", "fb", sep="_" )  # default for fb (fishable biomass)
+
+selection = list()
+
+source( file.path( project_directory, "scripts", "startup.r") )
+
 
 rawdatadir = file.path(p$project_directory, "outputs", "size_structure", "modes_kernel_mixture_models_set")
 
 ss_outdir=file.path(p$project.outputdir, "size_structure")
 
-
-if ( !file.exists(p$project_name) ) dir.create( p$project_name, showWarnings=FALSE, recursive=TRUE )
-if ( !file.exists(p$datadir) ) dir.create( p$datadir, showWarnings=FALSE, recursive=TRUE )
-if ( !file.exists(p$modeldir) ) dir.create( p$modeldir, showWarnings=FALSE, recursive=TRUE )
-if ( !file.exists(p$project.outputdir) ) dir.create( p$project.outputdir, showWarnings=FALSE, recursive=TRUE )
 
 # dimensionality and labels set up for carstm
 p$dimensionality="space-time"
@@ -180,7 +170,7 @@ additional_features = features_to_add(
 
 survey_size_freq_dir = file.path( p$annual.results, "figures", "size.freq", "survey")
 
-years = as.character(1996: year.assessment)
+years = as.character(1996: year_assessment)
 regions=c("cfanorth", "cfasouth", "cfa4x")
  
 
@@ -195,7 +185,8 @@ au =pg$AUID
 # recreate_polygon = TRUE  # only if you want to redo all analyses and recreate all categories
 recreate_polygon = FALSE
 SS = sizestructure_db( p=p, DS="carstm_inputs", datasource="snowcrab", rawdatadir=rawdatadir, redo=recreate_polygon  )  
- 
+
+
 p$space_name = pg$AUID 
 p$space_id = 1:nrow(pg)
 
@@ -267,7 +258,7 @@ hist(M[sex==0, cwd])
 
 # NOTE: already created in snow crab assessment process ...
 
-years_ss = as.character( c(-11:0) + year.assessment )
+years_ss = as.character( c(-11:0) + year_assessment )
 
 # Method 1 ..  equivalent to full factorial model without intercept.
 # directly compute areal densities (from above tabulations) 
@@ -478,7 +469,7 @@ bw =list(
 )
 
 # years of interest:
-years = as.character( c(1996:year.assessment) )
+years = as.character( c(1996:year_assessment) )
 
 ti_window=c(-4,4)  # include data from +/1 4 weeks 
 sigdigits = 3

@@ -1,15 +1,17 @@
 
-model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE) { 
+model_size_data_carstm = function(p, sexid, sppoly, redo=FALSE, carstm_set_redo=FALSE) { 
 
-  outdir = p$project.outputdir
-  fn = file.path( outdir, paste( "size_distributions_tabulated_data_zeros_", sexid, ".RDS", sep="" )  )
+  fn = file.path( 
+    p$project.outputdir, 
+    paste( "size_distributions_tabulated_data_zeros_", sexid, "_", paste0(p$span, collapse="_"), ".RDS", sep="" )  
+  )
 
   o = NULL 
   if (!redo) {
     if (file.exists(fn)) {
       o = read_write_fast( fn )
+      return(o)
     } 
-    return(o)
   }
   
   # sex codes
@@ -26,8 +28,9 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
     male = "0",
     female = "1"  
   )
- 
-  setcm = snowcrab.db( p=p, DS="carstm_inputs", sppoly=sppoly, redo=FALSE, savefile=TRUE )
+
+  # set level data from snow crab surveys 
+  setcm = snowcrab.db( p=p, DS="carstm_inputs", sppoly=sppoly, redo=carstm_set_redo  )
 
   setDT(setcm)
   setnames(setcm, "id", "sid") 
@@ -80,19 +83,17 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
   detcm$cw = detcm$len * 10  # mm -> cm
   detcm$logcw = log(detcm$cw)
 
-  detcm = detcm[, .(sid, mat, logcw, mass, cf_det_no)]  # mass in kg
+  detcm = detcm[, .(sid, mat, cw, logcw, mass, cf_det_no)]  # mass in kg
 
   # trim a few strange data points
   o = lm( log(mass) ~ logcw, detcm)
   todrop = which(abs(o$residuals) > 0.5)
   if (length(todrop)>0) detcm = detcm[-todrop,]
 
-
-  span = switch(sexid,
-    male   = c( log(5), log(155), nspan),
-    female = c( log(5), log(95),  nspan)
-  )
-
+  # internally on log scale
+  span0 = span = p$span
+  span[1]  = log(span[1]) 
+  span[2]  = log(span[2]) 
 
   todrop = detcm[ logcw < span[1], which=TRUE ] 
   if (length(todrop)>0) detcm = detcm[-todrop,]
@@ -121,6 +122,7 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
   }
 
   detcm$cwd = discretize_data( detcm$logcw, span=span  )  # this will truncate sizes
+
   detcm = detcm[ is.finite(cwd) ,]
   detcm$N = 1
   # length(unique(det$sid)) # 8258
@@ -128,7 +130,9 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
   Z = setcm[ detcm, on=.(sid)] # 569657
   Z$zid = paste( Z$sid, Z$mat, Z$cwd, sep="_" )
 
-  # add zeros at sampling locations: CJ required to get zero counts dim(N) # 1237368
+  # zeros at sampling locations: 
+  #   .. CJ required to get zero counts dim(N) # 1237368 
+  #   .. this is an approximationas the number of zeros are also controlled by size resoltuion/span
   Z0 = CJ( 
     mat=c("0", "1"), 
     cwd = discretize_data(span=span),  # midpoints
@@ -136,7 +140,8 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
     unique=TRUE 
   )
   Z0$mass = NA
-  Z0$logcw = Z0$cwd
+  Z0$logcw = Z0$cwd  # fill with midpoints 
+  Z0$cw = exp(Z0$logcw)  #  midpoint on original scale ... and a dummy to allow merges with observations
   Z0$N = 0
 
   Z0 = setcm[,.(sid, data_offset)][ Z0, on=.(sid)] 
@@ -153,6 +158,7 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
   toremove = unique(Z0[ zid %in% withdata, which=TRUE])
   Z0 = Z0[-toremove, ]  
 
+
   Z = rbind(Z, Z0) # 1683904
   # length(unique(Z$sid)) # 9374
   # sum(Z$N, na.rm=T) # n=539181
@@ -162,6 +168,7 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
  
   Z = Z[ year %in%  p$yrs, ] # n=494 541
   
+  # prediction surface
   pred$pid = paste( pred$AUID, pred$year, pred$dyri, sep="_")
 
   # to capture zeros
@@ -178,7 +185,9 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
   P0$logcw = P0$cwd
 
   pred = P0[ pred, on=.(pid), allow.cartesian=TRUE]
+  pred$cw = exp(pred$logcw)
   setnames(pred, "pid", "sid" )
+  
   Zvn = names(Z)
 
   Z = rbind(Z, pred[, ..Zvn ])
@@ -209,14 +218,18 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
     if (length(todrop)>0) Z = Z[-todrop,]
   }
  
-
+  # match prediction range to observation range for season (cyclic)
   data_dyears = range(Z[tag=="observations", "cyclic"] ) 
   todrop = which(Z$cyclic < data_dyears[1] | Z$cyclic > data_dyears[2] )
   if (length(todrop)>0) Z = Z[-todrop,]
 
+  Z$cyclic = match( Z$dyri, p$cyclic_levels ) 
+  Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
+
+
   Z$year = as.factor(Z$year)
   Z$region = as.factor(Z$region)
-  Z$cwd = as.factor(Z$cwd)
+  Z$cwd = as.numeric(as.character(Z$cwd))
   
   Z$data_offset = 1/Z$cf_det_no
 
@@ -224,10 +237,18 @@ model_size_data_carstm = function(p, sppoly, nspan=30, sexid="male", redo=FALSE)
   setnames(Z, "pa", "pa_set")
   setnames(Z, "N",  "pa")  
 
-  Z$mat = as.factor( as.numeric(as.character(Z$mat)))
-
+  Z$mat =  as.numeric(as.character(Z$mat))
   Z$mat_group = Z$mat  # copy needed for INLA (to use a a group)
- 
+
+  Z$cwd2 = Z$cwd
+  Z$time_cw = Z$time
+
+
+  attr(Z, "span") = span0   # 
+  attr(Z, "data_dyears") = data_dyears
+  attr(Z, "yrs") = p$yrs
+  attr(Z, "sexid") = sexid
+
   read_write_fast( data=Z, file=fn )
  
   return(Z)
