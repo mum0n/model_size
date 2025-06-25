@@ -1,4 +1,4 @@
-FILENAME=snowcrab_growth_stanzas_kmm
+FILENAME=size_structured_model_snowcrab
 TEMPLATE=my_template.tex
 PDFENGINE=lualatex
 TMPDIR := $(shell mktemp -d)
@@ -82,5 +82,6 @@ watch: $(FILENAME).md
 .PHONY: clean all
 
 clean:
-	rm -rf *.aux *.bbl *.bcf *.blg *.log *.out  *.run.xml *.spl  *.docx *.odt *.epub *.html
+	rm -rf *.aux *.bbl *.bcf *.blg *.log *.out  *.run.xml *.spl  *.docx *.odt *.epub *.html *.fls *.synctex.gz *.tex~ *.bbl-SAVE-ERROR *.bcf-SAVE-ERROR *.fdb_latexmk
 	
+

@@ -1,0 +1,2552 @@
+---
+title: "Size structured model of snow crab"
+header: 'Choi 2025'
+author:
+- name: Jae S. Choi
+  email: jae.choi@dfo-mpo.gc.ca
+  # email: choi.jae.seok@gmail.com
+  footnote: 1
+  orcid: 0000-0003-3632-5723 
+  corresponding: true
+affiliation:
+- number: 1
+  name: Bedford Institute of Oceanography, Fisheriess and Oceans Canada
+date: last-modified
+date-format: "YYYY-MM-D"
+toc: true
+toc-depth: 4
+number-sections: true
+highlight-style: pygments
+keyword: |
+  Keywords - snow crab; Bayesian kernel mixture model; Julia; Turing; growth model; instar
+abstract: |
+  Snow crab (*Chionoecetes opilio*) are cold-water stenotherms in the northern hemisphere. As they are long-lived and have a complex life history, developing an operational model of population dynamics of snow crab in an environmentally and spatiotemporally heterogeneous area, the Scotian Shelf of the northwest Atlantic of Canada. We address these difficulties by focussing upon a better and more objective parameterization of snow crab growth based upon surveys of population size structure. 
+#standalone: true
+journal: 'biorxiv'
+citeproc: true
+citeproc-method: biblatex
+biblatex: true
+biblatexoptions: |
+ \usepackage[authordate, maxcitenames=1, uniquename=mininit, backend=biber, natbib]{biblatex-chicago}
+# csl-refs: true
+csl: chicago-author-date.csl
+# https://www.overleaf.com/learn/latex/Biblatex_citation_styles
+bibliography: references.bib
+acknowledgements: |
+additionalinformation: | 
+# documentclasses: article, paper, cidarticle, REVTeX, scrartcl
+documentclass: paper
+papersize: letterpaper
+fontsize: 12pt
+output: 
+  pdf_document:
+editor:
+  render-on-save: false
+  markdown:
+    references:
+      location: document
+execute:
+  echo: true
+format:
+  html: 
+    code-fold: true
+    code-overflow: wrap
+    html-math-method: katex
+    self-contained: true
+    embed-resources: true
+params:
+  year_assessment: 2024
+  model_variation: Maximum_likelhood_basic
+#    template: null
+# https://github.com/citation-style-language/styles  # to get more csl's
+---
+
+<!-- Preamble
+
+
+This is a Markdown document ... To create HTML or PDF, etc, run: 
+
+As it runs R and Julia, Quarto is probably the better tool to render. Alternatively, you can run everything directly and then render just the figures by turning off the R and Julia code chunks. To create an HTML via Quarto:
+
+>> cd ~/projects/model_size/scripts
+
+>> make quarto FN=size_structured_model_snowcrab YR=2024 SOURCE=~/projects/model_size/scripts WK=~/projects/model_size/outputs DOCEXTENSION=html PARAMS="-P year_assessment:2024 -P model_variation:Maximum_likelhood_basic"
+ 
+  
+Alter year and directories to reflect setup or copy Makefile and alter defaults to your needs.
+   
+# A size structured model of snow crab
+
+Inference from size structured data via [kernel mixture models](https://bitbucket.org/autocatalysis/model_size) and [Conditional Autoregressive SpatioTemporal Models](https://github.com/jae0/carstm).
+
+
+See also, model_covariance::docs::covariance.md
+
+
+-->
+
+## Purpose
+
+To develop a size-structured model of snow crab. 
+
+To do this requires the development of a Matrix model that is similar to a Leslie Matrix model, except that instead of age as the classifying units, we use a size and stage-based approach that describes snow crab life history. At a minimum, the following are required for such a model requires:
+
+  1. a size-based model to reduce the bias associated with non-random sampling to make observations comparable
+
+  2. identify/classify size modes to estimate cohort size distributions
+
+  3. a size-based model of growth in size (carapace width or mass)
+  
+  4. a size-based model of fecundity
+  
+  5. a size-based model of survivorship (independent of fishing)
+
+  6. a size-based understanding of fishery removals
+
+  7. synthesis through a size-based model (aka, Generalized Leslie, or a **Transition matrix model**)
+
+
+We will address each component below. Towards a biologically complete life history model, useful for estimating life history parameters and understanding the time-dynamics of snow crab.
+
+
+## 1. A model-based based approach to reduce bias due to non-random sampling
+
+A **size-frequency distribution** of some **system** of interest is usually obtained from the observation of body size measurements (e.g., weight, length, carapace width) at various locations ("space") and times (seasonal, inter-annual). To represent the overall size distribution these observations must be summarized in some manner. If the samples are derived from a truly random sample from such a "space-time-size" domain, then the usual approach of simply aggregating counts by size-intervals is sufficient to obtain a picture of the size frequency distribution. This is because these samples are **representative** and each observation has an equal amount of influence or weight in representing the system; this is usually called "independently and identically distributed"  or *iid* but also called "exchangeability" in that information content from one individual is the same as that of another, under the context of the sampling structure.
+
+In dealing with the abundance of organisms across space, time and size, that is, to make them comparable across factors that can bias our estimate of abundance, means that we need to address **habitat** variability issues. By **habitat**, we mean that organisms have metabolic, physiological and behavioural preferences and limits in the environmental and ecosystem conditions they can or cannot inhabit, in the sense of XXXX (19XX). Variations in habitat result in differential growth, reproduction and movement, rendering a naive random sampling assumption, potentially invalid.
+
+To belabour then point, for example, animals can, due to metabolic constraints and behavioural traits (aggregation/clustering/schooling), demonstrate ontogenetic (size and age-based) shifts in such habitat preferences which ultimately results in observed/sampled data with bias due to certain environments not being observable due to sampling not accounting for this underlying structure that is not random. Further, imperfect sampling methods such as:
+
+  - nets not able to access rocky, heterogenous, or deep environments
+  - not able to access areas of high currents or rapid changes in bathymetry (cliffs and rocky protuberances)
+  - sampling of one vertical stratum (size of sampling gear) and missing mobile organisms that can escape by swimming over or around the nets or others that can burrow into sediments or shelf beside rocky outcrops below the nets.
+  - sampling speed to capture rapidly moving organisms (escapement)
+  - sampling mesh too large to capture small organisms (escapement)
+
+can of course cause additional biases, usually also ignored. The usual recourse is to assume some operationally simplistic **lets-hope-it-is-random** (... depth-should-be-enough) stratification will account for most/all of these above factors. After which, one then computes size frequency distributions, treating each observation as IID (i.e, exchangeable). Indeed, this **lets-hope-it-is-random** stratified approach is the defacto standard in most settings. This is the case because, it is generally, nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent preferences, in a fluid environment such as the ocean. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design.
+
+Ultimately, what this means is that observations may not be of exchangeable, that is, they are not of equal importance in describing the system. For example, if observations occur with more frequently (e.g. flooding of area with warm waters due to larger eddies entering the system for a year or more) in an area that is not representative of the overall system or stratum, then it’s influence would be elevated more than it should be. Similarly, if an observation occurs in an area that is highly representative of the system, then it’s influence should be higher than just a single observation. In other words, simply adding the observations together becomes inappropriate as they are not fully independent samples, across space, nor across time, nor across size (if there are ontogenetic or size-related changes in habitat preferences).
+
+A model-based approach is one possible recourse (post-hoc) to approximately adjust for some of these factors and estimate the relative importance of each observation in representing the overall system and ultimately reduce some of theses biases as much as possible. 
+
+There are two possible ways to address these issues: 
+
+- Approach 1: Estimate a design/sample weight associated with each individual observation from an individual-based observation model and then determine relative numbers of each size-stage group by aggregation. This Approach is operationally viable. It take a few hours of computation and with reasonable predictive success: pearson correlation > 0.8.
+  
+- Approach 2: Pre-classify size-stage membership and aggregate to estimate abundance and then in a model-based framework, estimate a corrected abundance by location, time, size, class, etc. This Approach is too computationally heavy. Do not recommend. 
+
+
+### Approach 1: Construct an individual-based observation-level probability model and estimate sampling/design weights
+
+Basic premise:
+
+Here we explore the use of such a model-based approaches to estimate this relative importance of an observation, such that they can be re-scaled to enable a less biased estimate of size-structure. More specifically, the purpose is to determine the numerical weight, $W$, that should be attributed to each observation of an individual's measurement of size.
+
+The mechanism to do this involves the development of an individual level probability model of presence or absence, that also accounts for space, time, size and any other covariates that may be influential in determining an organism's presence or absence. In the case of the benthic stages of snow crab, from prior experience, it is known that depth, bottom temperature, substrate grain size/type and co-occurring species associations are imporatnt factors. To this end, a binomial model of individual-level presence and absence was parameterized to determine the probability associated with each observation of presence. 
+
+The probability of observing a snow crab $P_\text{obs}$ is assumed to be composed of independent factors:
+
+$$P_\text{obs} = P_\text{size} \cdot P_\text{sex} \cdot P_\text{maturity} \cdot P_\text{location} \cdot P_\text{time} \cdot P_\text{depth} \cdot P_\text{temperature}$$
+
+These probabilities can be decomposed from a Binomial Bernoulli model of presence-absence of observations by sampling event (survey trawl set).
+
+To reduce the number of possible combinations of the above factors, we can use size bins that span a range and then use a rw2 model to smooth across the sizes.
+
+#### Analysis to determine sample/design weight of each individual observation
+
+The main idea is that size-structure cannot be examined easily as each individual measurement is derived from a sample of unequal sampling intensity (swept are), size-bias of sampling gear and environmental bias conditions. This does not stop people from still aggregating and so ignoring these differences in sampling weights. Accounting for size-based bias is attempted when this bias is well understood, though not always.
+
+Here we attempt to factor in all such biases into one model.
+
+
+#### Load environment
+
+```{r}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: setup-R-environment
+
+# homedir="C:/home/jae/"  # on MSwindows
+
+project_name = "model_size"
+project_directory = file.path( homedir, "projects", project_name )
+
+year_start = 1999
+year_assessment = 2024
+yrs = year_start:year_assessment
+
+# choose one:
+sexid="male"
+sexid="female"
+
+carstm_model_label = sexid
+
+selection = list(
+  type = "presence_absence",
+  biologicals=list( spec_bio=bio.taxonomy::taxonomy.recode( from="spec", to="parsimonious", tolookup=2526 ) ),
+  biologicals_using_snowcrab_filter_class=sexid
+)
+
+source( file.path( project_directory, "scripts", "startup.r") )
+
+
+sppoly = areal_units( p=p )
+
+p$ny = length(p$yrs)
+p$nt = p$ny # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
+p$nw = 12 
+p$tres = 1/ p$nw # time resolution .. predictions are made with models that use seasonal components
+p$dyears = discretize_data( span=c(0, 1, p$nw), toreturn="lower" )  # left breaks .. get 12 intervals of decimal years... fractional year breaks
+
+p$dyear_centre = discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ) 
+
+# used for creating timeslices and predictions  .. needs to match the values in aegis_parameters()
+p$prediction_dyear = lubridate::decimal_date( lubridate::ymd("0000/Sep/01"))
+# output timeslices for predictions in decimla years, yes all of them here
+p$prediction_ts = p$yrs + p$prediction_dyear
+
+p = temporal_parameters(p=p, dimensionality="space-time-cyclic", timezone="America/Halifax")
+
+p$space_name = sppoly$AUID 
+p$space_id = 1:length(p$space_name)  # must match M$space
+
+p$time_name = as.character(p$yrs)
+p$time_id =  1:p$ny
+
+cyclic_levels = discretize_data( brks=p$dyears, toreturn="midpoints" )   # default midpoints; same as:
+p$cyclic_name = as.character(p$cyclic_levels)
+p$cyclic_id = 1:p$nw
+
+
+# note ranges in CW will be log transformed later
+p$span = switch(sexid,
+    male   = c( 5, 155, 40),
+    female = c( 5, 95,  40)
+)
+
+p$formula = as.formula( paste(
+' pa ~ 1 ',
+    ' + offset( data_offset ) + mat ', 
+    ' + f( inla.group( cwd, method="quantile", n=13 ), model="rw2", scale.model=TRUE) ', 
+    ' + f( inla.group( cwd2, method="quantile", n=13 ), model="rw2", scale.model=TRUE, group=mat_group, hyper=H$rw2, control.group=list(model="iid", hyper=H$iid)) ', 
+    ' + f( time, model="ar1",  hyper=H$ar1 ) ',
+    ' + f( cyclic, model="ar1", hyper=H$ar1 )',
+    # ' + f( cyclic, model="seasonal", scale.model=TRUE, season.length=12, hyper=H$iid  )',
+    ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
+    ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="ar1", hyper=H$ar1_group)) '
+    # ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="iid", hyper=H$iid)) '
+) )
+
+ 
+
+# individual level data from snow crab surveys and prediction surface
+# use a log scale for size info .. full range .. it will be reduced to data range in the next step
+# male: 30+ bins seem sufficient to describe the shape
+# female: 30+ bins seem sufficient to describe the shape
+
+redo_datafiles = FALSE
+# redo_datafiles = TRUE
+
+M = model_size_data_carstm(p=p, sexid=sexid, sppoly=sppoly, redo=redo_datafiles, carstm_set_redo=redo_datafiles )  
+
+
+hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
+
+
+plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
+plot(jitter(pa) ~ year, M, pch="." )  
+    # males -- variance compression: 2002  
+    # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
+
+plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
+
+plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
+plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
+plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
+
+# observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
+plot(jitter(pa) ~ t, M, pch=".")
+plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
+  
+
+# action = "redo"
+action = "load"
+
+fit = model_size_presence_absence( p=p, sexid=sexid, sppoly=sppoly, action=action ) 
+summary(fit)
+
+fit = NULL; gc()
+
+
+# action = "redo"
+action = "load"
+
+O = individual_sampling_weights( p=p, sexid=sexid, sppoly=sppoly, action=action ) 
+
+
+
+#  p$carstm_directory = file.path(p$modeldir, p$carstm_model_label)
+
+#  modelinfo = carstm_model(p = p, DS = "carstm_modelinfo") 
+#  fit = carstm_model(p = p, DS = "modelled_fit")
+
+cor(O$pa, O$fitted_mean)  
+
+    if (0){ 
+
+        male 11 and no group mat 
+        cor 0.7329
+
+        Deviance Information Criterion (DIC) ...............: 605046.98
+        Deviance Information Criterion (DIC, saturated) ....: 603874.13
+        Effective number of parameters .....................: 9584.17
+
+        Watanabe-Akaike information criterion (WAIC) ...: 606534.62
+        Effective number of parameters .................: 10811.25
+
+        Marginal log-Likelihood:  -302117.80
+
+
+        male 13 and group mat:
+
+        cor=0.7804
+
+        Deviance Information Criterion (DIC) ...............: 532406.39
+        Deviance Information Criterion (DIC, saturated) ....: 531233.54
+        Effective number of parameters .....................: 10986.52
+
+        Watanabe-Akaike information criterion (WAIC) ...: 567799.45
+        Effective number of parameters .................: 28804.10
+
+        Marginal log-Likelihood:  -264656.11
+
+
+        female 13 and group mat
+
+        cor = 0.8136
+
+        Deviance Information Criterion (DIC) ...............: 350406.27
+        Deviance Information Criterion (DIC, saturated) ....: 349374.65
+        Effective number of parameters .....................: 7448.05
+
+        Watanabe-Akaike information criterion (WAIC) ...: 350224.72
+        Effective number of parameters .................: 7056.97
+
+        Marginal log-Likelihood:  -175462.54
+         
+
+    }
+
+
+  hist(O$relative_rate, "fd")
+  summary(O$relative_rate)
+  plot( O$fitted_mean, O$prediction_mean, pch="." )
+  
+  plot( exp(O$fitted_mean), exp(O$prediction_mean), pch=".")
+  
+  cor( (O$fitted_mean), (O$prediction_mean), use="pairwise.complete.obs") 
+  cor( exp(O$fitted_mean), exp(O$prediction_mean), use="pairwise.complete.obs") # 0.732 M, -0.00157 F
+
+ 
+  O$w = O$relative_rate * O$cfanorth_surfacearea
+  yrp = "2019"
+  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = span[3] )
+  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw) ) ) + geom_histogram( bins = span[3] )
+
+
+  O$w = O$relative_rate * O$au_sa_km2 
+  x11(); ggplot(O[w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = span[3] )
+  x11(); ggplot(O[w>0,], aes( log(cw) ) ) + geom_histogram( bins = span[3] )
+
+
+```
+
+Bottom line: reasonable success in estimating individual survey/design weights.  And operationally viable (<1 day of computation).
+
+
+```julia
+# snippets for mapping and ideas .. in case it it useful for above ..
+
+S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
+
+# posterior predictive check
+carstm_posterior_predictive_check(p=p, M=M[ , ]  )
+
+# EXAMINE POSTERIORS AND PRIORS
+res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
+
+outputdir = file.path(p$modeldir, p$carstm_model_label)
+
+res_vars = c( names( res$hypers), names(res$fixed) )
+for (i in 1:length(res_vars) ) {
+  o = carstm_prior_posterior_compare( res, vn=res_vars[i], outputdir=outputdir  )  
+  dev.new(); print(o)
+}     
+
+
+plot( jitter(M$pa), fit$summary.fitted.values$mean, pch="." ) 
+cor( jitter(M$pa), fit$summary.fitted.values$mean ) # 0.5441
+
+vn = 'inla.group(cw, method = "quantile", n = 15)'
+o = fit$summary.random[[vn]]
+plot( o$ID, (o$mean) )
+
+vn = 'inla.group(z, method = "quantile", n = 9)'
+o = fit$summary.random[[vn]]
+plot( o$ID, (o$mean) )
+
+vn = 'inla.group(t, method = "quantile", n = 9)'
+o = fit$summary.random[[vn]]
+plot( o$ID, (o$mean) )
+
+o = fit$summary.fixed
+plot( (o$mean) )
+
+
+## to add spatial effects:
+yrs = 1999:2024
+
+spec_bio = bio.taxonomy::taxonomy.recode( from="spec", to="parsimonious", tolookup=2526 )
+
+snowcrab_filter_class = "fb"     # fishable biomass (including soft-shelled )  "m.mat" "f.mat" "imm"
+
+carstm_model_label= paste( "male_size_structure" )
+carstm_model_label= paste( "female_size_structure" )
+
+io = which(M$tag=="observations")
+ip = which(M$tag=="predictions")
+iq = unique( c( which( M$totno > 0), ip ) )
+iw = unique( c( which( M$totno > 5), ip ) )  # need a good sample to estimate mean size
+
+carstm_model( p=p, data=M[ , ], sppoly=sppoly, 
+# theta=c( 2.7291,1.8146,2.9382,0.0132,3.8666,-0.0211,4.2673,5.5037,6.1421,0.2391,4.2522,0.7666,-0.0100,0.8763 ),
+nposteriors=5000,
+toget = c("summary", "random_spatial", "predictions"),
+posterior_simulations_to_retain = c("predictions"),
+family = "poisson",
+verbose=TRUE,
+# redo_fit=FALSE, 
+# debug = "summary",
+# debug = "predictions",
+num.threads="4:3"  
+) 
+
+# posterior predictive check
+carstm_posterior_predictive_check(p=p, M=M[ , ]  )
+
+# EXAMINE POSTERIORS AND PRIORS
+res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
+
+outputdir = file.path(p$modeldir, p$carstm_model_label)
+
+res_vars = c( names( res$hypers), names(res$fixed) )
+for (i in 1:length(res_vars) ) {
+  o = carstm_prior_posterior_compare( res, vn=res_vars[i], outputdir=outputdir  )  
+  dev.new(); print(o)
+}     
+
+
+
+# for mapping below, some bathymetry and polygons
+additional_features = snowcrab_mapping_features(p)  
+
+  ylab = "Probability"
+  fn_root_prefix = "Predicted_presence_absence"
+  fn_root = "habitat"
+  # title= paste( snowcrab_filter_class, "Probability")  
+
+outputdir = file.path( p$modeldir, p$carstm_model_label, "figures" )
+if ( !file.exists(outputdir)) dir.create( outputdir, recursive=TRUE, showWarnings=FALSE )
+
+# plots with 95% PI
+carstm_plot_marginaleffects( p, outputdir, fn_root )
+
+    #   # to compute habitat prob
+    #   sims = carstm_posterior_simulations( pH=p, pa_threshold=0.05, qmax=0.95 )
+    #   SM = aggregate_simulations( 
+    #     sims=sims, 
+    #     sppoly=sppoly, 
+    #     fn=carstm_filenames( p, returnvalue="filename", fn="aggregated_timeseries" ), 
+    #     yrs=p$yrs, 
+    #     method="mean", 
+    #     redo=TRUE 
+    #   ) 
+    #   outputdir = file.path( carstm_filenames( p, returnvalue="output_directory"), "aggregated_habitat_timeseries" )
+    #   ylabel = "Habitat probability"
+    #   fn_ts = "habitat_M0.png"
+    #   vn = paste("habitat", "predicted", sep=".")
+    #   outputdir2 = file.path( carstm_filenames( p, returnvalue="output_directory"), "predicted_habitat" )
+
+
+
+# maps of some of the results
+outputdirmap = file.path(p$modeldir, p$carstm_model_label, "maps" )
+
+carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features,
+toplot="random_spatial", probs=c(0.025, 0.975) )
+
+# plots with 95% PI 
+carstm_plot_marginaleffects( p, outputdir, fn_root ) 
+
+
+# maps of some of the results
+outputdirmap = file.path(p$modeldir, p$carstm_model_label, "maps" )
+  
+carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features, 
+  toplot="random_spatial", probs=c(0.025, 0.975) ) 
+
+carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features, 
+  toplot="predictions", probs=c(0.1, 0.9)) 
+
+
+
+```
+
+
+### Approach 2: Classify and aggregate by size and stage and then model 
+
+
+**NOTE:: This approach ("Approach 2"), is too computationally heavy to be operationally useful ... skip/ignore (for now), use "Approach 1" (above) -- simpler and faster** 
+
+
+**Kernel Mixture Models (KMMs)** can be used to decompose the size structure at the level of each observation event. The modes and distributional parameters of the kernel mixture model are then modelled in space and time using a statistical spatio-temporal model. These are then reconstituted in the sampling domain to provide a model-based (weighted) size structure, that accounts for these biases as much as possible through the use of environmental covariates as well as spatial and spatiotemporal random effects to absorb the unmeasured biases.
+
+#### Notes:
+
+Estimate size structure and related parameters (growth, maturity, etc.).
+
+From simple kernel density representations of size frequency at small area unit scale, determine the magnitudes of  modes. This is done as there may be regional and time-dependent changes in modal sizes (year-classes)
+
+Inference of modal sizes for each sex, instar, maturity group in order to develop a growth model.
+
+A number of methods to explore:
+
+- Direct via counting (**Simple sums** ... traditional)
+- Direct via **areal density** (arithmetic and geometric)
+- **Modelled solutions**: mostly too large of a problem to use
+- Kernel density areal density (arithmetic and geometric)
+- Size at maturity
+- Modal size groups
+
+
+#### Analysis of size structure .. tests
+
+```{r}
+
+rawdatadir = file.path(p$project_directory, "outputs", "size_structure", "modes_kernel_mixture_models_set")
+
+ss_outdir=file.path(p$project.outputdir, "size_structure")
+
+if ( !file.exists(p$project_name) ) dir.create( p$project_name, showWarnings=FALSE, recursive=TRUE )
+if ( !file.exists(p$datadir) ) dir.create( p$datadir, showWarnings=FALSE, recursive=TRUE )
+if ( !file.exists(p$modeldir) ) dir.create( p$modeldir, showWarnings=FALSE, recursive=TRUE )
+if ( !file.exists(p$project.outputdir) ) dir.create( p$project.outputdir, showWarnings=FALSE, recursive=TRUE )
+
+# dimensionality and labels set up for carstm
+p$dimensionality="space-time"
+
+# stage labels
+stages = list(
+  mi = c("m|i|05", "m|i|06", "m|i|07", "m|i|08", "m|i|09", "m|i|10",  "m|i|11",  "m|i|12" ),
+  mm = c( "m|m|10",  "m|m|11",  "m|m|12" ),
+  fi = c("f|i|05", "f|i|06", "f|i|07", "f|i|08","f|i|09", "f|i|10" ),
+  fm = c( "m|m|9",  "m|m|10",  "m|m|11" )
+)
+
+# sex codes
+# male = 0
+# female = 1
+# sex.unknown = 2
+
+# # maturity codes
+# immature = 0
+# mature = 1
+# mat.unknown = 2
+
+# mapping background
+additional_features = features_to_add(
+    p=p,
+    isobaths=c( 100, 200, 300, 400, 500  ),
+    xlim=c(-80,-40),
+    ylim=c(38, 60)
+)
+
+
+# Get data and format based upon parameters:
+
+survey_size_freq_dir = file.path( p$annual.results, "figures", "size.freq", "survey")
+
+years = as.character(1996: year.assessment)
+regions=c("cfanorth", "cfasouth", "cfa4x")
+
+
+# recreate_polygons = TRUE
+recreate_polygons = FALSE
+pg = sizestructure_db(p=p, "arealunits", redo=recreate_polygons)
+dim(pg)
+
+nb = attributes(pg)$nb$nbs
+au =pg$AUID
+
+# recreate_polygon = TRUE  # only if you want to redo all analyses and recreate all categories
+recreate_polygon = FALSE
+
+SS = sizestructure_db( p=p, DS="carstm_inputs", datasource="snowcrab", rawdatadir=rawdatadir, redo=recreate_polygon  )
+
+
+# required
+
+p$space_name = pg$AUID
+p$space_id = 1:nrow(pg)
+
+p$time_name = as.character(p$yrs)
+p$time_id =  1:p$ny
+
+p$cyclic_name = as.character(p$cyclic_levels)
+p$cyclic_id = 1:p$nw
+
+p$stages = names(SS$sk)
+p$stages = p$stages[ -grep("04", p$stages)] # data density of instar 4 seems to be too sparse  and results in unstable solutions
+
+p$varsnames = c( "imodes", "sigmasq_mean",  "alpha_mean",  "Nkmm" )
+
+p$nposteriors = 2000
+
+# try an individual-based model first:
+o = size_distributions(p=p, toget="tabulated_data_by_stage", add_zeros=TRUE )
+o = o[-.(region, year)]
+
+o = size_distributions(p=p, toget="tabulated_data_by_stage" )
+o = size_distributions(p=p, toget="tabulated_data", add_zeros=TRUE )
+
+
+```
+
+
+#### Size structure as kernel mixture models: computing base data
+
+Most/all functions for the initial data extraction are found in bio.snowcrab and aegis packages.
+
+```{r}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: setup-R-environment
+ 
+# homedir="C:/home/jae/"  # on MSwindows
+
+project_name = "model_size"
+project_directory = file.path( homedir, "projects", project_name )
+
+year_start = 1999
+year_assessment = 2024
+yrs = year_start:year_assessment
+
+# choose one:
+sexid="male"
+sexid="female"
+
+carstm_model_label =  paste( "default", "fb", sep="_" )  # default for fb (fishable biomass)
+
+selection = list()
+
+source( file.path( project_directory, "scripts", "startup.r") )
+
+
+rawdatadir = file.path(p$project_directory, "outputs", "size_structure", "modes_kernel_mixture_models_set")
+
+ss_outdir=file.path(p$project.outputdir, "size_structure")
+
+
+# dimensionality and labels set up for carstm
+p$dimensionality="space-time"
+
+# stage labels
+stages = list(
+  mi = c("m|i|05", "m|i|06", "m|i|07", "m|i|08", "m|i|09", "m|i|10",  "m|i|11",  "m|i|12" ),
+  mm = c( "m|m|10",  "m|m|11",  "m|m|12" ),
+  fi = c("f|i|05", "f|i|06", "f|i|07", "f|i|08","f|i|09", "f|i|10" ), 
+  fm = c( "m|m|9",  "m|m|10",  "m|m|11" )
+)
+
+# sex codes
+# male = 0
+# female = 1
+# sex.unknown = 2
+
+# # maturity codes
+# immature = 0
+# mature = 1
+# mat.unknown = 2
+
+# mapping background
+additional_features = features_to_add( 
+    p=p, 
+    isobaths=c( 100, 200, 300, 400, 500  ), 
+    xlim=c(-80,-40), 
+    ylim=c(38, 60) 
+)
+
+# Get data and format based upon parameters:
+
+survey_size_freq_dir = file.path( p$annual.results, "figures", "size.freq", "survey")
+
+years = as.character(1996: year_assessment)
+regions=c("cfanorth", "cfasouth", "cfa4x")
+ 
+
+# recreate_polygons = TRUE 
+recreate_polygons = FALSE 
+pg = sizestructure_db(p=p, "arealunits", redo=recreate_polygons)
+dim(pg)
+  
+nb = attributes(pg)$nb$nbs
+au =pg$AUID
+
+# recreate_polygon = TRUE  # only if you want to redo all analyses and recreate all categories
+recreate_polygon = FALSE
+SS = sizestructure_db( p=p, DS="carstm_inputs", datasource="snowcrab", rawdatadir=rawdatadir, redo=recreate_polygon  )  
+
+
+p$space_name = pg$AUID 
+p$space_id = 1:nrow(pg)
+
+p$time_name = as.character(p$yrs)
+p$time_id =  1:p$ny
+
+p$cyclic_name = as.character(p$cyclic_levels)
+p$cyclic_id = 1:p$nw
+
+p$stages = names(SS$sk)
+p$stages = p$stages[ -grep("04", p$stages)] # data density of instar 4 seems to be too sparse  and results in unstable solutions 
+
+p$varsnames = c( "imodes", "sigmasq_mean",  "alpha_mean",  "Nkmm" ) 
+
+p$nposteriors = 2000
+
+xrange = c(8, 170)  # size range (CW)
+
+dx = 2 #  width of carapace with discretization to produce "cwd"
+
+ 
+# merge set and individual level data for further processing
+M = size_distributions(p=p, toget="base_data", pg=pg, xrange=xrange, dx=dx, outdir=ss_outdir, redo=TRUE)
+
+# save useful data to file for use in Julia
+out = list( Y=M, nb=nb, au=au )  # saving areal units in case we do carstm in julia .. for now not used
+fn = file.path( p$project_directory, "outputs", "size_structure", "base_data_julia.rdata" )  
+save( out, file=fn )
+ 
+
+```
+
+#### Simple sums
+
+Now that we have data ready, we can do some simple tabulations using data.tables (for speed) and produce the usual size-frequency distributions (already computed in main assessment process):
+
+```{r}
+#| eval: false
+#| output: false
+#| echo: false
+#| label: base-counts
+
+# tabulate... non-zero counts ... must use add_zeros=TRUE to add them, on the fly
+M = size_distributions(p=p, toget="tabulated_data", xrange=xrange, dx=dx, outdir=ss_outdir, redo=TRUE)
+M$cwd = as.numeric( as.character( M$cwd) ) 
+
+hist(M[sex==0, cwd])
+
+```
+
+#### Numerical Density per unit area (simple direct or crude, geometric and arithmetic)
+
+```{r}
+#| eval: false
+#| output: false
+#| echo: false
+#| label: base-counts
+
+# NOTE: already created in snow crab assessment process ...
+
+years_ss = as.character( c(-11:0) + year_assessment )
+
+# Method 1 ..  equivalent to full factorial model without intercept.
+# directly compute areal densities (from above tabulations) 
+M = size_distributions(p=p, toget="simple_direct", xrange=xrange, dx=dx, Y=years_ss,  outdir=ss_outdir,redo=TRUE)
+#NOTE: "crude" is same as "simple_direct" but without pg and unrolled
+
+# take subset in years
+M = size_distributions(p=p, toget="simple_direct", xrange=xrange, dx=dx, Y=years_ss , outdir=ss_outdir )
+
+outdir=file.path( survey_size_freq_dir, "direct")
+
+plot_histogram_carapace_width( M=M, years=years_ss, regions=regions, 
+    plot_sex="female", 
+    yvar="den",  # den=arithmetic mean density, denl = geometric mean density  
+    outdir=outdir 
+) 
+
+plot_histogram_carapace_width( M=M, years=years_ss, regions=regions, 
+    plot_sex="female", 
+    yvar="denl",  # den=arithmetic mean density, denl = geometric mean density  
+    outdir=outdir 
+)
+
+plot_histogram_carapace_width( M=M, years=years_ss, regions=regions, 
+    plot_sex="male", 
+    yvar="den",   # den=arithmetic mean density, denl = geometric mean density  
+    outdir=outdir 
+)
+
+plot_histogram_carapace_width( M=M, years=years_ss, regions=regions, 
+    plot_sex="male", 
+    yvar="denl",   # den=arithmetic mean density, denl = geometric mean density  
+    outdir=outdir 
+)
+
+
+if (0) {
+    ss = M[ region=="cfanorth" & year== 2017, which=TRUE]
+
+    ggplot( M[ ss ,], aes(cwd, den, fill=mat, colour=sex) ) +
+        #geom_ribbon(aes(ymin=density_lb, max=density_ub), alpha=0.2, colour=NA) +
+        geom_bar(stat = "identity") +
+        labs(x="cw", y="density", size = rel(1.5)) +
+        # scale_y_continuous( limits=c(0, 300) )  
+        theme_light( base_size = 22 ) 
+}
+
+
+```
+
+#### Hot spots of Numerical densities
+
+Areal densities are simply computed as well, but they need to make sure zero-valued results are included. And biases due to extreme events are corrected modelled or at least, reduced or robustified.
+
+```{r}
+#| eval: false
+#| output: false
+#| echo: false
+#| label: spatial-counts
+
+# directly from databases
+M = snowcrab.db( DS="set.complete", p=p ) # note depth is log transformed here
+setDT(M)
+
+# high density locations  
+i = which(M$totno.all > 2*10^5)
+H = M[i, .(uid, plon, plat, towquality, dist, distance, surfacearea, vessel, yr, z, julian, no.male.all, no.female.all, cw.mean, totno.all, totno.male.imm, totno.male.mat, totno.female.imm, totno.female.mat, totno.female.primiparous, totno.female.multiparous, totno.female.berried)]
+
+H$log10density = log10(H$totno.all)
+
+library(ggplot2)
+
+cst = coastline_db( p=p, project_to=st_crs(pg) ) 
+  
+isodepths = c(100, 200, 300)
+isob = isobath_db( DS="isobath", depths=isodepths, project_to=st_crs(pg))
+isob$level = as.factor( isob$level)
+  
+plt = ggplot() +
+    geom_sf( data=cst, show.legend=FALSE ) +
+    geom_sf( data=isob, aes( alpha=0.1, fill=level), lwd=0.1, show.legend=FALSE) +
+    geom_point(data=H, aes(x=plon, y=plat, colour=log10density), size=5) +
+    coord_sf(xlim = c(270, 940 ), ylim = c(4780, 5200 )) +
+    theme(legend.position="inside", legend.position.inside=c(0.08, 0.8), 
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank())
+
+fn = file.path( p$project.outputdir, "maps",  "map_highdensity_locations.png" )
+png(filename=fn, width=1000,height=600, res=144)
+    (plt)
+dev.off()
+
+```
+
+Direct arithmetic and geometric means, as above are simple. But to account for environmental covariates, a model-based approach is more flexible. Unfortunately the models below **do not work** due to large problem size and corresponding RAM/CPU bottlenecks.
+
+```{r}
+#| eval: false
+#| output: false
+#| echo: false
+#| label: model-based-counts
+
+# ---------------------
+# method 2: simple linear (gaussian) model via biglm .. too slow to use
+
+    O = size_distributions(p=p, toget="linear_model" , outdir=ss_outdir)
+ 
+    ss = O[ region=="cfanorth" & year== 2017, which=TRUE]
+ 
+    ggplot( O[ ss, ], aes(cwd, den, fill=mat, colour=mat) ) +
+        # geom_ribbon(aes(ymin=density_lb, max=density_ub), alpha=0.2, colour=NA) +
+        # geom_line() +
+        geom_bar(stat = "identity") +
+        labs(x="cw", y="density", size = rel(1.5)) +
+        # scale_y_continuous( limits=c(0, 300) )  
+        theme_light( base_size = 22 ) 
+ 
+
+# ---------------------
+# method 3: poisson model  via biglm .. problem is too large to compute
+  
+    # too slow to complete
+    O = size_distributions(p=p, toget="poisson_glm" ,  outdir=ss_outdir)
+ 
+    outdir=file.path( survey_size_freq_dir, "poisson_glm")
+  
+    regions = "cfanorth"
+    plot_histogram_carapace_width( M=O$P, years=years, regions=regions, 
+        plot_sex="male", 
+        yvar="N",  # den=arithmetic mean density, denl = geometric mean density  
+        outdir=outdir 
+    )
+ 
+
+# ---------------------
+# method 4: poisson via inla .. problem is too large to compute
+   
+    # adjust based upon RAM requirements and ncores
+    require(INLA)
+    inla.setOption(num.threads= floor( parallel::detectCores() / 2) )
+  
+    O = size_distributions(p=p, toget="poisson_inla",  outdir=ss_outdir )
+ 
+    outdir=file.path( survey_size_freq_dir, "poisson_inla")
+  
+    regions = "cfanorth"
+    plot_histogram_carapace_width( M=O$P, years=years, regions=regions, 
+        plot_sex="male", 
+        yvar="N",  # den=arithmetic mean density, denl = geometric mean density  
+        outdir=outdir 
+    )
+
+# --- 
+# method 5: model using CARSTM ?  lots of tedious computations ...
+
+
+# --- 
+# method 6: model using JuliaGLM ? might be faster...
+
+
+
+```
+
+So the "Alternative: estimate numerical abundance ..." (above) modelling attempts **do not work** (operationally). The trick is to find an approach that will.
+
+Giving up for now to create a size-space-time model ...  but try Julia-GLM if time permits
+
+
+
+## 2. Size structure modes to identify/classify cohorts 
+
+To estimate growth and other size-related life history parameters requires information of the growth modes, our proxy to age/time. To do this, we use kernel-density estimates as a function of sex, maturity, year, time of year (season in quarters), region and set (sid). 
+
+
+### Approach 1: To be completed
+
+
+
+### Approach 2: Note this is intensive
+First we construct kernel density estimates using a bandwidth of 0.025 units on a logarithmic scale. This corresponds to about 4 dx (mm), where dx is the increment width of discretization.
+
+These results are normalized by swept area to provide a density per unit area (1 km$^{-2}$). Alternatively, they should probably be better scaled by our *design weights* from section 1. 
+
+**NOTE: Consider moving this to Julia**
+
+```{r}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: size-normalization
+
+# Normalization via weighted kernel density data from "base-data"
+ 
+# key defaults that define kernal densities:
+np = 512  # # discretizations in fft
+
+xr = round( log(xrange), digits=2 ) 
+ldx = diff(xr)/(np-1)  # 0.005988
+xvals = seq( xr[1], xr[2], by=ldx )
+
+# bw is on log scale ... approx (log) SD for each interval  
+#  data_resolution is ~1 to 2 mm (observation error)
+#  but some catgories are wider than others :
+#   male imm  = 10 to 100 mm
+#   male mat  = 60 to 168 mm
+#   female imm = 10 to 45 mm
+#   female mat = 35 to 65 mm
+
+# bw = 0.1 # ~ 20 ldx ~ overly smooth
+# bw = 0.05  # used for modal analysis
+# bw = 0.025  # optimal for sparse data  <<<<<< DEFAULT for histograms >>>>>>
+# bw = 0.01 # 2 ldx is too noisy for arithmetic but good for geometric means
+
+bw =list( 
+  "0"=list("0"=0.05, "1"=0.05), #male( imm, mat)
+  "1"=list("0"=0.04, "1"=0.04 ) #female( imm, mat)
+)
+
+# years of interest:
+years = as.character( c(1996:year_assessment) )
+
+ti_window=c(-4,4)  # include data from +/1 4 weeks 
+sigdigits = 3
+
+lowpassfilter=0.001
+lowpassfilter2=0.001
+
+# strata = "smryzt"  # with temp and depth strata too  ...
+strata = "yasm"    # moving average in space and time .. sa-weighted kernel density by sid , sex, mat (with au and quarter)
+
+redo =TRUE
+# redo = FALSE
+
+# compute kernel density estimates
+M = size_distributions(p=p, toget="kernel_density_weighted", 
+  bw=bw, np=np, ldx=ldx, xrange=xrange, 
+  Y=years, strata=strata, pg=pg, sigdigits=sigdigits, ti_window=ti_window,  
+  outdir=ss_outdir, redo=redo ) 
+ 
+
+nmin = 3
+bw2 =list( 
+  "0"=list("0"=0.03, "1"=0.03 ), #male( imm, mat)
+  "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
+)
+
+# identify modes from kernel density estimates when there is enough data
+M = size_distributions(p=p, toget="kernel_density_modes", 
+  strata=strata, bw=bw2, np=np, 
+  Y=years, pg=pg, sigdigits=sigdigits, n_min=nmin,
+  lowpassfilter=lowpassfilter, lowpassfilter2=lowpassfilter2,  outdir=ss_outdir,
+  redo=redo )
+
+    
+# find most frequent peaks and valleys .. if recreating this, stepping through the function is probably best 
+# as there are many decisions that need to be made   
+
+bw3 =list( 
+  "0"=list("0"=0.03, "1"=0.03 ), #male( imm, mat)
+  "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
+)
+
+mds = size_distributions(p=p, toget="modal_groups", strata=strata, bw=bw3, np=np, ldx=ldx, 
+  M=M, 
+  sigdigits=sigdigits, lowpassfilter2=lowpassfilter2, outdir=ss_outdir, redo=redo )
+
+
+```
+
+
+Using these Kernel Density-based estimates with associated weights, we can flexibly aggregate across any strata ...
+
+Here we use a geometric mean after adding a small positive valued offset (smallest non-zero-value) that mimics the scale (magnitude) of observation errors. Here is amounts to 100 individuals /km^2, below which density is not defined.
+
+Using the kernel density approach, we can compute on the normalized densities to identify size modes.
+
+The algorithm is simply to go to every polygon and identify samples from it and potentially surrounding areas and times and potentially surrounding time windows and then compute modes and troughs from first and second order differentials of the smoothed kernel densities. Currently, the default is to use a small local spatial group with a time window (strata = "yasm") ...
+
+However, we can use other factors to stratify (strata = "smryzt"), such as depth (zlevels are left bounds in meters) and temperature (tlevels are left bounds of temperature in Celcius). Here simple, low/med/high are implemented, but not used as the above small-area-based methods work well.
+
+```code
+Useful figures (generated above):
+
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_imm_allsolutions.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_mat_allsolutions.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_mat_all_solutions.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_mat_all_solutions.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_imm.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_mat.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_imm.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_mat.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_growth_trajectory_empirical.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_growth_trajectory_empirical.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_growth_trajectory_empirical_tweaked.png"
+[1] "/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_growth_trajectory_empirical_tweaked.png"
+```
+
+These are the results:
+
+Female growth of modes (t vs t-1)
+
+```output
+
+summary( lm(formula = logcw ~ logcw0 * mat, data = mds[sex == "f", ], 
+    na.action = "na.omit") )
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.06112 -0.01220  0.00077  0.01119  0.05588 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)   0.2558     0.0819    3.12   0.0206
+logcw0        1.0167     0.0248   40.93  1.4e-08
+matm         -1.7146     0.3592   -4.77   0.0031
+logcw0:matm   0.4026     0.0929    4.33   0.0049
+
+Residual standard error: 0.0367 on 6 degrees of freedom
+  (4 observations deleted due to missingness)
+Multiple R-squared:  0.997,	Adjusted R-squared:  0.996 
+F-statistic:  779 on 3 and 6 DF,  p-value: 3.67e-08
+ 
+```
+
+Male growth of modes  (t vs t-1)
+
+```output
+
+summary( lm(formula = logcw ~ logcw0 * mat, data = mds[sex == "m", ], 
+    na.action = "na.omit") )
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.07578 -0.01237  0.00164  0.01968  0.05031 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  0.16958    0.07278    2.33    0.053
+logcw0       1.03569    0.02079   49.81  3.4e-10
+matm        -0.17502    0.37497   -0.47    0.655
+logcw0:matm  0.00467    0.09023    0.05    0.960
+
+Residual standard error: 0.04 on 7 degrees of freedom
+  (5 observations deleted due to missingness)
+Multiple R-squared:  0.998,	Adjusted R-squared:  0.997 
+F-statistic: 1.05e+03 on 3 and 7 DF,  p-value: 1.2e-09
+
+```
+
+
+#### Identify modal groups
+
+Using the most frequently encountered modal groups in the above, identify the main size groups (instars) as a function of maturity and sex and then define a growth model assuming exponential growth by fitting a log-linear model.
+
+### Estimation of abundance at modes: knifed edged cuts
+
+Density and variability estimation via Modal Kernel Mixture Models (KMM) is done in Julia: See projects/model_size/kmm_snowcrab.md for more info. NOTE: this approach is still too slow to use operationally at each set level -- but is viable annually. But that would prevent further covariate modelling.
+
+Here instead, to estimate areal density, we use a knife-edged cut at midpoints between modal groups. This is imperfect as large groups can bleed into adjacent smaller groups. But it is consistent and simple.  We will use this for modelling: either via
+
+- carstm (TODO -- that is to update data source as modelling approach is already complete )
+- stmv (TODO -- that is to update data source as modelling approach is already complete )
+- abm (see: projects/model_agent/julia/ )
+
+#### Estimation of abundance at modes: Classify data using KMMs
+
+From the above approximate modal growth model, define a latent kernel mixture model with initial guesses centered on these modal growth groups. This process decomposes the observed size structure into approximate composition/representation of **growth groups** (instar, maturity, sex): **alpha** (relative composition of each growth group), **sigma_mean** (standard deviation of sizes in each growth group), and **imode** (the latent modes of each growth group). These are determined from Bayesian kernel mixture models.
+
+For more details, see: https://journal.r-project.org/articles/RJ-2023-043/
+
+First save a data dump for all size data to be read into Julia: initial estimate of main modes via kernel density estimation at a fine space-time resolution from R (**size_distributions(p=p, toget="base_data", ...)**), and "mds" naive modal estimates.
+
+#### Kernel mixture modelling via Julia
+
+First bring in the base data.
+
+
+#### Data
+
+```{julia}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: size-import-data-julia
+
+using DrWatson
+
+quickactivate( joinpath(homedir(), "projects", "model_size") )
+
+
+include( scriptsdir( "kmm_startup.jl" )) # load libs and local functions
+
+include( srcdir( "kmm_functions.jl" ))
+
+# install_required_packages(pkgs)  # in case you need to install packages
+
+   
+nmin=3
+sexes = ["m", "f"]
+mats = ["i", "m"]
+yrs = 1996:2024
+regions = ["cfanorth", "cfasouth", "cfa4x"  ]
+
+size_data_directory = projectdir( "outputs", "size_structure" )
+
+include( joinpath( homedir(), "projects", "model_covariance", "src", "car_functions.jl" ))   
+ 
+# load R-saved data:
+Y, nb, aus = size_structured_data()  # "base_data_julia" in R
+ 
+xrange = (8, 170)   # mm
+Y = Y[ (Y.logcw .>= log(xrange[1])) .&  (Y.logcw .<= log(xrange[2])) ,:]
+
+```
+
+#### Naive approach
+
+Compute modes from Kernel Density Estimated smooths (weighted by swept area) for each areal-unit (small area polygon with nearest neighbours) and time-unit (+/- 4 weeks) level mode estimates are then aggregated across all areas and times
+
+```{julia}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: modes-naive
+
+# construct modes for each au and time windows 
+# only need to compute if adding new year
+# kdem = kernel_density_estimated_modes(Y; toget="compute", nb=nb, aus=aus, yrs=2024, nmin=nmin ) 
+
+# summary of above modes from another kde of the modes 
+mds = kernel_density_estimated_modes(Y; toget="summary", yrs=yrs ) 
+
+
+```
+
+#### Node with growth constraints
+
+```{julia}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: modes-constrained
+
+growth with modes from kde
+
+
+
+```
+
+#### Classify with KMM
+
+##### Basic model: a **determinsitic** kernel mixture model (KMM) with n_imodes gaussian components
+
+For each area of interest (CFA), classify instar relative numbers.
+
+Estimate weights of size/stage structure (sigma, SD) at the scale of large fishing area (CFAs) and year.
+
+This model ignores environmental covariates and does not permit instar modes to change, ... so could be biased.
+
+
+```{julia}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: kmm-basic-model
+
+# run mcmc sampling model size distributions across strata (predicted modes are deterministically fixed)
+# aggregated by region and year
+
+outdir = projectdir( "outputs", "size_structure", "kernel_mixture_models", "deterministic_modes_region" )
+
+mds = instar_inference() 
+ 
+kmm_chain( Y, mds; modeltype="deterministic", yrs=yrs, sexes=sexes, mats=mats, regions=regions, savedir=outdir, nmin=10 ) 
+
+# example: show decomposition
+
+  # first load model chain of size distributions across specified strata 
+  region = "cfanorth"
+  yr = 2004
+  sex = "m"
+  mat = "i"
+
+  chain = kmm_chain_load(  region=region, yr=yr, sex=sex, mat=mat, savedir=outdir )  
+  showall( summarystats(chain) )
+
+  imodes = mds[ (mds.sex.==sex) .& (mds.mat.==mat), :predicted ]
+  
+  # extract posterior samples of size distributions 
+  os = kmm_samples(chain, 5000, imodes=imodes, modeltype="deterministic" )  
+  
+  xr = round.( (minimum(Y.logcw), maximum(Y.logcw)), digits=2 ) # (2.14, 5.14)
+  xbins = range(xr[1], stop=xr[2], step=0.05 )   # for plots
+
+  pl = histogram( skipmissing(vec(os)), bins=xbins, color=:white )
+  for i in 3:8
+    histogram!( skipmissing( os[:, i]), bins=xbins)
+  end
+  pl
+  
+  # create a summary and save to file
+  # is also saving to RData: using RCall and add flag save_RDS=true
+  ks = kmm_summary( mds=mds, yrs=yrs, sexes=sexes, mats=mats, regions=regions, toget="compute", modeltype="deterministic", savedir=outdir )
+   
+  ks = kmm_summary(; toget="saved_results", yrs=yrs, savedir=outdir ) 
+
+  pl = StatsPlots.scatter(ks.imodes, sqrt.(ks.sigmasq_mean))
+
+  # majority of SD of each mode:
+  # < 0.16; all <0.25 (log cw)
+   
+```
+
+##### **Latent** KMM with approximate modes and observation error
+
+For each sampling location, classify instar relative numbers.
+
+The results can be aggregated to higher levels including full domain via CAR.
+
+Here, the determind modes are starting points (rather than a fixed constraint as in the previous analysis) and the actual latent modes are estimated from the data.
+
+This takes about 6 hours for 1 year of data ...
+
+```{julia}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: kmm-latent-model
+ 
+outdir = projectdir( "outputs", "size_structure", "kernel_mixture_models", "latent_modes_set" )
+
+nmin = 5  # lower as this is computed at the level each trawl sampling ("set")
+
+# run mcmc sampling model size distributions across strata 
+yrs = 2014:2024
+
+xrange = (8, 170)   # mm
+mds = instar_inference() 
+mds = mds[ (mds.predicted .>= log(xrange[1])) .& (mds.predicted .<= log(xrange[2])) ,:]
+Y = Y[ (Y.logcw .>= log(xrange[1])) .&  (Y.logcw .<= log(xrange[2])) ,:]
+
+kmm_chain( Y, mds; modeltype="latent", yrs=yrs, sexes=sexes, mats=mats, nmin=nmin, savedir=outdir )   
+ 
+
+# extract as an example, a single solution: kmm_S04072000~1_m_i_2000.jl2
+  chain = kmm_chain_load( sid="S01102023~6", yr=2023, sex="m", mat="m", savedir=outdir  ) 
+  chain = kmm_chain_load(fnout = joinpath(outdir, "2023", "kmm_S01102023~6_m_m_2023.jl2" ))
+  os =  kmm_samples(chain, 5000,  modeltype="latent") # obtain samples for it
+
+  imodes = mds[ (mds.sex.=="m") .& (mds.mat.=="m"), :predicted ]
+  n_imodes = length(imodes)
+
+  xr = round.( (minimum(Y.logcw), maximum(Y.logcw)), digits=2 ) # (2.14, 5.14)
+  xbins = range(xr[1], stop=xr[2], step=0.05 )   # for plots
+
+  # example decomposition of modes (probabilities of each instar)
+  pl=plot()
+  for i in 1:n_imodes
+    pl = histogram!( pl, skipmissing( os[:, i]), bins=xbins, fill=true )
+  end
+  pl
+
+  # actual distribution
+  i = findall( (Y.sid.=="S01102023~6") .&  (Y.sex.=="m")  .& (Y.mat.=="m") )
+  Y[i,:]
+  plot()
+  histogram!( log.(Y[i,:cw]) )
+
+  # create a summary and save to file
+  # to save Rdata: using RCall  and flaf save_RDS=true
+  # NOTE: <$> activates R REPL <backspace> to return to Julia
+  for yr in yrs
+    print(yr); print("\n")
+    ks = kmm_summary(mds=mds, yrs=yr, sexes=sexes, mats=mats, toget="redo", modeltype="latent", savedir=outdir, save_RDS=true )
+  end
+
+  # export to R and jl2 complete
+  
+  ks = kmm_summary( yrs=2024, toget="saved_results", modeltype="latent", savedir=outdir ) # or if already completed
+
+  pl = StatsPlots.scatter(ks[1].instar, exp.(ks[1].imodes))
+
+
+  
+```
+
+If it ever becomes fast enough to handle the GP modelling of covariates ...
+
+It might be already for a simple spatial model but using R/INLA as infrastructure is already there so using that (now completed).
+
+```{julia}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: kmm-guassian-process
+
+# spatial parameters
+nAU = size( nb, 1 )    # no of au
+nAU_float = convert(Float64, nAU)
+auid = parse.(Int, aus) 
+node1, node2, scaling_factor = nodes( nb ) # pre-compute required vars from adjacency_matrix outside of modelling step
+nnodes = length(node1)
+
+outdir = joinpath( project_directory, "size_structure", "modes_kernel_mixture_models_set" )
+ 
+ 
+function icar_form(theta, phi, s_sigma, s_rho)
+  dphi_s = phi[node1] - phi[node2]
+  dot_phi = dot( dphi_s, dphi_s )
+  sum_phi = sum(phi) 
+  re = s_sigma .* ( sqrt.(1 .- s_rho) .* theta .+ sqrt.(s_rho ./ scaling_factor) .* phi )  
+  return dot_phi, sum_phi, re
+end
+
+
+Turing.@model function kmm_spatial(x, imodes, n_imodes, N, sd_imodes )
+  
+  # icar (spatial effects)
+  s_theta ~ filldist( Normal(0.0, 3.0), nAU, nz)  # unstructured (heterogeneous effect)
+  s_phi ~ filldist( Normal(0.0, 3.0), nAU, nz) # spatial effects: stan goes from -Inf to Inf .. 
+  s_sigma ~ filldist( LogNormal(0.0, 1.0), nz) ; 
+  s_rho ~ filldist(Beta(0.5, 0.5), nz);
+  
+  for z in 1:nz
+    # spatial effects (without inverting covariance)  
+    dot_phi, sum_phi_s, convolved_re_s = icar_form( s_theta[:,z], s_phi[:,z], s_sigma[z], s_rho[z] )
+    Turing.@addlogprob! -0.5 * dot_phi
+    sum_phi_s ~ Normal(0, 0.001 * nAU_float);      # soft sum-to-zero constraint on s_phi)
+   
+    lambda = exp.( X * beta +  convolved_re[auid] + log_offset )
+    @. y ~ Poisson( lambda );
+  end
+
+  
+  # Kernel Mixture model with modes as **latent** pre-specified components
+  # alpha = concentration parameter of results in all sets of probabilities being equally likely, i.e., in this case the Dirichlet distribution of dimension k is equivalent to a uniform distribution over a k-1-dimensional simplex.  
+  sigmasq ~ filldist( truncated( InverseGamma(5.0, 0.1), 0.0, sd_imodes), n_imodes)  # variance prior 
+  kernels = map( i -> Normal( imodes[i], sqrt(sigmasq[i]) ), 1:n_imodes ) 
+  alpha ~ Dirichlet(n_imodes, 1.0)
+  mixdist = MixtureModel(kernels, alpha)
+  x ~ filldist(mixdist, N)
+ 
+end
+
+
+# run mcmc sampling model size distributions across years
+   
+# log_offset (if any)
+data, N, modes_mds, n_imodes, sd_imodes = size_structured_data_subset( Y, mds; yrs=yr, sexes=sex, mats=mat, ids=id)
+    N < nmin && continue 
+    imodes = modes_mds[:, :predicted_mean]
+    M = kmm(data, imodes, n_imodes, N, sd_imodes )
+    # chain = sample(M, sampler, nsamples; max_depth=8, init_ϵ=0.0125)  
+    chain = sample(M, sampler, MCMCThreads(), nsamples, n_chains; max_depth=8, init_ϵ=0.0125)  
+  
+kmm_spatial_models( Y, nb, aus, yrs=yrs, sexes=sexes, mats=mats ) 
+
+function kmm_spatial_models( Y, yrs=yrs, sexes=sexes, mats=mats ) 
+ ... bym()
+end
+```
+
+#### Spatiotemporal modelling of KMM parameters
+
+Temporal and spatial modelling for each growth group of the latent modes, alpha, and sigma_mean using spatial and spatiotemporal CAR models with depth, bottom temperatures as covariates.
+
+Spatial modelling by year for associated stats using CAR and sa as offsets to give densities.
+
+A spatial CAR for each time slice (year) to spatially smooth local
+population size structure.
+
+Time modeling (e.g. AR, RW, etc ) requires lags and as growth is not
+deterministic, adding that structure here is probably not a good choice
+
+better left for growth modeling in a separate process stage later.
+
+To consider:
+
+-- assume no movement across au's to compute au-specific sampling selectivity
+-- compute growth curves based upon location of latent modes in subsequent time periods
+-- cartsm above
+-- carstm modes -- environmental challenges -> lower mode values
+-- carstm sigmas -- environmental variability -> sigma
+-- carstm alphas
+    -- alphas are probabilities of latent modes in each sampling location .. so integral of "population" proportions (should sum to 1.0) ..
+    -- track peaks ... ??
+
+Prepare inputs
+
+```{r}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: kmm-carstm
+
+## NOTE:: Nkmm is specific to each (year, sex, mat, set)  .. but not stage (instar) 
+
+for (stage in p$stages ) {
+  # stage = "f|m|11"
+  M0 = SS$sk[[stage]]
+
+  for (variabletomodel in p$varsnames) {
+
+    p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
+    p$variabletomodel = variabletomodel
+
+    M = rbind(M0[ is.finite(get(variabletomodel)), ], SS$M, fill=TRUE, use.names=TRUE)
+    # variabletomodel = "imodes"
+
+    # keep model as simple as possible .. reflecting environmental covariates only
+    p$formula = as.formula( paste( p$variabletomodel,
+        ' ~ 1',
+        ' + f( time, model="iid",  hyper=H$iid  ) ',
+        ' + f( cyclic, model="iid", hyper=H$iid  )',
+        ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2 ) ',
+        ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2 ) ',
+      #  ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+      #  ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+      #  ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+        # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+        ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
+        ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="iid", hyper=H$iid)) '
+    ) )
+
+    p$family =  "gaussian"  
+    weights = M$Nkmm
+    weights[ is.na(weights)] =1
+    weights[ weights==0] =1
+
+    if (variabletomodel=="Nkmm") {
+      p$formula = update.formula( p$formula, . ~ . + offset( data_offset) ) # CARSTM does log-transformation internally  
+      p$family =  "poisson"
+      weights = rep(1, nrow(M))
+    }
+
+    res = NULL
+    res = carstm_model( p=p, sppoly=pg, data=M,
+      nposteriors = p$nposteriors, 
+      toget = c("summary", "random_spatial", "predictions"), 
+      posterior_simulations_to_retain=c( "summary", "random_spatial", "predictions"), 
+      num.threads="4:2",  # very memory intensive ... serial process
+      compress=TRUE, 
+      # debug="extract",
+      control.inla = list(  cmin=0, h=0.05, diagonal=1e-5, fast=FALSE, improved.simplified.laplace=TRUE, restart=1 ), 
+      weights=weights,
+      verbose=TRUE   
+    )
+
+  
+    # res = carstm_model(  p=pN, DS="carstm_summary" )  # parameters in p and summary
+    res_vars = c( names( res$hypers), names(res$fixed) )
+    for (i in 1:length(res_vars) ) {
+      o = carstm_prior_posterior_compare( res, vn=res_vars[i] )  
+      dev.new(); print(o)
+    }   
+
+  }
+}
+
+# extract and reformat posterior simulations
+psims = list(m=list(), f=list() )
+for (stage in p$stages ) {
+  
+  if (grepl("^f", stage)) sex = "f"
+  if (grepl("^m", stage)) sex = "m"
+  
+  for (variabletomodel in p$varsnames) {
+    if (!exists(variabletomodel, psims[[sex]] )) psims[[sex]][[variabletomodel]] = list()
+    p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
+    p$variabletomodel = variabletomodel
+    res = NULL
+    res = carstm_model( p=p, DS="carstm_samples", sppoly=pg )
+    rsims = NULL
+    if (!is.null(res)) rsims = res$predictions
+    psims[[sex]][[variabletomodel]][[stage]] = rsims
+  }
+}
+
+# save by sex and variablename (split as they are large file sizes) for further analysis (12_* : growth and instar dynamics)
+for (sex in c("f", "m")) {
+for (variabletomodel in p$varsnames) {
+  fn = file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".RDS", sep="") )
+  out = psims[[sex]][[variabletomodel]]
+  read_write_fast( data=out, file=fn )
+}}
+psims = out = NULL ; gc()
+
+
+# Now some maps and figures
+
+for (stage in p$stages) {
+
+    M0 = SS$sk[[stage]]
+  
+    for (variabletomodel in p$varsnames) {
+
+      p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
+      p$variabletomodel = variabletomodel
+
+      res = NULL
+      res = carstm_model( p=p,  DS="carstm_summary" )  # parameters in p and direct summary
+  
+      if (is.null(res)) next()
+            
+      oeffdir = file.path(p$data_root, p$carstm_model_label, "figures")
+      fn_root_prefix = "Predicted_numerical_abundance"
+      carstm_plot_marginaleffects( p, oeffdir, fn_root_prefix ) 
+  
+
+      # maps of some of the results
+      outputdir = file.path(p$data_root, p$carstm_model_label, "maps" )
+      carstm_plot_map( p, outputdir, fn_root_prefix , additional_features, toplot="random_spatial", probs=c(0.025, 0.975) ) 
+      carstm_plot_map( p, outputdir, fn_root_prefix , additional_features, toplot="predictions", probs=c(0.1, 0.9)) 
+
+
+      # posterior predictive check
+      MM = rbind(M0[ is.finite(get(variabletomodel)), ], SS$M, fill=TRUE, use.names=TRUE)
+      iobs = which(MM$tag == "observations")
+      vn = variabletomodel
+
+      fit = NULL; gc()
+      fit = carstm_model( p=p, DS="modelled_fit") #,  sppoly = pg )
+
+      pld = data.table(
+        observed = MM[iobs , ..vn] , 
+        fitted = fit$summary.fitted.values[["mean"]] [iobs]
+      )
+      names(pld) = c("observed", "fitted")
+      anno1 = paste( "Pearson correlation: ", round( cor( pld$fitted, pld$observed, use="pairwise.complete.obs" ), 3))
+      # cor( fitted, observed, use="pairwise.complete.obs", "spearman" )
+
+      out = ggplot(pld, aes(x =  observed, y = fitted )) +
+        geom_abline(slope=1, intercept=0, color="darkgray", lwd=1.4 ) +
+        geom_point(color="slategray") +
+        labs(caption=anno1, color="slateblue") +
+        theme( plot.caption = element_text(hjust = 0, size=12 ) )# move caption to the left 
+  
+      outputdir = file.path( p$modeldir, p$carstm_model_label )
+      fn = file.path(outputdir, paste("posterior_predictive_check_", vn, ".png", sep="") )
+      ggsave(filename=fn, plot=out, device="png", width=12, height = 8)
+      print(out)  
+
+      fit  = MM = NULL; gc()
+  }
+}
+
+```
+
+#### Reconstruct size structure
+
+The posterior distributions of each of these parameters are then used to reconstitute/reconstruct a size distribution that can be assessed in any sub-domain, for description and further analysis (such as growth and dynamics).
+
+Reconstruct size structure and associated parameters from KMM samples
+
+From the KMM decompostion and spatiotemporal interpolations, we can now reconstruct a few biologically informative features:
+
+- growth increment across cohort as a function of location
+- growth rate parameters as a function of location
+- size at maturity as a function of location
+- min value of selectivity coefficients grwven constant natural mortality (as a function of location)
+- etc.
+
+
+
+
+## 3. Estimating a growth model 
+
+
+The overall growth patterns of snow crab is reasonably well understood. Due to short moult cycles of less than a year in the early stages, growth can be monitored reasonable. However beyond a size range of approximately XX mm, inter-molt periods can be 1 or more years in length. Longevity of snow crab can be from 11 (females) to 15 (males) years. Long term rearing of snow crab is a challenge as living conditions are generally less than ideal or at least different in substantial ways from a natural environment, especially for the larger sized organisms. This can of course create selection biases, such as stunting due to environmental stress (over-crowding, feeding irregularities, water quality, etc.). 
+
+There also seems to exist inter-individual and regional-variability in growth patterns due to the
+interplay environmental (especially bottom temperatures and resource availablity) and potentially genetic factors at large geographic scales, depending upon oceanic currents. Mark-recapture studies can inform such inference for many species, however, in snow crab, due to the loss of external tags during molts or difficulty and expense of internal tags, this cannot be used effectively.
+
+Observations in more natural settings are also possible by scuba or remote
+operated vehicle/camera systems. However, such information is quite costly and resource intensive and also susceptible to selection bias in that recaptured or surviving animals tend to be those in better physiological condition than average and so can result in expectations of overly optimistic growth patterns. When routine sampling occurs, a more cost-effective way to establish or corroborate these growth patterns is to decompose observed size frequency distributions. Though there is also inherent size-selection biases in such data
+due to size-related behavior (habitat preferences) and capture efficiency (net size, speed, depth) that changes with different size and stages, it is still possible to extract some meaningful
+information of size modes from such data and infer growth patterns.
+
+Given some set of observations of size frequency, subjective "best guesses" (classification
+by "eye") and implicit reasoning can be used to establish and classify these growth modes. When groups are distinct, this is reasonable. However, observations of size frequencies often demonstrate a mixture of distributions that are heavily overlapping. Even the most state-of-the-art computational
+algorithms cannot fit such distributions easily. One of the leading more objective approaches to estimate classification using point estimates of latent parameters became available with the development of the Expectation-Maximization (EM) algorithm operating in an Maximum Likelihood framework (Dempster et al 1977; see also the closely related Kalman Filter (Roweis and Ghahramani 1999)) and for distributions in Bayesian frameworks with Variational Inference (Nguyen 2023) and general latent Bayesian Inference. Here we use the latter method, more specifically, **Kernel Mixture Model (KMM)**, using population census-based data to identifying growth stanzas using snow crab data derived from the Maritimes Region of Atlantic
+Canada.  
+
+
+# Methods
+
+The use of a mixture of distributions has a long history. Pearson (1894) where it was used to identify/classify species of crabs. Holmes (1892) also studied mixture models of wealth disparity.  Most numerical methods assigning or classifying data into a cluster or group generally requires the
+number of such groups to be specified apriori. The excepton being, Infinite Mxture Models (Ghahramani 2011). Fortunately, we have a reasonable understanding of the number of approximate modes of instar carapace widths from visual analysis of size-frequency distributions. This process can be automated by 
+
+The finite form of the problem is well known and understood. Implementation is usually with Maximum likelihood using an Expectation-Maximization algorithm (EM; Dempster, Laird, & Rubin, 1977). The solutions to such problems are dependent upon the number of modes chosen, or often the location of the modes, apriori. Many tools exist for estimation:
+
+- https://cran.r-project.org/web/packages/mixtools/vignettes/mixtools.pdf
+
+- https://cran.r-project.org/web/packages/flexmix/vignettes/bootstrapping.pdf
+
+- https://statmath.wu.ac.at/~gruen/BayesMix/bayesmix-intro.pdf
+
+must specify constant node using mcmc Jags
+
+<https://cran.r-project.org/web/packages/mclust/vignettes/mclust.html>
+
+problems
+
+<https://arxiv.org/pdf/2007.04470>
+
+
+<https://dr.lib.iastate.edu/server/api/core/bitstreams/333bb46d-c759-4202-8f41-0e921271de53/content>
+
+good reviews <https://snunnari.github.io/SBE/mclachlan.pdf>
+
+<https://en.wikipedia.org/wiki/Mixture_model?wprov=sfti1>
+
+<https://www.sciencedirect.com/topics/medicine-and-dentistry/mixture-model>
+
+
+
+We can cluster the data using a Bayesian mixture model. The aim of this task is to infer a a latent grouping (hidden structure) from unlabelled data.
+
+
+Unidimensional Kernel Mixture model with K pre-specified components that cover the space
+
+$\\alpha$ = concentration parameter of 1 (or k, the dimension of the
+  Dirichlet distribution, by the definition used in the topic modelling
+  literature) results in all sets of probabilities being equally likely, i.e.,
+  in this case the Dirichlet distribution of dimension k is equivalent to a
+  uniform distribution over a k-1-dimensional simplex. This is not the same as
+  what happens when the concentration parameter tends towards infinity. In the
+  former case, all resulting distributions are equally likely (the distribution
+  over distributions is uniform). In the latter case, only near-uniform
+  distributions are likely (the distribution over distributions is highly
+  peaked around the uniform distribution).
+
+label="observation (i)", ylabel="cluster (k)", legend=false, ) end
+
+
+https://turing.ml/dev/tutorials/01-gaussian-mixture-model/
+
+# Finite mixtures model
+
+<https://turinglang.org/stable/tutorials/01-gaussian-mixture-model/>
+
+<https://mc-stan.org/users/documentation/case-studies/identifying_mixture_models.html>
+
+we want to infer the mixture weights, the parameters \\mu_i and the assignment
+of each datum to a cluster i
+
+standard normal distributions as priors for \\mu and a Dirichlet distribution
+with parameters \\alpha_i as prior for w
+
+$$ \\begin{aligned} \\mu_k &\\sim \\mathcal{N}(0, 1) \\qquad (k = 1,\\ldots,K)
+\\ w &\\sim \\operatorname{Dirichlet}(\\alpha_1, \\ldots, \\alpha_K)
+\\end{aligned}
+
+{} \\ {} \\
+
+z_i \\sim \\operatorname{Categorical}(w) \\qquad (i = 1,\\ldots,N), \\
+
+{} \\ x_i \\sim \\mathcal{N}([\\mu_{z_i}, \\mu_{z_i}]^\\mathsf{T}, I) \\qquad
+(i=1,\\ldots,N). $$
+
+
+From simple kernel density representations of size frequency at small area unit
+scale, determine the magnitudes of  modes. This is done as there may be
+regional and time-dependent changes in modal sizes (year-classes). Sex and
+maturity status are determined from observation and infered from size-shape
+changes (carapace width to chela height males or abdominal flap width for
+females). Inference of modal sizes for each sex-maturity group are determined
+in order to develop a growth model.
+
+Kernel density estimates of specific components: sex, maturity, year, time of
+year (season in quarters), region and set (sid).
+
+First we construct kernel density estimates using a bandwidth of 0.025 units on
+a logarithmic scale. This corresponds to about 4 dx (mm), where dx is the
+increment width of discretization.
+
+These results are normalized by swept area to provide a density per unit area
+(1 km$^{-2}$).
+
+# Results and Discussions
+
+
+                Coef.  Std. Error      t  Pr(>|t|)  Lower 95%  Upper 95%
+
+(Intercept)  1.05187   0.0430406   24.44    <1e-04   0.932365   1.17136
+instar       0.321978  0.00640426  50.28    <1e-06   0.304196   0.339759
+  
+(Intercept)  1.49157    0.216241    6.90    0.0917  -1.25602     4.23917
+instar       0.268652   0.0221858  12.11    0.0525  -0.0132459   0.550549
+  
+(Intercept)  1.10376   0.0259636   42.51    <1e-08   1.04237    1.16515
+instar       0.308079  0.00308857  99.75    <1e-11   0.300775   0.315382
+  
+(Intercept)  0.335281  0.114697     2.92    0.2098  -1.12208    1.79264
+instar       0.363371  0.00953601  38.11    0.0167   0.242204   0.484537
+
+      
+![image](media/example_modal_classification_2.png)
+
+![image](media/density_2020_1_f_imodes.png)
+
+![image](media/density_2020_f_imodes.png)
+
+![image](media/density_2020_m_imodes.png)
+
+![image](media/density_2021_f_imodes.png)
+
+![image](media/density_2021_m_imodes.png)
+
+![image](media/density_f_imodes.png)
+
+![image](media/density_m_imodes.png)
+
+![image](media/plot_growth_male.png)
+
+![image](media/plot_growth_female.png)
+
+ 
+### Approach 1
+
+To do
+
+
+
+### Approach 2
+
+Female mature simple model: cw vs instar
+
+```output
+ 
+summary( lm(formula = logcw ~ instar, data = mds[sex == "f" & mat == "m", 
+    ], na.action = "na.omit") )
+
+Residuals:
+      1       2       3 
+-0.0253  0.0507 -0.0253 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  -0.0157     0.4402   -0.04    0.977
+instar        0.4090     0.0439    9.32    0.068
+
+Residual standard error: 0.0621 on 1 degrees of freedom
+Multiple R-squared:  0.989,	Adjusted R-squared:  0.977 
+F-statistic: 86.9 on 1 and 1 DF,  p-value: 0.068
+ 
+```
+
+Female immature simple model: cw vs instar
+
+```output
+
+summary( lm(formula = logcw ~ instar, data = mds[sex == "f" & mat == "i", 
+    ], na.action = "na.omit") )
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.05154 -0.00868 -0.00699  0.00403  0.06546 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  1.12368    0.04548    24.7  2.9e-07
+instar       0.31059    0.00593    52.4  3.2e-09
+
+Residual standard error: 0.0355 on 6 degrees of freedom
+  (3 observations deleted due to missingness)
+Multiple R-squared:  0.998,	Adjusted R-squared:  0.997 
+F-statistic: 2.75e+03 on 1 and 6 DF,  p-value: 3.24e-09
+
+```
+
+Male mature simple model: cw vs instar
+
+```output
+
+summary( lm(formula = logcw ~ instar, data = mds[sex == "m" & mat == "m", 
+    ], na.action = "na.omit") )
+
+Residuals:
+       1        2        3 
+ 0.00283 -0.00567  0.00283 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  0.65417    0.05413    12.1   0.0526
+instar       0.33550    0.00491    68.4   0.0093
+
+Residual standard error: 0.00694 on 1 degrees of freedom
+  (1 observation deleted due to missingness)
+Multiple R-squared:     1,	Adjusted R-squared:     1 
+F-statistic: 4.67e+03 on 1 and 1 DF,  p-value: 0.00931
+
+```
+
+Male immature simple model: cw vs instar
+
+```output
+
+summary( lm(formula = logcw ~ instar, data = mds[sex == "m" & mat == "i", 
+    ], na.action = "na.omit") )
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.04238 -0.02548 -0.00584  0.02079  0.08236 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)   1.1912     0.0446    26.7  2.6e-08
+instar        0.2994     0.0053    56.5  1.4e-10
+
+Residual standard error: 0.0411 on 7 degrees of freedom
+  (3 observations deleted due to missingness)
+Multiple R-squared:  0.998,	Adjusted R-squared:  0.997 
+F-statistic: 3.19e+03 on 1 and 7 DF,  p-value: 1.43e-10
+ 
+```
+
+
+### Growth increments
+
+A simple kernel density approach across was used to get a first approximation of growth patterns by identifying frequently occurring modes from size frequency data at areal unit and annual timescales (above).
+
+Now we can try to make this more precise by tracking instars. The kernel mixture modelling decomposes the size density and estimates latent modes of size withing each approximate range of sizes associated with an instar. The assumption is that genetically determined growth trajectory is strong and approximated by  the population level kernel density estimates, and that  variations/deviations from it these are due to variations in the local environmental conditions (resource availability, stress, etc).
+
+These latent modal size estimates, W = log(carapace width; mm).
+
+Load results from previous step and plot some histograms (density):
+
+```{r}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: kmm-growth-stanzas
+
+
+# histograms of modes
+for (sex in c("f", "m")) {
+  # sex = "m"
+
+    variabletomodel = "imodes"
+
+    fn = file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".RDS", sep="") )
+    psims = aegis::read_write_fast( fn )
+  
+    # flatten for plotting
+    sss = rbindlist( lapply( psims, function(x) as.data.table(x)), idcol=TRUE)
+
+    x11()
+    o = ggplot( sss, aes( value )) +
+      geom_density(aes(fill =.id ), color=NA, alpha = 0.5,  position = "identity") +
+      theme_light( base_size = 22) + 
+      theme( legend.title=element_blank()) +
+      labs(x="log(cw; mm)", y="Density", size = rel(1.5)) 
+    fn = file.path( p$modeldir, "figures", paste("density", "_", sex, "_", variabletomodel, ".png", sep="") )
+    ggsave( fn, o, width=8, height=4, units="in", dpi=320, create.dir=TRUE )
+
+    x11()
+    o = ggplot( sss[time=="2020" ,], aes( value )) +
+      geom_density(aes(fill =.id ), color=NA, alpha = 0.5,  position = "identity") +
+      theme_light( base_size = 22) + 
+      theme( legend.title=element_blank()) +
+      labs(x="log(cw; mm)", y="Density", size = rel(1.5)) 
+    fn = file.path( p$modeldir, "figures", paste("density_2020", "_", sex, "_", variabletomodel, ".png", sep="") )
+    ggsave( fn, o, width=8, height=4, units="in", dpi=320, create.dir=TRUE )
+
+    x11()
+    o = ggplot( sss[time=="2021",], aes( value )) +
+      geom_density(aes(fill =.id ), color=NA, alpha = 0.5,  position = "identity") +
+      theme_light( base_size = 22) + 
+      theme( legend.title=element_blank()) +
+      labs(x="log(cw; mm)", y="Density", size = rel(1.5)) 
+    fn = file.path( p$modeldir, "figures", paste("density_2021", "_", sex, "_", variabletomodel, ".png", sep="") )
+    ggsave( fn, o, width=8, height=4, units="in", dpi=320, create.dir=TRUE )
+
+    x11()
+    o = ggplot( sss[time=="2020" & space=="500",], aes( value )) +
+      geom_density(aes(fill =.id ), color=NA, alpha = 0.5,  position = "identity") +
+      theme_light( base_size = 22) + 
+      theme( legend.title=element_blank()) +
+      labs(x="log(cw; mm)", y="Density", size = rel(1.5)) 
+    fn = file.path( p$modeldir, "figures", paste("density_2020_500", "_", sex, "_", variabletomodel, ".png", sep="") )
+    ggsave( fn, o, width=8, height=4, units="in", dpi=320, create.dir=TRUE )
+
+    x11()
+    o = ggplot( sss[time=="2020" & space=="1",], aes( value )) +
+      geom_density(aes(fill =.id ), color=NA, alpha = 0.5,  position = "identity") +
+      theme_light( base_size = 22) + 
+      theme( legend.title=element_blank()) +
+      labs(x="log(cw; mm)", y="Density", size = rel(1.5)) 
+    fn = file.path( p$modeldir, "figures", paste("density_2020_1", "_", sex, "_", variabletomodel, ".png", sep="") )
+    ggsave( fn, o, width=8, height=4, units="in", dpi=320, create.dir=TRUE )
+
+    x11()
+    o = ggplot( sss[time=="2021" & space=="1",], aes( value )) +
+      geom_density(aes(fill =.id ), color=NA, alpha = 0.5,  position = "identity") +
+      theme_light( base_size = 22) + 
+      theme( legend.title=element_blank()) +
+      labs(x="log(cw; mm)", y="Density", size = rel(1.5)) 
+    fn = file.path( p$modeldir, "figures", paste("density_2021_1", "_", sex, "_", variabletomodel, ".png", sep="") )
+    ggsave( fn, o, width=8, height=4, units="in", dpi=320, create.dir=TRUE )
+
+}
+
+
+# growth increments
+compute_growth_increments = FALSE
+if (compute_growth_increments) {
+  sex = "m"; variabletomodel = "imodes"
+  psims = aegis::read_write_fast( file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".RDS", sep="") ) )
+
+  y0 = 1:(p$ny-1)
+  y1 = 2:p$ny
+
+  grw = list()  # label is the end state
+
+  grw[["m|i|06"]] = psims[["m|i|06"]][, y1, ] - psims[["m|i|05"]][, y0,] 
+  grw[["m|i|07"]] = psims[["m|i|07"]][, y1, ] - psims[["m|i|06"]][, y0,] 
+  grw[["m|i|08"]] = psims[["m|i|08"]][, y1, ] - psims[["m|i|07"]][, y0,] 
+  grw[["m|i|09"]] = psims[["m|i|09"]][, y1, ] - psims[["m|i|08"]][, y0,] 
+  grw[["m|i|10"]] = psims[["m|i|10"]][, y1, ] - psims[["m|i|09"]][, y0,] 
+  grw[["m|i|11"]] = psims[["m|i|11"]][, y1, ] - psims[["m|i|10"]][, y0,] 
+  grw[["m|i|12"]] = psims[["m|i|12"]][, y1, ] - psims[["m|i|11"]][, y0,]
+
+  grw[["m|m|10"]] = psims[["m|m|10"]][, y1, ] - psims[["m|i|09"]][, y0,] 
+  grw[["m|m|11"]] = psims[["m|m|11"]][, y1, ] - psims[["m|i|10"]][, y0,] 
+  grw[["m|m|12"]] = psims[["m|m|12"]][, y1, ] - psims[["m|i|11"]][, y0,] 
+
+
+  # growth increments female
+  sex = "f"; variabletomodel = "imodes"
+  psims = aegis::read_write_fast( file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".RDS", sep="") ) )
+
+  grw[["f|i|06"]] = psims[["f|i|06"]][, y1, ] - psims[["f|i|05"]][, y0,] 
+  grw[["f|i|07"]] = psims[["f|i|07"]][, y1, ] - psims[["f|i|06"]][, y0,] 
+  grw[["f|i|08"]] = psims[["f|i|08"]][, y1, ] - psims[["f|i|07"]][, y0,] 
+  grw[["f|i|09"]] = psims[["f|i|09"]][, y1, ] - psims[["f|i|08"]][, y0,] 
+  grw[["f|i|10"]] = psims[["f|i|10"]][, y1, ] - psims[["f|i|09"]][, y0,] 
+
+  grw[["f|m|09"]] = psims[["f|m|09"]][, y1, ] - psims[["f|i|08"]][, y0,] 
+  grw[["f|m|10"]] = psims[["f|m|10"]][, y1, ] - psims[["f|i|09"]][, y0,] 
+  grw[["f|m|11"]] = psims[["f|m|11"]][, y1, ] - psims[["f|i|10"]][, y0,] 
+
+  read_write_fast( data=grw, file=file.path( p$modeldir, "growth_increments.RDS")  )
+}
+
+grw = aegis::read_write_fast( file.path( p$modeldir, "growth_increments.RDS") )
+
+
+# map the mean growth increments
+grwmeans = list()
+for (nm in names(grw)) {
+  grwmeans[[nm]] = apply(grw[[ nm ]], MARGIN=c(1,2), mean )
+}
+
+
+for (nm in names(grw)) {
+  for (yr in p$yrs[-1]) {
+    pg$toplot = grwmeans[[nm]][, as.character(yr)]
+    plt = carstm_map( sppoly=pg, vn="toplot",
+      title= yr, 
+      outfilename=file.path( file.path( p$modeldir, "growth_increments" ), paste(nm, "_", yr, ".png", sep="") ),
+      # scale=1.5,
+      colors=rev(RColorBrewer::brewer.pal(5, "RdYlBu")),
+      additional_features=additional_features
+    ) 
+    plt
+  }
+}
+
+# examine relationship of growth increments with location and temperature, depth
+# first merge environmental data from SS$M, the data from the prediction surface
+# note time for increments is for the terminal time point 
+
+dd = degreedays( pg, years, t0)
+
+
+M = SS$M[, c("space", "year", "z", "t", "log.substrate.grainsize", "pca1" ), with=FALSE] 
+setnames(M, "year", "time" )
+
+M$space = as.character(M$space)
+M$time = M$time +  1
+M$time = as.factor(as.character(M$time))
+ 
+grw = rbindlist( lapply( grwmeans, function(x) as.data.table( as.data.frame.table(x) )), idcol=TRUE)
+setnames(grw, ".id", "id" )
+
+grw = M[grw, on=c("space", "time")]
+setnames(grw, "Freq", "log_growth_increment" )
+grw$space = as.numeric(grw$space)
+grw$space_time = grw$space
+grw$time_space = grw$time
+
+grw$log.z = log(grw$z)
+
+plot( log_growth_increment ~ z, grw[id=="m|i|06",]  )
+
+o = inla( log_growth_increment ~ id + f(time, model="iid") +
+  f(inla.group( log.z, method="quantile", n=7 ), model="rw2", scale.model=TRUE) + 
+  f(inla.group( t, method="quantile", n=7 ), model="rw2", scale.model=TRUE) +
+  f(inla.group( log.substrate.grainsize, method="quantile", n=7 ), model="rw2", scale.model=TRUE) +
+  f(inla.group( pca1, method="quantile", n=7 ), model="rw2", scale.model=TRUE) +
+  f( space, model="bym2", graph=slot(pg, "nb"), scale.model=TRUE ) +
+  f( space_time, model="bym2", graph=slot(pg, "nb"), scale.model=TRUE, group=time_space,  control.group=list(model="iid"))  , 
+  data=as.data.table(grw ) )
+
+cor( o$summary.fitted.values[,"mean"], grw$log_growth_increment )
+  # 0.793 spatial model
+
+```
+
+### Reconstruct size structure at arbitrary areal units
+
+```{r}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: kmm-reconstruct
+
+## Next simulate with julia called from R:
+if ( !any( grepl("JuliaCall", o[,"Package"] ) ) ) install.packages("JuliaCall")
+
+# load JuliaCall interface
+library(JuliaCall)
+
+julia = try( julia_setup( install=FALSE, installJulia=FALSE ) )
+
+if ( inherits(julia, "try-error") ) {
+  install_julia()
+  julia = try( julia_setup( install=FALSE, installJulia=FALSE ) ) # make sure it works
+  if ( inherits(julia, "try-error") )  stop( "Julia install failed, install manually?") 
+}
+
+# currentwd = getwd() 
+
+julia_command( "using Distributions" )  # for kmm_sample (defined in kmm_functions.jl)
+
+include( joinpath( homedir(), "projects", "model", "kmm_functions.jl" ))   
+
+julia_assign( "N", N )  
+julia_assign( "n_imodes", n_imodes )  
+
+# setwd(p$output.dir)  # julia_source cannot traverse directories .. temporarily switch directory
+out = list()
+
+for (stage in p$stages) {
+  out[[stage]] = list()
+
+  M0 = SS$sk[[stage]]
+
+  for (variabletomodel in p$varsnames) {
+
+    p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
+    p$variabletomodel = variabletomodel
+
+    res = NULL
+    res = carstm_model( p=p, DS="carstm_predictions", sppoly=pg ) # to load currently saved results
+    if (is.null(res)) next()
+
+    ## transfer params to julia environment
+    sims = list()
+
+    for (au in aus) {
+      res_pred = res$predictions[aui,,]       
+      julia_assign( "res_pred", res_pred )  # copy data into julia session
+      julia_command("out = kmm_sample( res, N=1, n_imodes=1 )")
+      sims[[au]] = julia_eval("out")  # copy results back to R
+    }
+
+    out[[stage]][[variabletomodel]] = sims
+  
+  }
+}
+
+read_write_fast( data=out, file="outputfile.RDS" )
+
+
+```
+
+
+  
+## 4. a size-based model of fecundity
+
+To do 
+
+## 5. a size-based model of survivorship (independent of fishing)
+
+
+To do 
+
+## 6. a size-based understanding of fishery removals
+
+
+To do 
+
+## 7. Synthesis through a size-based model (aka, Generalized Leslie, or a **Transition matrix model**)
+
+
+In the fisheries literature, the primary modelling approaches tend to be of the *Cohort-based models* (e.g., Virtual Population Analysis, and other catch-at-age variations). "Catch-at-age" is expensive to determine, in terms of skill (age-determination is generally subjective), time and resources. In these approaches, the focus is upon abundance estimation and projection after constraining growth, reproduction, maturity, natural mortality, effort, selectivity and stock-recruit relationships (often though not always) to independently and previously established **apriori** bounds. Almost always, they are age-based, fixing time directly into the models. They are powerful and well established. But they also suffer from many issues: variablity and plasticity in these relationships depending upon location, time, density/competitive stress, disease, temperature, habitat space, etc. Some of the issues associated with uncertainty propagation of numerous relationships are addressed by "Integrated Analysis" and "Statistical Stock Synthesis" approaches (Fournier and Archibald 1982, Maunder and Punt 2013, Methot and Wetzel 2013) by computing all parameters simultaneously (observation models, process models) by assuming independence and considered the current state-of-the-art. However, even with all this model complexity, the variability and plasticity of life history as a function of age still remains a central challenge as living things are wont to do: garbage in, garbage out (GIGO). 
+
+Less common in fisheries, though quite important in human demographics and most other plant and animal population analyses are another set of cohort-like models, known commonly as *Generalized Leslie matrix models*. Though similar to *Cohort-based models*, the focus in Leslie analysis is the construction/estimation of life history parameters into an extremely simple form that can then be used as a Markov-like transition matrix across a given age, stage or size structured population. It is thus, a first-order approximation but also quite general and because it is linear, can provide forward and backward estimation of demographic structure with ease and first-order estimates of dynamical stability through Eigen-analysis. Further, life history parameters and assessments are almost always made on the basis of body size measurements and/or stage (sex or maturity) rather than age due to the ease of measurement of the former. Use of age is still possible of course, but the compounding of estimation errors to recompute everything in terms of age, whether as an independent external process or internal to the model as in "Integrated Analysis" (Maunder and Punt 2013) makes the latter susceptible to large uncertainties and biases except perhaps in the most restrictive and constrained biological and environmental situations (Maunder and Punt 2013). 
+
+Here we focus upon these simpler, **Generalized (size/stage-based) Leslie matrix model**.
+
+
+#### References
+
+Fournier, D., Archibald, C.P. 1982. A general theory for analyzing catch at age data. Can. J. Fish. Aquat. Sci., 39: 1195-1207
+
+Maunder, M.N., Punt, A.E. 2013. A review of integrated analysis in fisheries stock assessment, Fisheries Research, 142: 61-74.
+
+Methot, R.D., Wetzel, C.R. 2013. Stock synthesis: A biological and statistical framework for fish stock assessment and fishery management, Fisheries Research, 142: 86-99.
+
+Pope,J.G. 1972. An investigation of the accuracy of virtual population analysis using cohort analysis. Int. Comm. Northwest Atl. Fish. Res. Bull., 9: 65-74
+
+
+
+### Leslie matrix model
+
+A Leslie matrix model is a discrete, linear, age-structured demographic model with $\omega$ age classes, so actually very similar to the above *Cohort-based models*. Aging, survival and birth is described through a transition matrix $\mathbf{L}^{\omega \times \omega}$. It is a simple but powerful representation of demographic structure useful for stability analysis and projection.
+
+An element of $\mathbf{L}(i,j)$ identifies how an individual of an age specified by column $j$ moves to an age in row $i$. Thus, $\mathbf{L}(2,1) = s_1= 0.5$ would mean 50% of the population of age group 1 would survive to become age group 2 in the next time step. Row 1 is reserved for per capita fecundity ($f$), movement of new of births (per capita) to the earliest age class. And the last column are otherwise zeros as the oldest class do not get younger (and so die): 
+
+(math modified from Wikipedia notation)
+
+$$
+ \begin{bmatrix}
+   n_1 \\
+   n_2 \\
+   \vdots \\
+   n_{\omega} \\
+ \end{bmatrix}_{t+1}
+=
+ \begin{bmatrix}
+f_1 & f_2 & f_3 & \ldots & f_{\omega  - 1} & f_{\omega} \\
+s_1 & 0 & 0 & \ldots & 0 & 0\\
+0 & s_2 & 0 & \ldots & 0 & 0\\
+0 & 0 & s_3 & \ldots & 0 & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \ldots & s_{\omega - 1}  & 0
+ \end{bmatrix}
+ \begin{bmatrix}
+  n_1 \\ n_2 \\ \vdots\\ n_{\omega}
+ \end{bmatrix}_{t}
+$$
+
+where $\omega$ is the maximum age attainable in the population and $t$ is time (year).
+
+This can be written as:
+
+$$\mathbf{n}_{t+1} = \mathbf{L}\mathbf{n}_t$$
+
+or:
+
+$$\mathbf{n}_{t} = \mathbf{L}^t\mathbf{n}_0$$
+
+where $\mathbf{n}_t$ is the population vector at time ''t'' and $\mathbf{L}$ is the Leslie matrix, repeated applied $t$ times. 
+
+Of note:
+
+- The dominant *eigenvalue* of $\mathbf{L}$, denoted $\lambda$, gives the population's asymptotic growth rate (growth rate at the stable age distribution). 
+
+- The corresponding *eigenvector* provides the stable age distribution, the proportion of individuals of each age within the population, which remains constant at this point of asymptotic growth barring changes to vital rates.
+
+- Once the stable age distribution has been reached, a population undergoes *exponential growth* at rate $\lambda$. 
+
+- The *characteristic polynomial* of the matrix is given by the *Euler–Lotka equation*.
+
+The Leslie model is very similar to a discrete-time *Markov chain*. The main difference being that a Markov model column elements sum to 1 as they are explicitly probabilities.
+
+
+#### Reference
+
+Caswell, H. 2001. Matrix Population Models: Construction, Analysis, and Interpretation. Sinauer.
+
+
+
+
+### Stage-based Generalized Leslie Matrix Model
+
+In the standard model (above) the transition probabilities ($\mathbf{L}$) cab be seen as a decomposition of connectivity ($\mathbf{P}$) with a sub-diagonal matrix of 1's, meaning that each age class ages by 1 year to the next year class. This is multiplied by the associated survival ($\mathbf{P}$):
+
+$$\mathbf{L} = \mathbf{P} \odot \mathbf{S} + \mathbf{F}$$ 
+
+where,
+
+$$
+\mathbf{L} =
+ \begin{bmatrix}
+0 & 0 & 0 & \ldots & 0 & 0\\
+p_1 & 0 & 0 & \ldots & 0 & 0\\
+0 & p_2 & 0 & \ldots & 0 & 0\\
+0 & 0 & p_3 & \ldots & 0 & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \ldots & p_{\omega - 1}  & 0
+ \end{bmatrix}
+
+\odot
+
+ \begin{bmatrix}
+0 & 0 & 0 &   \ldots & 0 & 0\\
+s_1 & 0 & 0 & \ldots & 0 & 0\\
+0 & s_2 & 0 & \ldots & 0 & 0\\
+0 & 0 & s_3 & \ldots & 0 & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \ldots & s_{\omega - 1}  & 0
+ \end{bmatrix}
+
++
+
+ \begin{bmatrix}
+f_1 & f_2 & f_3 & \ldots & f_{\omega  - 1} & f_{\omega} \\
+0 & 0 & 0 & \ldots & 0 & 0\\
+0 & 0 & 0 & \ldots & 0 & 0\\
+0 & 0 & 0 & \ldots & 0 & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \ldots & 0  & 0
+ \end{bmatrix}
+$$
+
+where $p_i=1$; for all $i=1, ..., \omega$.
+
+In a size or stage-based model (also called a Lefkovitch model), the transitions probabilities get blended across a number of classes (size and/or stage), with some fraction even staying in the same category across time.   Using $\omega$ to denote the total number of such categories, instead of age, we then get:
+
+
+
+$$
+\mathbf{L} =
+ \begin{bmatrix}
+0 & 0 & 0 & \ldots & 0 & 0\\
+s_{1} p_{21} & 0 & 0 & \ldots & 0 & 0\\
+s_{1} p_{31} & s_{2} p_{32} & 0 & \ldots & 0 & 0\\
+s_{1} p_{41} & s_{2} p_{42} & s_{3} p_{43} & \ldots & 0 & 0\\
+0 & s_{2} p_{52} & s_{3}  p_{53} & \ldots & 0 & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \ldots & s_{\omega - 1} \; p_{\omega \;\omega - 1}  & 0
+ \end{bmatrix}
+ 
++
+
+ \begin{bmatrix}
+f_1 & f_2 & f_3 & \ldots & f_{\omega  - 1} & f_{\omega} \\
+0 & 0 & 0 & \ldots & 0 & 0\\
+0 & 0 & 0 & \ldots & 0 & 0\\
+0 & 0 & 0 & \ldots & 0 & 0\\
+0 & 0 & 0 & \ldots & 0 & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \ldots & 0  & 0
+ \end{bmatrix}.
+$$
+
+In the case of snow crab, constructing this matrix requires both sexes to be manipulated in the matrix simultaneously. To do this we define this using instars to guide us and then eventually into a fully size-structured form.
+
+The vector of state (number of individuals): 
+$$
+ n_{\cdot t} =
+ \begin{bmatrix}
+   n_{\text{egg production}} \\
+   n_{\text{female immature instar 4}} \\
+   \vdots \\
+   n_{\text{female immature instar 12}} \\
+   n_{\text{female mature instar 9}} \\
+   \vdots \\
+   n_{\text{female mature instar 13}} \\
+   \vdots \\
+   n_{\text{male immature instar 4}} \\
+   \vdots \\
+   n_{\text{male immature instar 13}} \\
+   n_{\text{male mature instar 9}} \\
+   \vdots \\
+   n_{\text{male mature instar 14}} \\
+ \end{bmatrix}_{t}
+$$
+
+giving $\omega=31$ groups.
+
+For each group we have an approximate size (log carapace width; mm) derived from kernel density estimation of modes and associated numerical estimates by year derived from scientific surveys and spatiotemporal statistical models of abundance. 
+
+Fecundity estimates are taken from a study by B. St-Marie (1993, Pers. Comm.):
+
+$\text{fecundity per female} = \text{cw} ^{2.725} * 10^{3.7311}$	
+
+Maturity oogives have been estimated for SSE snow crab as:
+
+$\text{female maturity} = -34.4125 + \text{logcw} * 7.6094$  
+
+and
+
+$\text{male maturity} = -54.6665 + \text{logcw} * 13.8320.$  
+
+
+Two survival parameters to be estimated from data, one from egg to instar 4 (assumed for simplicity as 0.0001), and one for the benthic stages 4 up (assumed as 0.6). One could argue for a third set discriminating mature and immature and another for each sex. But these are left as future problems. [A mock-up of this model can be found in spread-sheet form here](media/stage_structured_leslie_model.xlsx).
+
+
+female
+
+growth increment		
+
+    (Intercept) 0.2558 0.0819 3.12 0.0206					
+    logcw0 1.0167 0.0248 40.93 1.4e-08					
+    matm -1.7146 0.3592 -4.77 0.0031					
+    logcw0:matm 0.4026 0.0929 4.33 0.0049					
+								
+growth function (instar):			
+immature:	
+
+    (Intercept) 1.12368 0.04548 24.7 2.9e-07					
+    instar 0.31059 0.00593 52.4 3.2e-09					
+
+mature:
+
+    (Intercept) -0.0157 0.4402 -0.04 0.977
+    instar 0.4090 0.0439 9.32 0.068
+								
+Maturity oogive
+
+    (Intercept) -34.4125     0.1314    -262   <2e-16					
+    logcw         7.6094     0.0292     261   <2e-16					
+								
+male
+growth increment			
+
+(Intercept) 0.16958 0.07278 2.33 0.053
+
+    logcw0 1.03569 0.02079 49.81 3.4e-10
+
+    matm -0.17502 0.37497 -0.47 0.655
+
+    logcw0:matm 0.00467 0.09023 0.05 0.960
+			
+growth function (instar):			
+immature:
+			(Intercept) 1.1912 0.0446 26.7 2.6e-08
+			instar 0.2994 0.0053 56.5 1.4e-10
+			
+mature:
+
+    (Intercept) 0.65417 0.05413 12.1 0.0526
+
+    instar 0.33550 0.00491 68.4 0.0093
+
+Maturity oogive			
+			(Intercept) -54.6665     0.2740    -199   <2e-16
+ 			logcw        13.8320     0.0687     201   <2e-16
+
+
+ 
+```julia
+
+# test code for manipulating matrices:
+
+nt = 10
+nc = 3
+
+using LinearAlgebra
+
+function transition_matrix( nc, survival, growth, fecundity )
+  
+  M = survival' .* ones(nc, nc) .* growth   # reshape and trim to S (survivorship)
+  M[1,:] .+= fecundity
+
+  return M
+end
+
+survival = [.5, .4, .3]  # col vector of survival
+
+growth = rand( nc, nc )
+
+fecundity = [ 0, 1, 2 ]  # fecundity col vector
+
+M = transition_matrix( nc, survival, growth, fecundity )
+
+
+N = rand( nc, nt )
+
+n1 = N[:,1]
+n2 = N[:,2]
+
+p2 = M * n1    # forward projection
+p1 = inv(M) * p2  # backward projection of prediction to check if we recover n1
+p1 = M \ p2  # backward projection of prediction to check if we recover n1 (same method, different notation)
+
+p1 - n1  # yes, nearly identical to 15 to 16 decimals
+
+
+using LinearAlgebra # For matrix operations
+
+function create_size_structured_transition_matrix(
+    nstages,
+    survival_probabilities ,
+    growth_probabilities ,
+    fecundities 
+)
+
+    TM = zeros(Float64, nstages, nstages)
+
+    # Growth and Survival Component
+    for i in 1:nstages  # Current size class
+        for j in 1:nstages  # Next size class
+            # The probability of moving from size class i to size class j
+            # is survival from i * growth from i to j (conditional on survival)
+            TM[j, i] = survival_probabilities[i] * growth_probabilities[j, i]
+        end
+    end
+
+    # New recruits (size class 1) are produced by individuals in other size classes
+    TM[1, :] .+= fecundities # Add fecundity to the first row (new recruits)
+
+    return TM
+end
+
+using BenchmarkTools
+
+@benchmark let
+  M = transition_matrix( nc, survival, growth, fecundity )
+end
+# Time  (mean ± σ):   143.246 ns ± 387.652 ns  ┊ GC (mean ± σ):  19.88% ±  8.06%
+
+@benchmark let
+  L = create_size_structured_transition_matrix( nc, survival, growth, fecundity)
+end
+# Time  (mean ± σ):   97.036 ns ± 306.574 ns  ┊ GC (mean ± σ):  16.40% ±  5.83%
+
+
+```
+
+
+
+```julia
+
+
+
+function simulate_population(TM::Matrix{Float64}, initial_population::Vector{Float64}, num_timesteps::Int)
+    
+    nstages = size(TM, 1)
+    if length(initial_population) != nstages
+        throw(ArgumentError("Initial population vector dimension does not match Leslie matrix."))
+    end
+
+    population_history = zeros(Float64, nstages, num_timesteps + 1)
+    population_history[:, 1] = initial_population
+
+    current_population = copy(initial_population)
+
+    for t in 1:num_timesteps
+        current_population = TM * current_population
+        population_history[:, t + 1] = current_population
+    end
+
+    return population_history
+end
+
+# The normalized stable size distribution (dominant eigenvector).
+# The dominant eigenvalue (population growth rate, lambda).
+
+function calculate_stable_distribution(TM::Matrix{Float64})
+    eigen_decomp = eigen(TM)
+    eigenvalues = eigen_decomp.values
+    eigenvectors = eigen_decomp.vectors
+
+    # Find the dominant eigenvalue (largest real part, or largest magnitude)
+    # For population dynamics, we typically care about the largest positive real eigenvalue.
+    # If there are complex eigenvalues, the largest magnitude one is relevant for stability.
+    dominant_eigenvalue_index = argmax(abs.(eigenvalues))
+    lambda = real(eigenvalues[dominant_eigenvalue_index])
+    stable_distribution_unnormalized = real(eigenvectors[:,dominant_eigenvalue_index])
+
+    # Normalize the stable distribution to sum to 1
+    stable_distribution = stable_distribution_unnormalized ./ sum(stable_distribution_unnormalized)
+
+    return stable_distribution, lambda
+end
+
+```
+
