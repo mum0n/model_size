@@ -10,7 +10,7 @@ author:
   corresponding: true
 affiliation:
 - number: 1
-  name: Bedford Institute of Oceanography, Fisheriess and Oceans Canada
+  name: Bedford Institute of Oceanography, Fisheries and Oceans Canada
 date: last-modified
 date-format: "YYYY-MM-D"
 toc: true
@@ -18,7 +18,7 @@ toc-depth: 4
 number-sections: true
 highlight-style: pygments
 keyword: |
-  Keywords - snow crab; Bayesian kernel mixture model; Julia; Turing; growth model; instar
+  Keywords - snow crab; Bayesian kernel mixture model; Julia; Turing; growth model; instar; maturity; Generalized Leslie matrix model; size-structured model; survey design weight calibration
 abstract: |
   Snow crab (*Chionoecetes opilio*) are cold-water stenotherms in the northern hemisphere. As they are long-lived and have a complex life history, developing an operational model of population dynamics of snow crab in an environmentally and spatiotemporally heterogeneous area, the Scotian Shelf of the northwest Atlantic of Canada. We address these difficulties by focussing upon a better and more objective parameterization of snow crab growth based upon surveys of population size structure. 
 #standalone: true
@@ -2162,10 +2162,12 @@ To do
 
 ## 5. a size-based model of survivorship (independent of fishing)
 
+## survey size selectivity
 
 To do 
 
-## 6. a size-based understanding of fishery removals
+## 6. a size-based understanding of fishery removals / selectivity
+
 
 
 To do 
@@ -2173,11 +2175,17 @@ To do
 ## 7. Synthesis through a size-based model (aka, Generalized Leslie, or a **Transition matrix model**)
 
 
-In the fisheries literature, the primary modelling approaches tend to be of the *Cohort-based models* (e.g., Virtual Population Analysis, and other catch-at-age variations). "Catch-at-age" is expensive to determine, in terms of skill (age-determination is generally subjective), time and resources. In these approaches, the focus is upon abundance estimation and projection after constraining growth, reproduction, maturity, natural mortality, effort, selectivity and stock-recruit relationships (often though not always) to independently and previously established **apriori** bounds. Almost always, they are age-based, fixing time directly into the models. They are powerful and well established. But they also suffer from many issues: variablity and plasticity in these relationships depending upon location, time, density/competitive stress, disease, temperature, habitat space, etc. Some of the issues associated with uncertainty propagation of numerous relationships are addressed by "Integrated Analysis" and "Statistical Stock Synthesis" approaches (Fournier and Archibald 1982, Maunder and Punt 2013, Methot and Wetzel 2013) by computing all parameters simultaneously (observation models, process models) by assuming independence and considered the current state-of-the-art. However, even with all this model complexity, the variability and plasticity of life history as a function of age still remains a central challenge as living things are wont to do: garbage in, garbage out (GIGO). 
+In the fisheries literature, the primary modelling approaches tend to be of the *Cohort-based models* (e.g., Virtual Population Analysis, and other catch-at-age variations). "Statistical catch-at-age" is expensive to determine, in terms of skill (age-determination is generally subjective), time and resources. In these approaches, the focus is upon abundance estimation and projection after constraining growth, reproduction, maturity, natural mortality, effort, size/age selectivity and stock/spawner-recruit relationships (often though not always) to independently and previously established **apriori** bounds. Almost always, they are age-based, fixing time directly into the models and converting information as they relate to age structure. They are powerful and well established. 
 
-Less common in fisheries, though quite important in human demographics and most other plant and animal population analyses are another set of cohort-like models, known commonly as *Generalized Leslie matrix models*. Though similar to *Cohort-based models*, the focus in Leslie analysis is the construction/estimation of life history parameters into an extremely simple form that can then be used as a Markov-like transition matrix across a given age, stage or size structured population. It is thus, a first-order approximation but also quite general and because it is linear, can provide forward and backward estimation of demographic structure with ease and first-order estimates of dynamical stability through Eigen-analysis. Further, life history parameters and assessments are almost always made on the basis of body size measurements and/or stage (sex or maturity) rather than age due to the ease of measurement of the former. Use of age is still possible of course, but the compounding of estimation errors to recompute everything in terms of age, whether as an independent external process or internal to the model as in "Integrated Analysis" (Maunder and Punt 2013) makes the latter susceptible to large uncertainties and biases except perhaps in the most restrictive and constrained biological and environmental situations (Maunder and Punt 2013). 
+But they also suffer from various issues: variablity and plasticity in these relationships depending upon location, time, density/competitive stress, disease, temperature, habitat space, etc. Some of the issues associated with uncertainty propagation of numerous relationships are addressed by the flexibility enabled in "Integrated Analysis" (IA) and "Stock Synthesis" (SS) approaches (Fournier and Archibald 1982, Maunder and Punt 2013, Methot and Wetzel 2013) that computing all parameters simultaneously (observation models, process models) by assuming independence of each component submodel. They are considered the current state-of-the-art. 
 
-Here we focus upon these simpler, **Generalized (size/stage-based) Leslie matrix model**.
+However, even with all this (somewhat overwhelming) structural and dynamical model complexity, the variability and plasticity of life history as a function of age still remains the central challenge as living things are wont to do what they do and survey information are usually less than appropriate due to capture what they do: the GIGO principle applies at all times, that is, garbage in, garbage out, no matter how refined and precise the models may be. 
+
+Less common in fisheries, though quite important in human demographics and most other plant and animal population analyses are another set of cohort-like models, approach known as *Generalized Leslie matrix models*. Though similar to *Cohort-based models* and IA, SS, the focus in Leslie analysis is the construction/estimation of meaningful life history parameters (fecundity, survival, growth) into an extremely basic form that can then be used as a Markov-like transition matrix across a given age, stage or size structured population. It is thus, a rough first-order approximation. However, because it is linear, it can provide fast forward and backward estimation of demographic structure with ease and first-order understanding of dynamical stability through Eigen-analysis. 
+
+Life history parameters and assessments are almost always made on the basis of body size measurements and/or stage (sex or maturity) rather than age, due to the ease of measurement of the former, rendering model inputs to be readily obtained. Use of age is still possible of course, but the compounding of estimation errors to recompute everything in terms of age, whether as an independent external process or internal to the model as in "Integrated Analysis" (Maunder and Punt 2013) makes the latter susceptible to large uncertainties and biases except perhaps in the most restrictive and constrained biological and environmental situations (Maunder and Punt 2013). (Aside: Maunder and Punt (2013) may well categorize the Generalized Leslie model as just another form of IA, given how expansively they define it.)
+
+Here we focus upon these simpler, **Generalized (size/stage-based) Leslie matrix model** combined with as high quality data inputs as possible to address GIGO.
 
 
 #### References
@@ -2204,6 +2212,8 @@ $$
  \begin{bmatrix}
    n_1 \\
    n_2 \\
+   n_3 \\
+   n_4 \\
    \vdots \\
    n_{\omega} \\
  \end{bmatrix}_{t+1}
@@ -2217,7 +2227,12 @@ s_1 & 0 & 0 & \ldots & 0 & 0\\
 0 & 0 & 0 & \ldots & s_{\omega - 1}  & 0
  \end{bmatrix}
  \begin{bmatrix}
-  n_1 \\ n_2 \\ \vdots\\ n_{\omega}
+  n_1 \\
+  n_2 \\ 
+  n_3 \\
+  n_4 \\
+  \vdots\\ 
+  n_{\omega}
  \end{bmatrix}_{t}
 $$
 
@@ -2231,19 +2246,17 @@ or:
 
 $$\mathbf{n}_{t} = \mathbf{L}^t\mathbf{n}_0$$
 
-where $\mathbf{n}_t$ is the population vector at time ''t'' and $\mathbf{L}$ is the Leslie matrix, repeated applied $t$ times. 
+where $\mathbf{n}_t$ is the population vector at time $t$ and $\mathbf{L}$ is the Leslie matrix, repeated applied $t$ times. 
 
 Of note:
 
-- The dominant *eigenvalue* of $\mathbf{L}$, denoted $\lambda$, gives the population's asymptotic growth rate (growth rate at the stable age distribution). 
+- The dominant *eigenvalue* of $\mathbf{L}$ is the population's asymptotic (exponential) growth rate (at the stable age distribution). 
 
-- The corresponding *eigenvector* provides the stable age distribution, the proportion of individuals of each age within the population, which remains constant at this point of asymptotic growth barring changes to vital rates.
+- The dominant *eigenvector* provides the stable age distribution, that is, the proportion of individuals in each age.
 
-- Once the stable age distribution has been reached, a population undergoes *exponential growth* at rate $\lambda$. 
+- The *characteristic polynomial* of $\mathbf{L}$ is given by the *Euler–Lotka equation*.
 
-- The *characteristic polynomial* of the matrix is given by the *Euler–Lotka equation*.
-
-The Leslie model is very similar to a discrete-time *Markov chain*. The main difference being that a Markov model column elements sum to 1 as they are explicitly probabilities.
+- Though similar to a discrete-time *Markov model*, in the latter, column elements sum to 1 as they are explicitly probabilities.
 
 
 #### Reference
@@ -2253,9 +2266,9 @@ Caswell, H. 2001. Matrix Population Models: Construction, Analysis, and Interpre
 
 
 
-### Stage-based Generalized Leslie Matrix Model
+### Stage-based generalized Leslie (Lefkovitch) matrix model
 
-In the standard model (above) the transition probabilities ($\mathbf{L}$) cab be seen as a decomposition of connectivity ($\mathbf{P}$) with a sub-diagonal matrix of 1's, meaning that each age class ages by 1 year to the next year class. This is multiplied by the associated survival ($\mathbf{P}$):
+The transition probabilities ($\mathbf{L}$) can be decomposed into a connectivity matrix ($\mathbf{P}$) with a sub-diagonal matrix of 1's. The latter carries the meaning that each age class ages by 1 year to the next year class. This is multiplied by the associated survival ($\mathbf{P}$):
 
 $$\mathbf{L} = \mathbf{P} \odot \mathbf{S} + \mathbf{F}$$ 
 
@@ -2295,22 +2308,32 @@ f_1 & f_2 & f_3 & \ldots & f_{\omega  - 1} & f_{\omega} \\
  \end{bmatrix}
 $$
 
-where $p_i=1$; for all $i=1, ..., \omega$.
+where $p_i=1$; for all $i=1, ..., \omega$. Here $\odot$ is to indicate element-by-element multiplication. Of course, the survival $s$ associated with each transition can be variable as well. 
 
-In a size or stage-based model (also called a Lefkovitch model), the transitions probabilities get blended across a number of classes (size and/or stage), with some fraction even staying in the same category across time.   Using $\omega$ to denote the total number of such categories, instead of age, we then get:
-
-
+In such a size or stage-based model (also called a Lefkovitch model), the transitions probabilities can be blended across a number of classes (sizes and/or stages) for which we use $\omega$ to denote the total number of such categories, instead of age: 
 
 $$
 \mathbf{L} =
  \begin{bmatrix}
 0 & 0 & 0 & \ldots & 0 & 0\\
-s_{1} p_{21} & 0 & 0 & \ldots & 0 & 0\\
-s_{1} p_{31} & s_{2} p_{32} & 0 & \ldots & 0 & 0\\
-s_{1} p_{41} & s_{2} p_{42} & s_{3} p_{43} & \ldots & 0 & 0\\
-0 & s_{2} p_{52} & s_{3}  p_{53} & \ldots & 0 & 0\\
+p_{21} & p_{22} & 0 & \ldots & 0 & 0\\
+p_{31} & p_{32} & 0 & \ldots & 0 & 0\\
+p_{41} & p_{42} & p_{43} & \ldots & 0 & 0\\
+0 & p_{52} & p_{53} & \ldots & 0 & 0\\
 \vdots & \vdots & \vdots & \ddots & \vdots & \vdots\\
-0 & 0 & 0 & \ldots & s_{\omega - 1} \; p_{\omega \;\omega - 1}  & 0
+0 & 0 & 0 & \ldots & p_{\omega \;\omega - 1}  & 0
+ \end{bmatrix}
+ 
+\odot
+
+\begin{bmatrix}
+0 & 0 & 0 & \ldots & 0 & 0\\
+s_{1}  & s_{2} & 0 & \ldots & 0 & 0\\
+s_{1}  & s_{2}  & 0 & \ldots & 0 & 0\\
+s_{1}  & s_{2}  & s_{3}  & \ldots & 0 & 0\\
+0 & s_{2}  & s_{3}   & \ldots & 0 & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots & \vdots\\
+0 & 0 & 0 & \ldots & s_{\omega - 1}    & 0
  \end{bmatrix}
  
 +
@@ -2326,7 +2349,7 @@ f_1 & f_2 & f_3 & \ldots & f_{\omega  - 1} & f_{\omega} \\
  \end{bmatrix}.
 $$
 
-In the case of snow crab, constructing this matrix requires both sexes to be manipulated in the matrix simultaneously. To do this we define this using instars to guide us and then eventually into a fully size-structured form.
+In the above, $p_{22}$ identifies that some fraction of that group will stay in the same category across time. In the case of snow crab, constructing this matrix requires both sexes to be manipulated in the matrix simultaneously. To do, for illustration purposes, we will define this using instars to guide us and then eventually move into a fully size-structured form.
 
 The vector of state (number of individuals): 
 $$
@@ -2353,11 +2376,11 @@ giving $\omega=31$ groups.
 
 For each group we have an approximate size (log carapace width; mm) derived from kernel density estimation of modes and associated numerical estimates by year derived from scientific surveys and spatiotemporal statistical models of abundance. 
 
-Fecundity estimates are taken from a study by B. St-Marie (1993, Pers. Comm.):
+Fecundity estimates are taken from a study by B. St-Marie (1993, Pers. Comm.) as priors:
 
 $\text{fecundity per female} = \text{cw} ^{2.725} * 10^{3.7311}$	
 
-Maturity oogives have been estimated for SSE snow crab as:
+Maturity oogive priors have been estimated for SSE snow crab as:
 
 $\text{female maturity} = -34.4125 + \text{logcw} * 7.6094$  
 
@@ -2365,6 +2388,8 @@ and
 
 $\text{male maturity} = -54.6665 + \text{logcw} * 13.8320.$  
 
+
+All these functions are estimated withing the model step and so Maunder and Punt (2013) may even categorise it just as another simplistic form of "Integrated Analysis"... :)
 
 Two survival parameters to be estimated from data, one from egg to instar 4 (assumed for simplicity as 0.0001), and one for the benthic stages 4 up (assumed as 0.6). One could argue for a third set discriminating mature and immature and another for each sex. But these are left as future problems. [A mock-up of this model can be found in spread-sheet form here](media/stage_structured_leslie_model.xlsx).
 
