@@ -1,16 +1,24 @@
 
-model_size_data_carstm = function(p, sexid, sppoly, redo=FALSE, carstm_set_redo=FALSE) { 
+model_size_data_carstm = function(p, sexid, sppoly=NULL, redo=FALSE, carstm_set_redo=FALSE, tokeep="necessary") { 
+
+  span0 = span = p$span(sexid)
 
   fn = file.path( 
     p$project.outputdir, 
-    paste( "size_distributions_tabulated_data_zeros_", sexid, "_", paste0(p$span, collapse="_"), ".RDS", sep="" )  
+    paste( "size_distributions_tabulated_data_zeros_", sexid, "_", paste0( span, collapse="_"), ".RDS", sep="" )  
   )
 
-  o = NULL 
+  Z = NULL 
   if (!redo) {
     if (file.exists(fn)) {
-      o = read_write_fast( fn )
-      return(o)
+      Z = read_write_fast( fn )
+      if (tokeep=="necessary") {
+        i = which(Z$tag == "observations")
+        Z[ , uid := do.call(paste, .SD), .SDcols = c("AUID", "year", "cyclic", "cwd", "mat")]
+        tokeep = unique( Z[i,uid])
+        Z = Z[ uid %in% tokeep ,]
+      }
+      return(Z)
     } 
   }
   
@@ -31,6 +39,8 @@ model_size_data_carstm = function(p, sexid, sppoly, redo=FALSE, carstm_set_redo=
 
   # set level data from snow crab surveys 
   setcm = snowcrab.db( p=p, DS="carstm_inputs", sppoly=sppoly, redo=carstm_set_redo  )
+
+  ### -------->>>  check cyclic matches dyear dyri
 
   setDT(setcm)
   setnames(setcm, "id", "sid") 
@@ -91,7 +101,6 @@ model_size_data_carstm = function(p, sexid, sppoly, redo=FALSE, carstm_set_redo=
   if (length(todrop)>0) detcm = detcm[-todrop,]
 
   # internally on log scale
-  span0 = span = p$span
   span[1]  = log(span[1]) 
   span[2]  = log(span[2]) 
 
@@ -217,7 +226,7 @@ model_size_data_carstm = function(p, sexid, sppoly, redo=FALSE, carstm_set_redo=
     todrop = Z[ logcw < log(49) & mat=="1", which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
   }
- 
+  
   # match prediction range to observation range for season (cyclic)
   data_dyears = range(Z[tag=="observations", "cyclic"] ) 
   todrop = which(Z$cyclic < data_dyears[1] | Z$cyclic > data_dyears[2] )
@@ -250,6 +259,13 @@ model_size_data_carstm = function(p, sexid, sppoly, redo=FALSE, carstm_set_redo=
   attr(Z, "sexid") = sexid
 
   read_write_fast( data=Z, file=fn )
- 
+
+  if (tokeep=="necessary") {
+    i = which(Z$tag == "observations")
+    Z[ , uid := do.call(paste, .SD), .SDcols = c("AUID", "year", "cyclic", "cwd", "mat")]
+    tokeep = unique( Z[i,uid])
+    Z = Z[ uid %in% tokeep ,]
+  }
+
   return(Z)
 }

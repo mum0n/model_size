@@ -1,26 +1,12 @@
 ---
 title: "Size structured model of snow crab"
 header: 'Choi 2025'
-author:
-- name: Jae S. Choi
-  email: jae.choi@dfo-mpo.gc.ca
-  # email: choi.jae.seok@gmail.com
-  footnote: 1
-  orcid: 0000-0003-3632-5723 
-  corresponding: true
-affiliation:
-- number: 1
-  name: Bedford Institute of Oceanography, Fisheries and Oceans Canada
-date: last-modified
-date-format: "YYYY-MM-D"
 toc: true
-toc-depth: 4
-number-sections: true
-highlight-style: pygments
+number-sections: true 
 keyword: |
   Keywords - snow crab; Bayesian kernel mixture model; Julia; Turing; growth model; instar; maturity; Generalized Leslie matrix model; size-structured model; survey design weight calibration
 abstract: |
-  Snow crab (*Chionoecetes opilio*) are cold-water stenotherms in the northern hemisphere. As they are long-lived and have a complex life history, developing an operational model of population dynamics of snow crab in an environmentally and spatiotemporally heterogeneous area, the Scotian Shelf of the northwest Atlantic of Canada. We address these difficulties by focussing upon a better and more objective parameterization of snow crab growth based upon surveys of population size structure. 
+  Snow crab (*Chionoecetes opilio*) are cold-water stenotherms in the northern hemisphere. As they are long-lived and have a complex life history, developing an operational model of population dynamics of snow crab in an environmentally and spatiotemporally heterogeneous area, the Scotian Shelf of the northwest Atlantic of Canada is a challenge. We address these difficulties by focussing upon parameterization of snow crab growth based upon surveys of population size structure and a size-based matrix model. 
 #standalone: true
 journal: 'biorxiv'
 citeproc: true
@@ -38,58 +24,50 @@ additionalinformation: |
 documentclass: paper
 papersize: letterpaper
 fontsize: 12pt
-output: 
-  pdf_document:
 editor:
   render-on-save: false
   markdown:
     references:
       location: document
 execute:
-  echo: true
-format:
-  html: 
-    code-fold: true
-    code-overflow: wrap
-    html-math-method: katex
-    self-contained: true
-    embed-resources: true
+  echo: false
 params:
-  year_assessment: 2024
-  model_variation: Maximum_likelhood_basic
+  project_directory: "~/projects/model_size"
+  work_directory: "~/projects/model_size/ignore"
+  YR: 2025
+  todo: [fishery_results,fishery_model,ecosystem,redo_data]
+
 #    template: null
 # https://github.com/citation-style-language/styles  # to get more csl's
 ---
 
 <!-- Preamble
 
-
-This is a Markdown document ... To create HTML or PDF, etc, run: 
-
-As it runs R and Julia, Quarto is probably the better tool to render. Alternatively, you can run everything directly and then render just the figures by turning off the R and Julia code chunks. To create an HTML via Quarto:
-
->> cd ~/projects/model_size/scripts
-
->> make quarto FN=size_structured_model_snowcrab YR=2024 SOURCE=~/projects/model_size/scripts WK=~/projects/model_size/outputs DOCEXTENSION=html PARAMS="-P year_assessment:2024 -P model_variation:Maximum_likelhood_basic"
+make quarto FN=size_structured_model_snowcrab.md DOCTYPE=html  PARAMS="-P YR:2025 -P todo:[nil]" --directory=~/projects/model_size/docs
  
-  
-Alter year and directories to reflect setup or copy Makefile and alter defaults to your needs.
-   
-# A size structured model of snow crab
+# all modifiable params 
+make quarto FN=size_structured_model_snowcrab.md DOCTYPE=html  PARAMS="-P project_directory:~/projects/model_size -P work_directory:~/projects/model_size/ignore -P YR:2025 -P todo:[fishery_results,fishery_model,ecosystem,redo_data]" --directory=~/projects/model_size/docs
+ 
 
-Inference from size structured data via [kernel mixture models](https://bitbucket.org/autocatalysis/model_size) and [Conditional Autoregressive SpatioTemporal Models](https://github.com/jae0/carstm).
-
-
-See also, model_covariance::docs::covariance.md
+To include a common file:
 
 
 -->
+
+<!-- to include shared files
+
+{{< include _common.qmd >}}  
+
+{{< include _load_results.qmd >}}  
+
+-->
+
 
 ## Purpose
 
 To develop a size-structured model of snow crab. 
 
-To do this requires the development of a Matrix model that is similar to a Leslie Matrix model, except that instead of age as the classifying units, we use a size and stage-based approach that describes snow crab life history. At a minimum, the following are required for such a model requires:
+To do this requires the development of a Matrix model that is similar to a Leslie Matrix model, except that instead of age as the classifying units, we use a size and stage (sex and maturity). At a minimum, the following are required for such a model requires:
 
   1. a size-based model to reduce the bias associated with non-random sampling to make observations comparable
 
@@ -101,12 +79,12 @@ To do this requires the development of a Matrix model that is similar to a Lesli
   
   5. a size-based model of survivorship (independent of fishing)
 
-  6. a size-based understanding of fishery removals
+  6. a size-based model of selectivity of survey (observation model) and fishery removals (fishing process model)
 
   7. synthesis through a size-based model (aka, Generalized Leslie, or a **Transition matrix model**)
 
 
-We will address each component below. Towards a biologically complete life history model, useful for estimating life history parameters and understanding the time-dynamics of snow crab.
+We will address each component below, towards developing a biologically complete life history model, useful for estimating life history parameters and understanding the time-dynamics of snow crab.
 
 
 ## 1. A model-based based approach to reduce bias due to non-random sampling
@@ -123,24 +101,18 @@ To belabour then point, for example, animals can, due to metabolic constraints a
   - sampling speed to capture rapidly moving organisms (escapement)
   - sampling mesh too large to capture small organisms (escapement)
 
-can of course cause additional biases, usually also ignored. The usual recourse is to assume some operationally simplistic **lets-hope-it-is-random** (... depth-should-be-enough) stratification will account for most/all of these above factors. After which, one then computes size frequency distributions, treating each observation as IID (i.e, exchangeable). Indeed, this **lets-hope-it-is-random** stratified approach is the defacto standard in most settings. This is the case because, it is generally, nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent preferences, in a fluid environment such as the ocean. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design.
+can of course cause additional biases, usually also ignored. 
+
+The usual recourse is to assume some operationally simplistic **lets-hope-it-is-random** (... depth-should-be-enough) stratification will account for most/all of these above factors. After which, one then computes size frequency distributions, treating each observation as IID (i.e, exchangeable). Indeed, this **lets-hope-it-is-random** stratified approach is the defacto standard in most settings. This is the case because, it is generally, nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent preferences, in a fluid environment such as the ocean. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design.
 
 Ultimately, what this means is that observations may not be of exchangeable, that is, they are not of equal importance in describing the system. For example, if observations occur with more frequently (e.g. flooding of area with warm waters due to larger eddies entering the system for a year or more) in an area that is not representative of the overall system or stratum, then it’s influence would be elevated more than it should be. Similarly, if an observation occurs in an area that is highly representative of the system, then it’s influence should be higher than just a single observation. In other words, simply adding the observations together becomes inappropriate as they are not fully independent samples, across space, nor across time, nor across size (if there are ontogenetic or size-related changes in habitat preferences).
 
 A model-based approach is one possible recourse (post-hoc) to approximately adjust for some of these factors and estimate the relative importance of each observation in representing the overall system and ultimately reduce some of theses biases as much as possible. 
 
-There are two possible ways to address these issues: 
-
-- Approach 1: Estimate a design/sample weight associated with each individual observation from an individual-based observation model and then determine relative numbers of each size-stage group by aggregation. This Approach is operationally viable. It take a few hours of computation and with reasonable predictive success: pearson correlation > 0.8.
+In other words, we will first estimate a design/sample weight associated with each individual observation from an individual-based observation model and then determine relative numbers of each size-stage group by aggregation. This Approach is operationally viable. It take a few hours of computation and with reasonable predictive success: pearson correlation > 0.8.
   
-- Approach 2: Pre-classify size-stage membership and aggregate to estimate abundance and then in a model-based framework, estimate a corrected abundance by location, time, size, class, etc. This Approach is too computationally heavy. Do not recommend. 
 
-
-### Approach 1: Construct an individual-based observation-level probability model and estimate sampling/design weights
-
-Basic premise:
-
-Here we explore the use of such a model-based approaches to estimate this relative importance of an observation, such that they can be re-scaled to enable a less biased estimate of size-structure. More specifically, the purpose is to determine the numerical weight, $W$, that should be attributed to each observation of an individual's measurement of size.
+Basic premise: Construct an individual-based observation-level probability model and estimate sampling/design weights. Here we explore the use of such a model-based approaches to estimate this relative importance of an observation, such that they can be re-scaled to enable a less biased estimate of size-structure. More specifically, the purpose is to determine the numerical weight, $W$, that should be attributed to each observation of an individual's measurement of size.
 
 The mechanism to do this involves the development of an individual level probability model of presence or absence, that also accounts for space, time, size and any other covariates that may be influential in determining an organism's presence or absence. In the case of the benthic stages of snow crab, from prior experience, it is known that depth, bottom temperature, substrate grain size/type and co-occurring species associations are imporatnt factors. To this end, a binomial model of individual-level presence and absence was parameterized to determine the probability associated with each observation of presence. 
 
@@ -151,17 +123,14 @@ $$P_\text{obs} = P_\text{size} \cdot P_\text{sex} \cdot P_\text{maturity} \cdot 
 These probabilities can be decomposed from a Binomial Bernoulli model of presence-absence of observations by sampling event (survey trawl set).
 
 To reduce the number of possible combinations of the above factors, we can use size bins that span a range and then use a rw2 model to smooth across the sizes.
-
-#### Analysis to determine sample/design weight of each individual observation
-
+ 
 The main idea is that size-structure cannot be examined easily as each individual measurement is derived from a sample of unequal sampling intensity (swept are), size-bias of sampling gear and environmental bias conditions. This does not stop people from still aggregating and so ignoring these differences in sampling weights. Accounting for size-based bias is attempted when this bias is well understood, though not always.
 
 Here we attempt to factor in all such biases into one model.
 
 
-#### Load environment
 
-```{r}
+```{r load-environment}
 #| eval: true
 #| output: false
 #| echo: false
@@ -190,21 +159,22 @@ selection = list(
 
 source( file.path( project_directory, "scripts", "startup.r") )
 
-
 sppoly = areal_units( p=p )
 
+
+# override parameter defaults: (predict on every time slice)
+
 p$ny = length(p$yrs)
-p$nt = p$ny # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
 p$nw = 12 
+p$nt = p$ny * p$nw  # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
 p$tres = 1/ p$nw # time resolution .. predictions are made with models that use seasonal components
 p$dyears = discretize_data( span=c(0, 1, p$nw), toreturn="lower" )  # left breaks .. get 12 intervals of decimal years... fractional year breaks
 
-p$dyear_centre = discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ) 
-
 # used for creating timeslices and predictions  .. needs to match the values in aegis_parameters()
-p$prediction_dyear = lubridate::decimal_date( lubridate::ymd("0000/Sep/01"))
 # output timeslices for predictions in decimla years, yes all of them here
-p$prediction_ts = p$yrs + p$prediction_dyear
+dyears_midpoints = discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ) 
+tout = expand.grid( yr=p$yrs, dyear=dyears_midpoints , KEEP.OUT.ATTRS=FALSE )
+p$prediction_ts = sort( tout$yr + tout$dyear  ) # mid-points
 
 p = temporal_parameters(p=p, dimensionality="space-time-cyclic", timezone="America/Halifax")
 
@@ -214,16 +184,19 @@ p$space_id = 1:length(p$space_name)  # must match M$space
 p$time_name = as.character(p$yrs)
 p$time_id =  1:p$ny
 
-cyclic_levels = discretize_data( brks=p$dyears, toreturn="midpoints" )   # default midpoints; same as:
+p$cyclic_levels = factor( dyears_midpoints, ordered=TRUE ) # default midpoints; same as:
 p$cyclic_name = as.character(p$cyclic_levels)
 p$cyclic_id = 1:p$nw
 
 
 # note ranges in CW will be log transformed later
-p$span = switch(sexid,
+p$span = function( sexid) {
+  switch(sexid,
     male   = c( 5, 155, 40),
     female = c( 5, 95,  40)
-)
+  )
+}
+
 
 p$formula = as.formula( paste(
 ' pa ~ 1 ',
@@ -248,7 +221,7 @@ p$formula = as.formula( paste(
 
 # individual level data from snow crab surveys and prediction surface
 # use a log scale for size info .. full range .. it will be reduced to data range in the next step
-# male: 30+ bins seem sufficient to describe the shape
+# male: 30+ bins seem sufficient to describe the shape (prior to modelling)
 # female: 30+ bins seem sufficient to describe the shape
 
 redo_datafiles = FALSE
@@ -276,28 +249,31 @@ plot(jitter(pa) ~ t, M, pch=".")
 plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
   
 
-# action = "redo"
-action = "load"
 
-fit = model_size_presence_absence( p=p, sexid=sexid, sppoly=sppoly, action=action ) 
+
+# summary on link scale
+MS = summarize_observations(
+    obs = M[tag=="observations", pa ],
+    offsets = M[tag=="observations", data_offset ], 
+    family="binomial"
+)  
+
+H = inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, MS[["median.50%"]] )  ## this must be in global namespace
+
+action = "load"
+# action = "redo"
+
+fit = model_size_presence_absence( 
+  sexid=sexid,
+  span=p$span(sexid), 
+  modeldir=p$modeldir, 
+  formula=p$formula, 
+  M=M, 
+  action=action 
+) 
 summary(fit)
 
-fit = NULL; gc()
-
-
-# action = "redo"
-action = "load"
-
-O = individual_sampling_weights( p=p, sexid=sexid, sppoly=sppoly, action=action ) 
-
-
-
-#  p$carstm_directory = file.path(p$modeldir, p$carstm_model_label)
-
-#  modelinfo = carstm_model(p = p, DS = "carstm_modelinfo") 
-#  fit = carstm_model(p = p, DS = "modelled_fit")
-
-cor(O$pa, O$fitted_mean)  
+cor(M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
 
     if (0){ 
 
@@ -328,26 +304,35 @@ cor(O$pa, O$fitted_mean)
         Marginal log-Likelihood:  -264656.11
 
 
-        female 13 and group mat
 
-        cor = 0.8136
-
-        Deviance Information Criterion (DIC) ...............: 350406.27
-        Deviance Information Criterion (DIC, saturated) ....: 349374.65
-        Effective number of parameters .....................: 7448.05
-
-        Watanabe-Akaike information criterion (WAIC) ...: 350224.72
-        Effective number of parameters .................: 7056.97
-
-        Marginal log-Likelihood:  -175462.54
          
+cor = 0.758
+
+Deviance Information Criterion (DIC) ...............: 422159.70
+Deviance Information Criterion (DIC, saturated) ....: 421128.08
+Effective number of parameters .....................: 7331.66
+
+Watanabe-Akaike information criterion (WAIC) ...: 421987.76
+Effective number of parameters .................: 7002.57
+
+Marginal log-Likelihood:  -209789.41
+ 
 
     }
 
+# fit = NULL; gc()
+
+
+action = "load"
+# action = "redo"
+
+# both sexes are combined here:
+O = individual_sampling_weights( p=p, sppoly=sppoly, action=action ) 
+ 
 
   hist(O$relative_rate, "fd")
   summary(O$relative_rate)
-  plot( O$fitted_mean, O$prediction_mean, pch="." )
+  plot( O$fitted_mean, O$prediction_mean, pch="." )  # observations tend to slightly under-represent areal units
   
   plot( exp(O$fitted_mean), exp(O$prediction_mean), pch=".")
   
@@ -357,22 +342,17 @@ cor(O$pa, O$fitted_mean)
  
   O$w = O$relative_rate * O$cfanorth_surfacearea
   yrp = "2019"
-  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = span[3] )
-  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw) ) ) + geom_histogram( bins = span[3] )
+  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = p$span(sexid)[3] )
+  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw) ) ) + geom_histogram( bins = p$span(sexid)[3] )
 
 
   O$w = O$relative_rate * O$au_sa_km2 
-  x11(); ggplot(O[w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = span[3] )
-  x11(); ggplot(O[w>0,], aes( log(cw) ) ) + geom_histogram( bins = span[3] )
+  x11(); ggplot(O[w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = p$span(sexid)[3] )
+  x11(); ggplot(O[w>0,], aes( log(cw) ) ) + geom_histogram( bins = p$span(sexid)[3] )
 
 
-```
 
-Bottom line: reasonable success in estimating individual survey/design weights.  And operationally viable (<1 day of computation).
-
-
-```julia
-# snippets for mapping and ideas .. in case it it useful for above ..
+# posteriors and effects plots
 
 S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
 
@@ -386,7 +366,7 @@ outputdir = file.path(p$modeldir, p$carstm_model_label)
 
 res_vars = c( names( res$hypers), names(res$fixed) )
 for (i in 1:length(res_vars) ) {
-  o = carstm_prior_posterior_compare( res, vn=res_vars[i], outputdir=outputdir  )  
+  o = carstm_prior_posterior_compare( fit, vn=res_vars[i], outputdir=outputdir  )  
   dev.new(); print(o)
 }     
 
@@ -425,42 +405,11 @@ ip = which(M$tag=="predictions")
 iq = unique( c( which( M$totno > 0), ip ) )
 iw = unique( c( which( M$totno > 5), ip ) )  # need a good sample to estimate mean size
 
-carstm_model( p=p, data=M[ , ], sppoly=sppoly, 
-# theta=c( 2.7291,1.8146,2.9382,0.0132,3.8666,-0.0211,4.2673,5.5037,6.1421,0.2391,4.2522,0.7666,-0.0100,0.8763 ),
-nposteriors=5000,
-toget = c("summary", "random_spatial", "predictions"),
-posterior_simulations_to_retain = c("predictions"),
-family = "poisson",
-verbose=TRUE,
-# redo_fit=FALSE, 
-# debug = "summary",
-# debug = "predictions",
-num.threads="4:3"  
-) 
 
-# posterior predictive check
-carstm_posterior_predictive_check(p=p, M=M[ , ]  )
-
-# EXAMINE POSTERIORS AND PRIORS
-res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
-
-outputdir = file.path(p$modeldir, p$carstm_model_label)
-
-res_vars = c( names( res$hypers), names(res$fixed) )
-for (i in 1:length(res_vars) ) {
-  o = carstm_prior_posterior_compare( res, vn=res_vars[i], outputdir=outputdir  )  
-  dev.new(); print(o)
-}     
-
-
-
-# for mapping below, some bathymetry and polygons
-additional_features = snowcrab_mapping_features(p)  
-
-  ylab = "Probability"
-  fn_root_prefix = "Predicted_presence_absence"
-  fn_root = "habitat"
-  # title= paste( snowcrab_filter_class, "Probability")  
+ylab = "Probability"
+fn_root_prefix = "Predicted_presence_absence"
+fn_root = "habitat"
+# title= paste( snowcrab_filter_class, "Probability")  
 
 outputdir = file.path( p$modeldir, p$carstm_model_label, "figures" )
 if ( !file.exists(outputdir)) dir.create( outputdir, recursive=TRUE, showWarnings=FALSE )
@@ -468,72 +417,20 @@ if ( !file.exists(outputdir)) dir.create( outputdir, recursive=TRUE, showWarning
 # plots with 95% PI
 carstm_plot_marginaleffects( p, outputdir, fn_root )
 
-    #   # to compute habitat prob
-    #   sims = carstm_posterior_simulations( pH=p, pa_threshold=0.05, qmax=0.95 )
-    #   SM = aggregate_simulations( 
-    #     sims=sims, 
-    #     sppoly=sppoly, 
-    #     fn=carstm_filenames( p, returnvalue="filename", fn="aggregated_timeseries" ), 
-    #     yrs=p$yrs, 
-    #     method="mean", 
-    #     redo=TRUE 
-    #   ) 
-    #   outputdir = file.path( carstm_filenames( p, returnvalue="output_directory"), "aggregated_habitat_timeseries" )
-    #   ylabel = "Habitat probability"
-    #   fn_ts = "habitat_M0.png"
-    #   vn = paste("habitat", "predicted", sep=".")
-    #   outputdir2 = file.path( carstm_filenames( p, returnvalue="output_directory"), "predicted_habitat" )
-
-
-
-# maps of some of the results
-outputdirmap = file.path(p$modeldir, p$carstm_model_label, "maps" )
-
-carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features,
-toplot="random_spatial", probs=c(0.025, 0.975) )
-
-# plots with 95% PI 
-carstm_plot_marginaleffects( p, outputdir, fn_root ) 
-
-
-# maps of some of the results
-outputdirmap = file.path(p$modeldir, p$carstm_model_label, "maps" )
-  
-carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features, 
-  toplot="random_spatial", probs=c(0.025, 0.975) ) 
-
-carstm_plot_map( p=p, outputdir=outputdirmap, fn_root_prefix=fn_root_prefix , additional_features=additional_features, 
-  toplot="predictions", probs=c(0.1, 0.9)) 
-
-
 
 ```
 
-
-### Approach 2: Classify and aggregate by size and stage and then model 
-
-
-**NOTE:: This approach ("Approach 2"), is too computationally heavy to be operationally useful ... skip/ignore (for now), use "Approach 1" (above) -- simpler and faster** 
+Bottom line: reasonable success in estimating individual survey/design weights.  And operationally viable (<1 day of computation).
+ 
+ 
 
 
-**Kernel Mixture Models (KMMs)** can be used to decompose the size structure at the level of each observation event. The modes and distributional parameters of the kernel mixture model are then modelled in space and time using a statistical spatio-temporal model. These are then reconstituted in the sampling domain to provide a model-based (weighted) size structure, that accounts for these biases as much as possible through the use of environmental covariates as well as spatial and spatiotemporal random effects to absorb the unmeasured biases.
 
-#### Notes:
+## 2. Inference of modal sizes 
 
-Estimate size structure and related parameters (growth, maturity, etc.).
+For each sex, instar, maturity group, identify modal size. This is done with **Kernel Mixture Models (KMMs)** which can decompose the size structure at the level of each observation event. The modes and distributional parameters of the kernel mixture model are then modelled in space and time using a statistical spatio-temporal model. These are then reconstituted in the sampling domain to provide a model-based (weighted) size structure, that accounts for these biases as much as possible through the use of environmental covariates as well as spatial and spatiotemporal random effects to absorb the unmeasured biases.
 
-From simple kernel density representations of size frequency at small area unit scale, determine the magnitudes of  modes. This is done as there may be regional and time-dependent changes in modal sizes (year-classes)
-
-Inference of modal sizes for each sex, instar, maturity group in order to develop a growth model.
-
-A number of methods to explore:
-
-- Direct via counting (**Simple sums** ... traditional)
-- Direct via **areal density** (arithmetic and geometric)
-- **Modelled solutions**: mostly too large of a problem to use
-- Kernel density areal density (arithmetic and geometric)
-- Size at maturity
-- Modal size groups
+From these simple kernel density representations of size frequency at small area unit scale, determine the magnitudes of  modes. This is done as there may be regional and time-dependent changes in modal sizes (year-classes)
 
 
 #### Analysis of size structure .. tests

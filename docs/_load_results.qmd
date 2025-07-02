@@ -1,0 +1,57 @@
+ 
+```{r}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: setup-R
+
+  require(spsUtil)
+  quietly = spsUtil::quiet
+
+  require(flextable)
+  require(gt)  # table formatting
+  require(ggplot2)
+  require(data.table) # for speed
+  require(lubridate)
+  require(stringr) 
+  
+  require(janitor)
+ 
+  require(aegis)  # basic helper tools
+  require(bio.taxonomy)  # handle species codes
+  require(bio.snowcrab)
+
+  require(spsUtil)
+  quietly = spsUtil::quiet
+
+  require(MBA)
+
+  # reload these in case of local edits
+  loadfunctions( "aegis")
+  loadfunctions( "bio.snowcrab")  
+
+
+  # params from yaml (above)
+  attach(params)  
+
+  media_loc = file.path( data_loc, "media" )
+
+  year_previous = year_assessment - 1
+
+
+  #### params and directories
+
+  p = load.environment( year.assessment=year_assessment )  
+
+  p$corners = data.frame(plon=c(220, 990), plat=c(4750, 5270) )
+
+  p$mapyears = year_assessment + c(-5:0 )   # default in case not specified
+
+  years = as.character(1996: year_assessment)
+  yrs_observer = year_assessment + c(0:-4)
+
+  media_supplementary = file.path( data_loc, "assessments",  year_assessment, "media_supplementary")
+
+
+
+```
