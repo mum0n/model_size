@@ -103,30 +103,57 @@ To belabour then point, for example, animals can, due to metabolic constraints a
 
 can of course cause additional biases, usually also ignored. 
 
-The usual recourse is to assume some operationally simplistic **lets-hope-it-is-random** (... depth-should-be-enough) stratification will account for most/all of these above factors. After which, one then computes size frequency distributions, treating each observation as IID (i.e, exchangeable). Indeed, this **lets-hope-it-is-random** stratified approach is the defacto standard in most settings. This is the case because, it is generally, nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent preferences, in a fluid environment such as the ocean. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design.
+The usual recourse is to assume some operationally simplistic **lets-hope-it-is-completely-random-stratification** (LHIICRS) will account for most or all of these above factors. In actual practice, especially when little is known of a system, LHIICRS boils down to, **depth-alone-should-be-enough** as it is usually the only known. Thereafter, this stratification seldom changes as any additional strata often becomes exhorbitantly costly (in terms of needing to justify alterations from "good enough" to incrementally better, re-ananlysis, new survey locations, more data requirements and loss of trust from data end-users/clients/funders that invested in the initial approach). As such, one computes size frequency distributions, treating each observation as IID (that is, fully exchangeable) as no other recourse seems available. Indeed, this LHIICRS approach is the defacto standard in every setting that I have observed. It is generally, also admittedly, nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent preferences, especially in a fluid, multidimensional (space, time, species, covariates) environment such as the ocean. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably at various hierarchical levels by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design.
 
-Ultimately, what this means is that observations may not be of exchangeable, that is, they are not of equal importance in describing the system. For example, if observations occur with more frequently (e.g. flooding of area with warm waters due to larger eddies entering the system for a year or more) in an area that is not representative of the overall system or stratum, then it’s influence would be elevated more than it should be. Similarly, if an observation occurs in an area that is highly representative of the system, then it’s influence should be higher than just a single observation. In other words, simply adding the observations together becomes inappropriate as they are not fully independent samples, across space, nor across time, nor across size (if there are ontogenetic or size-related changes in habitat preferences).
+Pragmatically, what this means is that observations may not be of exchangeable, that is, they are not of equal importance in describing the system, even if one hopes this to be the case and feel there is no other recourse. For example, if observations occur with more frequently (e.g. flooding of area with warm waters due to larger eddies entering the system for a year or more due to elevated and course grained climate variability and change) in an area that is not representative of the overall system or stratum, then it’s influence would be elevated more than it should be. Similarly, if an observation occurs in an area that is highly representative of the system, then it’s influence should be higher than just a single observation. In other words, simply adding the observations together becomes inappropriate as they are not fully independent samples, across space, nor across time, nor across size (if there are ontogenetic or size-related changes in habitat preferences).
 
-A model-based approach is one possible recourse (post-hoc) to approximately adjust for some of these factors and estimate the relative importance of each observation in representing the overall system and ultimately reduce some of theses biases as much as possible. 
+Instead of directly changing the sampling design as new information arises (costly), a model-based (post-hoc) approach to (indirectly and approximately) adjust for additional information is less costly. In the context of individual level information (e.g., body size), one can estimate the relative importance of each observation in representing the overall system and ultimately reduce some of these biases, as much as the data available permits.
 
-In other words, we will first estimate a design/sample weight associated with each individual observation from an individual-based observation model and then determine relative numbers of each size-stage group by aggregation. This Approach is operationally viable. It take a few hours of computation and with reasonable predictive success: pearson correlation > 0.8.
+<!--
+add to discussion:
+
+This MBPS approach is operationally viable in many long-standing survey/monitoring settings. In operational testing with snow crab surveys in the Maritimes of Canada, it adds a few 10's of hours of computation and with reasonably informative predictive success (pearson correlation > 0.8). The latter can be improved with more complex and fine-tuned modelling and so can be extended to Large-Language Machine Learning approaches.
+
+
+add to conclusions: 
+
+adaptive .. which encourages more data collection of relevant information and incorporation/assimilation into statistical modelling and estimation. 
+
+--> 
+
+In other words, in this **model-based post-stratification** (MBPS) approach we will first estimate a post-stratified importance weight ($W^*$) associated with each individual observation from an individual-based observation model. This importance weight, can then be used to determine relative numbers of each size-stage_location-time group by aggregation **a posteriori**.  
+
+This importance weight ($W^*$) is distinct from the standard survey design-based sampling weight which can be naively determined **a priori** from considerations of swept area and the surface area of the areal strata  for which estimation is being made (if information is available, size selective gear effects and semi-static environmental effects can also be incorporated into the weights). This does not stop researchers from ignoring these sampling effects with the often encountered obfuscation that the data are derived from a "Standard Set/Sample" and so such factors are explicitly ignored (also called: "Hail Mary attempts" in sports). 
+ 
+Here we explore the use of such a model-based post-stratification approach to derive a less biased estimate of size-structure. The mechanism to do this involves estimating the parameters of an individual level probability model of presence or absence, a binomial Bernoulli process. In our case, this model accounts for space, time, size, sex, maturity, and any other covariates that may be informative and influential in determining an organism's presence or absence (depth, substrate composition, bottom temperatures, species assemblages). Each covariate effect may be discretized, smooth, nonlinear functions or random effects depending upon available computational resources and biological reasonable functional form; and are assumed to be independent. A Generalized Linear binomial regression model is specified as:
+
+$$Y\sim\text{Binomial}(\eta,\theta)$$
+
+$$\text{ln}(\theta/(1-\theta)) = \boldsymbol{X}^{T}\boldsymbol{\beta}+\boldsymbol{\epsilon},$$
+
+where $Y$ is the vector of observations, taking values of 0 (absent) or 1 (present), $\eta$ is the number of trials and $\theta$ is the associated (latent) probability of success, $\boldsymbol{X}^{T}$ is the matrix of covariates with associated parameters $\boldsymbol{\beta}$, and $\epsilon$ is the residual random error. The $\text{ln}(\theta/(1-\theta))$ is also  commonly referred to as: $\text{logit}(\theta)$.
+  
+The posterior prediction of the probability $\theta_i$ associated with each sampled observation $i$ describes the likely number of successes for a given number of trials. Being a Bernoulli process, $\eta_i=1$ and $\theta_i = N_i / \eta_i = N_i$. The $N_i$ is the effective number that can be expected per unit effort ($1 \; m^2$).
+ 
+Similarly, the posterior prediction of the probability $\theta_a$ associated with each sampled areal unit (stratum) $a$ describes the effective number of successes ($N_a$) for a given number of trials ($\eta_a=1*\text{W}_a$), where $W_a$ is the stratum weight (in our case, stratum surface area): 
+
+$$\begin{align*}
+N_a &= \theta_a \cdot \eta_a \\
+&= \theta_a \cdot \text{W}_a.
+\end{align*}$$
+
+The effective number of positive individual observations predicted can be rescaled to the expectations at the overall (embedding) areal unit level from their ratios: 
+ 
+
+$$\begin{align*}
+\omega_i &= N_a / N_i \\
+&= (\theta_a \cdot \text{W}_a )/ \theta_i .
+\end{align*}$$
   
 
-Basic premise: Construct an individual-based observation-level probability model and estimate sampling/design weights. Here we explore the use of such a model-based approaches to estimate this relative importance of an observation, such that they can be re-scaled to enable a less biased estimate of size-structure. More specifically, the purpose is to determine the numerical weight, $W$, that should be attributed to each observation of an individual's measurement of size.
+The utility of this simple result is that the ratio of posterior probabilities provides a means of re-scaling the number of observations to an expected number that respects the model-derived estimates of each individual's sampling environment as well as that of the embedding larger areal unit/stratum. In other words, this weight can then be applied directly to each observation to construct a size frequency distribution that respects the joint distribution of all model structure annd parameters! 
 
-The mechanism to do this involves the development of an individual level probability model of presence or absence, that also accounts for space, time, size and any other covariates that may be influential in determining an organism's presence or absence. In the case of the benthic stages of snow crab, from prior experience, it is known that depth, bottom temperature, substrate grain size/type and co-occurring species associations are imporatnt factors. To this end, a binomial model of individual-level presence and absence was parameterized to determine the probability associated with each observation of presence. 
-
-The probability of observing a snow crab $P_\text{obs}$ is assumed to be composed of independent factors:
-
-$$P_\text{obs} = P_\text{size} \cdot P_\text{sex} \cdot P_\text{maturity} \cdot P_\text{location} \cdot P_\text{time} \cdot P_\text{depth} \cdot P_\text{temperature}$$
-
-These probabilities can be decomposed from a Binomial Bernoulli model of presence-absence of observations by sampling event (survey trawl set).
-
-To reduce the number of possible combinations of the above factors, we can use size bins that span a range and then use a rw2 model to smooth across the sizes.
- 
-The main idea is that size-structure cannot be examined easily as each individual measurement is derived from a sample of unequal sampling intensity (swept are), size-bias of sampling gear and environmental bias conditions. This does not stop people from still aggregating and so ignoring these differences in sampling weights. Accounting for size-based bias is attempted when this bias is well understood, though not always.
-
-Here we attempt to factor in all such biases into one model.
+In what follows we estimate these weighting factors and apply them to obtain such "model-based" estimates of size structure. The caveat that needs to be emphasized being that a model is never perefect and can always be improved.
 
 
 
@@ -145,168 +172,91 @@ year_start = 1999
 year_assessment = 2024
 yrs = year_start:year_assessment
 
-# choose one:
-sexid="male"
-sexid="female"
-
-carstm_model_label = sexid
-
-selection = list(
-  type = "presence_absence",
-  biologicals=list( spec_bio=bio.taxonomy::taxonomy.recode( from="spec", to="parsimonious", tolookup=2526 ) ),
-  biologicals_using_snowcrab_filter_class=sexid
-)
 
 source( file.path( project_directory, "scripts", "startup.r") )
 
-sppoly = areal_units( p=p )
 
-
-# override parameter defaults: (predict on every time slice)
-
-p$ny = length(p$yrs)
-p$nw = 12 
-p$nt = p$ny * p$nw  # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
-p$tres = 1/ p$nw # time resolution .. predictions are made with models that use seasonal components
-p$dyears = discretize_data( span=c(0, 1, p$nw), toreturn="lower" )  # left breaks .. get 12 intervals of decimal years... fractional year breaks
-
-# used for creating timeslices and predictions  .. needs to match the values in aegis_parameters()
-# output timeslices for predictions in decimla years, yes all of them here
-dyears_midpoints = discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ) 
-tout = expand.grid( yr=p$yrs, dyear=dyears_midpoints , KEEP.OUT.ATTRS=FALSE )
-p$prediction_ts = sort( tout$yr + tout$dyear  ) # mid-points
-
-p = temporal_parameters(p=p, dimensionality="space-time-cyclic", timezone="America/Halifax")
-
-p$space_name = sppoly$AUID 
-p$space_id = 1:length(p$space_name)  # must match M$space
-
-p$time_name = as.character(p$yrs)
-p$time_id =  1:p$ny
-
-p$cyclic_levels = factor( dyears_midpoints, ordered=TRUE ) # default midpoints; same as:
-p$cyclic_name = as.character(p$cyclic_levels)
-p$cyclic_id = 1:p$nw
-
-
-# note ranges in CW will be log transformed later
-p$span = function( sexid) {
-  switch(sexid,
-    male   = c( 5, 155, 40),
-    female = c( 5, 95,  40)
-  )
-}
-
-
-p$formula = as.formula( paste(
-' pa ~ 1 ',
-    ' + offset( data_offset ) + mat ', 
-    ' + f( inla.group( cwd, method="quantile", n=13 ), model="rw2", scale.model=TRUE) ', 
-    ' + f( inla.group( cwd2, method="quantile", n=13 ), model="rw2", scale.model=TRUE, group=mat_group, hyper=H$rw2, control.group=list(model="iid", hyper=H$iid)) ', 
-    ' + f( time, model="ar1",  hyper=H$ar1 ) ',
-    ' + f( cyclic, model="ar1", hyper=H$ar1 )',
-    # ' + f( cyclic, model="seasonal", scale.model=TRUE, season.length=12, hyper=H$iid  )',
-    ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
-    ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="ar1", hyper=H$ar1_group)) '
-    # ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="iid", hyper=H$iid)) '
-) )
-
- 
 
 # individual level data from snow crab surveys and prediction surface
 # use a log scale for size info .. full range .. it will be reduced to data range in the next step
 # male: 30+ bins seem sufficient to describe the shape (prior to modelling)
 # female: 30+ bins seem sufficient to describe the shape
-
-redo_datafiles = FALSE
-# redo_datafiles = TRUE
-
-M = model_size_data_carstm(p=p, sexid=sexid, sppoly=sppoly, redo=redo_datafiles, carstm_set_redo=redo_datafiles )  
-
-
-hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
-
-
-plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
-plot(jitter(pa) ~ year, M, pch="." )  
-    # males -- variance compression: 2002  
-    # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
-
-plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
-
-plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
-plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
-plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
-
-# observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
-plot(jitter(pa) ~ t, M, pch=".")
-plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
-  
+ 
+model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data")  )  
 
 
 
-# summary on link scale
-MS = summarize_observations(
-    obs = M[tag=="observations", pa ],
-    offsets = M[tag=="observations", data_offset ], 
-    family="binomial"
-)  
+for (sexid in c("female", "male")) {
 
-H = inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, MS[["median.50%"]] )  ## this must be in global namespace
+    # or choose and load
+    # sexid = "female"
+    # sexid = "male"
 
-action = "load"
-# action = "redo"
+    p$selection$biologicals_using_snowcrab_filter_class = sexid
+    p$carstm_model_label = sexid
 
-fit = model_size_presence_absence( 
-  sexid=sexid,
-  span=p$span(sexid), 
-  modeldir=p$modeldir, 
-  formula=p$formula, 
-  M=M, 
-  action=action 
-) 
-summary(fit)
+    if (0) {
+      M = model_size_data_carstm( p=p, sexid=sexid )  
+      
+      hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
+      
+      plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
+      plot(jitter(pa) ~ year, M, pch="." )  
+          # males -- variance compression: 2002  
+          # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
 
-cor(M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
+      plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
+
+      plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
+      plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
+      plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
+
+      # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
+      plot(jitter(pa) ~ t, M, pch=".")
+      plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
+
+      rm(M); gc()
+    }
+    
+    
+    fit = model_size_presence_absence( 
+      sexid=sexid,
+      span=p$span(sexid), 
+      modeldir=p$modeldir, 
+      formula=p$formula,  
+      action="redo" 
+    )
+
+    summary(fit)
+    print(fit$model$theta)
+    theta0 = unname( fit$model$theta )
+    
+
+    M = model_size_data_carstm( p=p, sexid=sexid )  
+
+    cor( M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
+
+}
+
 
     if (0){ 
 
-        male 11 and no group mat 
-        cor 0.7329
+male 15 and group mat:
 
-        Deviance Information Criterion (DIC) ...............: 605046.98
-        Deviance Information Criterion (DIC, saturated) ....: 603874.13
-        Effective number of parameters .....................: 9584.17
+cor=0.736
+ 
+Deviance Information Criterion (DIC) ...............: 598682.31
+Deviance Information Criterion (DIC, saturated) ....: 597509.46
+Effective number of parameters .....................: 7526.35
 
-        Watanabe-Akaike information criterion (WAIC) ...: 606534.62
-        Effective number of parameters .................: 10811.25
+Watanabe-Akaike information criterion (WAIC) ...: 599435.29
+Effective number of parameters .................: 8142.80
 
-        Marginal log-Likelihood:  -302117.80
-
-
-        male 13 and group mat:
-
-        cor=0.7804
-
-        Deviance Information Criterion (DIC) ...............: 532406.39
-        Deviance Information Criterion (DIC, saturated) ....: 531233.54
-        Effective number of parameters .....................: 10986.52
-
-        Watanabe-Akaike information criterion (WAIC) ...: 567799.45
-        Effective number of parameters .................: 28804.10
-
-        Marginal log-Likelihood:  -264656.11
-
+Marginal log-Likelihood:  -3e+05
 
 
          
-cor = 0.758
+cor = 0.761
 
 Deviance Information Criterion (DIC) ...............: 422159.70
 Deviance Information Criterion (DIC, saturated) ....: 421128.08
@@ -327,34 +277,88 @@ action = "load"
 # action = "redo"
 
 # both sexes are combined here:
-O = individual_sampling_weights( p=p, sppoly=sppoly, action=action ) 
- 
+O = individual_sampling_weights( p=p, action=action, nposteriors = 5000 ) 
 
-  hist(O$relative_rate, "fd")
-  summary(O$relative_rate)
-  plot( O$fitted_mean, O$prediction_mean, pch="." )  # observations tend to slightly under-represent areal units
+
+attr(O[["au_sa_km2"]], "units") = NULL
+class(O[["au_sa_km2"]]) = NULL
+
+hist(O$relative_rate, "fd")
+summary(O$relative_rate)
+plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
   
-  plot( exp(O$fitted_mean), exp(O$prediction_mean), pch=".")
-  
-  cor( (O$fitted_mean), (O$prediction_mean), use="pairwise.complete.obs") 
-  cor( exp(O$fitted_mean), exp(O$prediction_mean), use="pairwise.complete.obs") # 0.732 M, -0.00157 F
+cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
 
+
+
+sexid="female"
+sexid="male"
+
+yrp = "2024"
+yrp = "2023"
+yrp = "2022"
+yrp = "2019"
+
+region = "cfaall"
+region = "cfanorth"
+region = "cfasouth"
+region = "cfa4x"
+region = "cfa23"
+region = "cfa24"
+
+
+region_sa = switch( region,
+  cfaall = "au_sa_km2",
+  cfanorth = "cfanorth_surfacearea",
+  cfasouth = "cfasouth_surfacearea",
+  cfa4x = "cfa4x_surfacearea",
+  cfa23 = "cfa23_surfacearea",
+  cfa24 = "cfa24_surfacearea"
+)
+
+O$w = O$relative_rate * O[[region_sa]]
+
+require(ggpubr)
+
+# note: w > 0 filters out other regions
  
-  O$w = O$relative_rate * O$cfanorth_surfacearea
-  yrp = "2019"
-  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = p$span(sexid)[3] )
-  x11(); ggplot(O[yr==yrp & w>0,], aes( log(cw) ) ) + geom_histogram( bins = p$span(sexid)[3] )
+p1 = ggplot(O[w>0 & year==yrp  & sex==sexid ,], aes( log(cw) ) ) + 
+  geom_histogram( bins = p$span(sexid)[3], color="darkgray" ) +
+  theme(axis.title.x=element_blank(),
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank())
+  
+p2 = ggplot(O[w>0 & year==yrp  & sex==sexid ,], aes( log(cw), weight=w ) ) + 
+  geom_histogram( bins = p$span(sexid)[3], color="darkgray" )  
 
-
-  O$w = O$relative_rate * O$au_sa_km2 
-  x11(); ggplot(O[w>0,], aes( log(cw), weight=w ) ) + geom_histogram( bins = p$span(sexid)[3] )
-  x11(); ggplot(O[w>0,], aes( log(cw) ) ) + geom_histogram( bins = p$span(sexid)[3] )
+dev.new()
+labels = paste( 
+  c("Unweighted:", "  Weighted:" ),
+  paste( sexid, region, yrp, sep="-")
+) 
+ggarrange( p1, p2, nrow=2, labels=labels, align = "v", font.label=list(size=10) )
+ 
 
 
 
 # posteriors and effects plots
 
-S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
+# set level data from snow crab surveys 
+# sppoly=areal_units( p=p )
+  
+# p$space_name = sppoly$AUID 
+# p$space_id = 1:length(p$space_name)  # must match M$space
+
+# p$time_name = as.character(p$yrs)
+# p$time_id =  1:p$ny
+
+# p$cyclic_levels = factor( discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ), ordered=TRUE ) # default midpoints; same as:
+# p$cyclic_name = as.character(p$cyclic_levels)
+# p$cyclic_id = 1:p$nw
+
+
+
+
 
 # posterior predictive check
 carstm_posterior_predictive_check(p=p, M=M[ , ]  )
@@ -362,7 +366,9 @@ carstm_posterior_predictive_check(p=p, M=M[ , ]  )
 # EXAMINE POSTERIORS AND PRIORS
 res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
 
-outputdir = file.path(p$modeldir, p$carstm_model_label)
+
+
+outputdir = file.path(p$modeldir, sexid)
 
 res_vars = c( names( res$hypers), names(res$fixed) )
 for (i in 1:length(res_vars) ) {
@@ -411,7 +417,7 @@ fn_root_prefix = "Predicted_presence_absence"
 fn_root = "habitat"
 # title= paste( snowcrab_filter_class, "Probability")  
 
-outputdir = file.path( p$modeldir, p$carstm_model_label, "figures" )
+outputdir = file.path( p$modeldir, sexid, "figures" )
 if ( !file.exists(outputdir)) dir.create( outputdir, recursive=TRUE, showWarnings=FALSE )
 
 # plots with 95% PI
@@ -517,11 +523,13 @@ p$varsnames = c( "imodes", "sigmasq_mean",  "alpha_mean",  "Nkmm" )
 p$nposteriors = 2000
 
 # try an individual-based model first:
-o = size_distributions(p=p, toget="tabulated_data_by_stage", add_zeros=TRUE )
+outdir = file.path(p$project.outputdir, "size_structure")
+
+o = size_distributions(p=p, toget="tabulated_data_by_stage", outdir=outdir, add_zeros=TRUE )
 o = o[-.(region, year)]
 
-o = size_distributions(p=p, toget="tabulated_data_by_stage" )
-o = size_distributions(p=p, toget="tabulated_data", add_zeros=TRUE )
+o = size_distributions(p=p, toget="tabulated_data_by_stage", outdir=outdir )
+o = size_distributions(p=p, toget="tabulated_data", outdir=outdir, add_zeros=TRUE )
 
 
 ```
@@ -638,8 +646,8 @@ M = size_distributions(p=p, toget="base_data", pg=pg, xrange=xrange, dx=dx, outd
 
 # save useful data to file for use in Julia
 out = list( Y=M, nb=nb, au=au )  # saving areal units in case we do carstm in julia .. for now not used
-fn = file.path( p$project_directory, "outputs", "size_structure", "base_data_julia.rdata" )  
-save( out, file=fn )
+fn = file.path( p$project_directory, "outputs", "size_structure", "base_data_julia.rdz" )  
+read_write_fast( data=out, fn=fn )
  
 
 ```
@@ -676,11 +684,10 @@ years_ss = as.character( c(-11:0) + year_assessment )
 
 # Method 1 ..  equivalent to full factorial model without intercept.
 # directly compute areal densities (from above tabulations) 
-M = size_distributions(p=p, toget="simple_direct", xrange=xrange, dx=dx, Y=years_ss,  outdir=ss_outdir,redo=TRUE)
-#NOTE: "crude" is same as "simple_direct" but without pg and unrolled
+M = size_distributions(p=p, toget="crude", xrange=xrange, dx=dx, Y=years_ss,  outdir=ss_outdir, redo=TRUE)
 
 # take subset in years
-M = size_distributions(p=p, toget="simple_direct", xrange=xrange, dx=dx, Y=years_ss , outdir=ss_outdir )
+M = size_distributions(p=p, toget="crude", xrange=xrange, dx=dx, Y=years_ss , outdir=ss_outdir )
 
 outdir=file.path( survey_size_freq_dir, "direct")
 
@@ -1174,7 +1181,7 @@ kmm_chain( Y, mds; modeltype="deterministic", yrs=yrs, sexes=sexes, mats=mats, r
   pl
   
   # create a summary and save to file
-  # is also saving to RData: using RCall and add flag save_RDS=true
+  # is also saving to RData: using RCall and add flag save_r_data=true
   ks = kmm_summary( mds=mds, yrs=yrs, sexes=sexes, mats=mats, regions=regions, toget="compute", modeltype="deterministic", savedir=outdir )
    
   ks = kmm_summary(; toget="saved_results", yrs=yrs, savedir=outdir ) 
@@ -1242,11 +1249,11 @@ kmm_chain( Y, mds; modeltype="latent", yrs=yrs, sexes=sexes, mats=mats, nmin=nmi
   histogram!( log.(Y[i,:cw]) )
 
   # create a summary and save to file
-  # to save Rdata: using RCall  and flaf save_RDS=true
+  # to save rdata: using RCall  and flag: save_r_data=true
   # NOTE: <$> activates R REPL <backspace> to return to Julia
   for yr in yrs
     print(yr); print("\n")
-    ks = kmm_summary(mds=mds, yrs=yr, sexes=sexes, mats=mats, toget="redo", modeltype="latent", savedir=outdir, save_RDS=true )
+    ks = kmm_summary(mds=mds, yrs=yr, sexes=sexes, mats=mats, toget="redo", modeltype="latent", savedir=outdir, save_r_data=true )
   end
 
   # export to R and jl2 complete
@@ -1413,8 +1420,7 @@ for (stage in p$stages ) {
       nposteriors = p$nposteriors, 
       toget = c("summary", "random_spatial", "predictions"), 
       posterior_simulations_to_retain=c( "summary", "random_spatial", "predictions"), 
-      num.threads="4:2",  # very memory intensive ... serial process
-      compress=TRUE, 
+      num.threads="4:2",  # very memory intensive ... serial process   
       # debug="extract",
       control.inla = list(  cmin=0, h=0.05, diagonal=1e-5, fast=FALSE, improved.simplified.laplace=TRUE, restart=1 ), 
       weights=weights,
@@ -1454,9 +1460,9 @@ for (stage in p$stages ) {
 # save by sex and variablename (split as they are large file sizes) for further analysis (12_* : growth and instar dynamics)
 for (sex in c("f", "m")) {
 for (variabletomodel in p$varsnames) {
-  fn = file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".RDS", sep="") )
+  fn = file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".rdz", sep="") )
   out = psims[[sex]][[variabletomodel]]
-  read_write_fast( data=out, file=fn )
+  read_write_fast( data=out, fn=fn )
 }}
 psims = out = NULL ; gc()
 
@@ -1814,7 +1820,7 @@ for (sex in c("f", "m")) {
 
     variabletomodel = "imodes"
 
-    fn = file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".RDS", sep="") )
+    fn = file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".rdz", sep="") )
     psims = aegis::read_write_fast( fn )
   
     # flatten for plotting
@@ -1881,7 +1887,7 @@ for (sex in c("f", "m")) {
 compute_growth_increments = FALSE
 if (compute_growth_increments) {
   sex = "m"; variabletomodel = "imodes"
-  psims = aegis::read_write_fast( file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".RDS", sep="") ) )
+  psims = aegis::read_write_fast( file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".rdz", sep="") ) )
 
   y0 = 1:(p$ny-1)
   y1 = 2:p$ny
@@ -1903,7 +1909,7 @@ if (compute_growth_increments) {
 
   # growth increments female
   sex = "f"; variabletomodel = "imodes"
-  psims = aegis::read_write_fast( file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".RDS", sep="") ) )
+  psims = aegis::read_write_fast( file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".rdz", sep="") ) )
 
   grw[["f|i|06"]] = psims[["f|i|06"]][, y1, ] - psims[["f|i|05"]][, y0,] 
   grw[["f|i|07"]] = psims[["f|i|07"]][, y1, ] - psims[["f|i|06"]][, y0,] 
@@ -1915,10 +1921,10 @@ if (compute_growth_increments) {
   grw[["f|m|10"]] = psims[["f|m|10"]][, y1, ] - psims[["f|i|09"]][, y0,] 
   grw[["f|m|11"]] = psims[["f|m|11"]][, y1, ] - psims[["f|i|10"]][, y0,] 
 
-  read_write_fast( data=grw, file=file.path( p$modeldir, "growth_increments.RDS")  )
+  read_write_fast( data=grw, fn=file.path( p$modeldir, "growth_increments.rdz")  )
 }
 
-grw = aegis::read_write_fast( file.path( p$modeldir, "growth_increments.RDS") )
+grw = aegis::read_write_fast( file.path( p$modeldir, "growth_increments.rdz") )
 
 
 # map the mean growth increments
@@ -2046,7 +2052,7 @@ for (stage in p$stages) {
   }
 }
 
-read_write_fast( data=out, file="outputfile.RDS" )
+read_write_fast( data=out, fn="outputfile.rdz" )
 
 
 ```

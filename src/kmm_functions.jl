@@ -5,7 +5,7 @@ function modes_naive()
     # these imodes come from naive kernel density analyses of size structure by (in R:):
     # mds = size_distributions(p=p, toget="modal_groups", strata=strata, bw=bw, np=np, ldx=ldx, 
     #    sigdigits=sigdigits, redo=TRUE )
-    fn = projectdir( "outputs", "size_structure",  "modes_summary.rdata" )
+    fn = projectdir( "outputs", "size_structure",  "modes_summary.rdz" )
     mds = load( fn, convert=true)["mds"]
     # limit size range (CW)
     return mds
@@ -264,7 +264,7 @@ end
 
 function size_structured_data(; sigdigits=3 ) 
     # data created in R using : Y = size_distributions( p=p, toget="base_data" ) 
-    fn = projectdir( "outputs", "size_structure",  "base_data_julia.rdata" )
+    fn = projectdir( "outputs", "size_structure",  "base_data_julia.rdz" )
     o = load( fn, convert=true)["out"]
     
     Y  = o["Y"] 
@@ -688,7 +688,7 @@ end
 
 
 function kmm_summary( ; mds=Any[], yrs=1999:2000, sexes=["m", "f"], mats=["i", "m"], 
-    regions="cfaall", toget="saved_results", savedir=tempdir(), modeltype="latent", save_RDS=false )
+    regions="cfaall", toget="saved_results", savedir=tempdir(), modeltype="latent", save_r_data=false )
  
     out = DataFrame()
     fnout_root = "kmm_parameter_summaries"
@@ -757,10 +757,10 @@ function kmm_summary( ; mds=Any[], yrs=1999:2000, sexes=["m", "f"], mats=["i", "
 
         jldsave(fnout; out)
         println( fnout )
-        if save_RDS
+        if save_r_data
             # RCall.@rput out
-            fnR = replace(fnout, "jl2"=>"RDS")
-            cmdR = string( "saveRDS( out, file=", "'$fnR')" )
+            fnR = replace(fnout, "jl2"=>"rdz")
+            cmdR = string( "read_write_fast( out, fn=", "'$fnR')" )
             # RCall.reval(cmdR)
         end
     end

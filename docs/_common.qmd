@@ -55,7 +55,7 @@
 
   objects_to_not_save = ls(all.names = TRUE)
   
-  data_dump_file = file.path( data_loc, "assessments",  year_assessment, "current_results.rdata")
+  data_dump_file = file.path( data_loc, "assessments",  year_assessment, "current_results.rdz")
 
   if (!exists("todo")) todo=""
 
@@ -65,7 +65,7 @@
   }
 
   if (file.exists(data_dump_file))  {
-    load(data_dump_file)
+    out = read_write_fast(data_dump_file)
     # invisible( out ) 
     # invisible( list2env(out), parent.frame()) 
     # invisible( list2env(out) ) 
@@ -83,7 +83,7 @@
 
     objects_to_save = setdiff( ls(all.names = TRUE), objects_to_not_save)
     
-    save( list=objects_to_save, file=data_dump_file  )
+    read_write_fast( data=objects_to_save, fn=data_dump_file  )
 
     message( "File saved at: ", data_dump_file )
   

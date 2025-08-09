@@ -6,7 +6,7 @@ sizestructure_db = function( p=NULL, DS=NULL, datasource="snowcrab",
         if (datasource=="snowcrab") {
             km = NULL
             for (yr in p$yrs) {
-                fn = file.path( rawdatadir, paste("kmm_parameter_summaries_", yr, ".RDS", sep="") )
+                fn = file.path( rawdatadir, paste("kmm_parameter_summaries_", yr, ".rdz", sep="") )
                 if (file.exists(fn)) {
                     km = rbind(km, aegis::read_write_fast(fn) )
                 }
@@ -75,14 +75,14 @@ sizestructure_db = function( p=NULL, DS=NULL, datasource="snowcrab",
     } 
     
     if ( DS=="arealunits") {
-        fn = file.path(p$project.outputdir,  "areal_units_size_structure.RDS")
+        fn = file.path(p$project.outputdir,  "areal_units_size_structure.rdz")
         pg = NULL
         if (!redo) {
-            pg = readRDS( fn )
+            pg = read_write_fast( fn )
             return(pg)
         }
         pg = areal_units( p = p, areal_units_directory=p$project.outputdir )
-        saveRDS( pg, file=fn)
+        read_write_fast( data=pg, fn=fn)
         return(pg)
     }
 
