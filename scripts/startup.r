@@ -12,7 +12,7 @@ fns = c(
   "model_size_data_carstm.R",
   "model_size_presence_absence.R",
   "summarize_observations.R",
-  "individual_sampling_weights.R"
+  "post_stratified_weights.R"
 )
 
 for (fn in fns) source( file.path(project_directory, "R", fn) )

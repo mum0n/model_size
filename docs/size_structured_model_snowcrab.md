@@ -89,11 +89,11 @@ We will address each component below, towards developing a biologically complete
 
 ## 1. A model-based based approach to reduce bias due to non-random sampling
 
-A **size-frequency distribution** of some **system** of interest is usually obtained from the observation of body size measurements (e.g., weight, length, carapace width) at various locations ("space") and times (seasonal, inter-annual). To represent the overall size distribution these observations must be summarized in some manner. If the samples are derived from a truly random sample from such a "space-time-size" domain, then the usual approach of simply aggregating counts by size-intervals is sufficient to obtain a picture of the size frequency distribution. This is because these samples are **representative** and each observation has an equal amount of influence or weight in representing the system; this is usually called "independently and identically distributed"  or *iid* but also called "exchangeability" in that information content from one individual is the same as that of another, under the context of the sampling structure.
+A **size-frequency distribution** of some **system** of interest is usually obtained from the observation of body size measurements (e.g., weight, length, carapace width) at various locations ("space") and times (seasonal, inter-annual). To represent the overall size distribution these observations must be summarized in some manner. If the samples are derived from a truly random sample from a "space-time-size" domain, then the usual approach of simply aggregating counts by size-intervals is sufficient to obtain a picture of the size frequency distribution. This is because these samples are **representative** and each observation has an equal amount of influence or weight in representing the system; this is usually called "independently and identically distributed"  or *iid* but also called "exchangeability" in that information content from one individual is the same as that of another, under the context of the sampling structure.
 
-In dealing with the abundance of organisms across space, time and size, that is, to make them comparable across factors that can bias our estimate of abundance, means that we need to address **habitat** variability issues. By **habitat**, we mean that organisms have metabolic, physiological and behavioural preferences and limits in the environmental and ecosystem conditions they can or cannot inhabit, in the sense of XXXX (19XX). Variations in habitat result in differential growth, reproduction and movement, rendering a naive random sampling assumption, potentially invalid.
+In dealing with the abundance of organisms across space, time and size, that is, to make them comparable across factors that can bias our estimate of abundance, means that we need to address **habitat** variability issues. By **habitat**, we mean that organisms have metabolic, physiological and behavioural preferences and limits in the environmental and ecosystem conditions they can or cannot inhabit, in the sense of XXXX (19XX). Variations in habitat result in differential growth, reproduction and movement, rendering a naive random sampling assumption, potentially invalid. In the epidemiological literature, this has come to be called (Bayesian) "post-stratification" (see [Stan documentation](https://mc-stan.org/docs/stan-users-guide/poststratification.html) and [Wikipedia](https://en.wikipedia.org/wiki/Multilevel_regression_with_poststratification) for further introduction). 
 
-To belabour then point, for example, animals can, due to metabolic constraints and behavioural traits (aggregation/clustering/schooling), demonstrate ontogenetic (size and age-based) shifts in such habitat preferences which ultimately results in observed/sampled data with bias due to certain environments not being observable due to sampling not accounting for this underlying structure that is not random. Further, imperfect sampling methods such as:
+To belabour the point, animals can, due to metabolic constraints and behavioural traits (aggregation/clustering/schooling), demonstrate ontogenetic (size and age-based) shifts in such habitat preferences which ultimately results in observed/sampled data with bias due to certain environments not being observable due to sampling not accounting for this underlying structure that is not random. Further, imperfect sampling methods such as:
 
   - nets not able to access rocky, heterogenous, or deep environments
   - not able to access areas of high currents or rapid changes in bathymetry (cliffs and rocky protuberances)
@@ -107,7 +107,7 @@ The usual recourse is to assume some operationally simplistic **lets-hope-it-is-
 
 Pragmatically, what this means is that observations may not be of exchangeable, that is, they are not of equal importance in describing the system, even if one hopes this to be the case and feel there is no other recourse. For example, if observations occur with more frequently (e.g. flooding of area with warm waters due to larger eddies entering the system for a year or more due to elevated and course grained climate variability and change) in an area that is not representative of the overall system or stratum, then it’s influence would be elevated more than it should be. Similarly, if an observation occurs in an area that is highly representative of the system, then it’s influence should be higher than just a single observation. In other words, simply adding the observations together becomes inappropriate as they are not fully independent samples, across space, nor across time, nor across size (if there are ontogenetic or size-related changes in habitat preferences).
 
-Instead of directly changing the sampling design as new information arises (costly), a model-based (post-hoc) approach to (indirectly and approximately) adjust for additional information is less costly. In the context of individual level information (e.g., body size), one can estimate the relative importance of each observation in representing the overall system and ultimately reduce some of these biases, as much as the data available permits.
+Instead of directly changing the sampling design as new information arises (costly), a model-based (post-hoc, or "post-stratified" estimation) approach to (indirectly and approximately) adjust for additional information is less costly. In the context of individual level information (e.g., body size), one can estimate the relative importance of each observation in representing the overall system and ultimately reduce some of these biases, as much as the data available permits.
 
 <!--
 add to discussion:
@@ -121,11 +121,11 @@ adaptive .. which encourages more data collection of relevant information and in
 
 --> 
 
-In other words, in this **model-based post-stratification** (MBPS) approach we will first estimate a post-stratified importance weight ($W^*$) associated with each individual observation from an individual-based observation model. This importance weight, can then be used to determine relative numbers of each size-stage_location-time group by aggregation **a posteriori**.  
+In other words, in this **model-based post-stratification** (MBPS) approach, we first estimate a post-stratified weight ($\omega_i$) associated with each individual observation ($i$) from an binomial Bernoulli process model. This post-stratified weight, can then be used to determine relative numbers of each size-stage_location-time group by aggregation **a posteriori** with less bias.  
 
-This importance weight ($W^*$) is distinct from the standard survey design-based sampling weight which can be naively determined **a priori** from considerations of swept area and the surface area of the areal strata  for which estimation is being made (if information is available, size selective gear effects and semi-static environmental effects can also be incorporated into the weights). This does not stop researchers from ignoring these sampling effects with the often encountered obfuscation that the data are derived from a "Standard Set/Sample" and so such factors are explicitly ignored (also called: "Hail Mary attempts" in sports). 
+This post-stratified weight ($\omega$) is distinct from the standard survey design-based sampling weight which is determined **a priori**. In our case, that would be from considerations of swept area, subsampling and the surface area of the overall areal strata or spatial domain for which estimation is being made. In some well studied cases, if information is available, size selective gear effects and semi-static environmental effects can also be incorporated into the design weights. However, in general practice, most researchers ignore these sampling effects with the often encountered obfuscation: "the data are derived from a **Standard** set or sample", and variability and bias associated with such factors are abstracted away in some random effect term. In sports, this type approach is also well known as a "Hail Mary attempt". 
  
-Here we explore the use of such a model-based post-stratification approach to derive a less biased estimate of size-structure. The mechanism to do this involves estimating the parameters of an individual level probability model of presence or absence, a binomial Bernoulli process. In our case, this model accounts for space, time, size, sex, maturity, and any other covariates that may be informative and influential in determining an organism's presence or absence (depth, substrate composition, bottom temperatures, species assemblages). Each covariate effect may be discretized, smooth, nonlinear functions or random effects depending upon available computational resources and biological reasonable functional form; and are assumed to be independent. A Generalized Linear binomial regression model is specified as:
+Here we explore the use of such a model-based post-stratification approach to derive a less biased estimate of size-structure. The mechanism to do this involves estimating the parameters of an individual level probability model of presence or absence as a binomial Bernoulli process. In our case, this model accounts for space, time, size, sex, maturity, and any other covariates that may be informative and influential in determining an organism's presence or absence (depth, substrate composition, bottom temperatures, species assemblages). Each covariate effect may be discretized, smooth, nonlinear functions or random effects depending upon available computational resources and biological reasonable grounds for a functional form. A Generalized Linear binomial, "multilevel" regression model is specified as:
 
 $$Y\sim\text{Binomial}(\eta,\theta)$$
 
@@ -151,9 +151,9 @@ $$\begin{align*}
 \end{align*}$$
   
 
-The utility of this simple result is that the ratio of posterior probabilities provides a means of re-scaling the number of observations to an expected number that respects the model-derived estimates of each individual's sampling environment as well as that of the embedding larger areal unit/stratum. In other words, this weight can then be applied directly to each observation to construct a size frequency distribution that respects the joint distribution of all model structure annd parameters! 
+The utility of this simple result is that the ratio of posterior samples of these probabilities provides a means of re-scaling the number of observations to an expected number that respects the model-derived estimates of each individual's sampling environment as well as that of the embedding larger areal unit/stratum while carrying forward the joint error distributions of all factors being considered. In other words, this weight can be used to construct a size frequency distribution that respects the joint distribution of all model structure and parameters! 
 
-In what follows we estimate these weighting factors and apply them to obtain such "model-based" estimates of size structure. The caveat that needs to be emphasized being that a model is never perefect and can always be improved.
+In what follows we estimate these weighting factors and apply them to obtain such "model-based" estimates of size structure. The caveat that needs to be emphasized being that a model is never perfect and can always be improved.
 
 
 
@@ -175,8 +175,7 @@ yrs = year_start:year_assessment
 
 source( file.path( project_directory, "scripts", "startup.r") )
 
-
-
+ 
 # individual level data from snow crab surveys and prediction surface
 # use a log scale for size info .. full range .. it will be reduced to data range in the next step
 # male: 30+ bins seem sufficient to describe the shape (prior to modelling)
@@ -277,14 +276,14 @@ action = "load"
 # action = "redo"
 
 # both sexes are combined here:
-O = individual_sampling_weights( p=p, action=action, nposteriors = 5000 ) 
+O = post_stratified_weights( p=p, action=action, nposteriors = 5000 ) 
 
 
 attr(O[["au_sa_km2"]], "units") = NULL
 class(O[["au_sa_km2"]]) = NULL
 
-hist(O$relative_rate, "fd")
-summary(O$relative_rate)
+hist(O$post_stratified_weight, "fd")
+summary(O$post_stratified_weight)
 plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
   
 cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
@@ -316,7 +315,7 @@ region_sa = switch( region,
   cfa24 = "cfa24_surfacearea"
 )
 
-O$w = O$relative_rate * O[[region_sa]]
+O$w = O$post_stratified_weight * O[[region_sa]]
 
 require(ggpubr)
 
