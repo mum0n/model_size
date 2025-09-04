@@ -65,33 +65,31 @@ To include a common file:
 
 ## Purpose
 
-To develop a size-structured model of snow crab. 
+To develop a size-structured model of snow crab using a matrix model (aka, a Generalized Leslie Matrix model, or also, a Transition Matrix model), except that instead of age as the classifying units, we use a size and stage (sex and maturity). 
 
-To do this requires the development of a Matrix model that is similar to a Leslie Matrix model, except that instead of age as the classifying units, we use a size and stage (sex and maturity). At a minimum, the following are required for such a model requires:
+## Approach
 
-  1. a size-based model to reduce the bias associated with non-random sampling to make observations comparable
+At a minimum, the following information is required for a size-structured matrix model:
 
-  2. identify/classify size modes to estimate cohort size distributions
+  (1) representative size-frequency distributions across space and time
+  (2) size-based understanding/parameterization of: growth, fecundity, survivorship 
+  (3) size-based understanding of fishery removals.
 
-  3. a size-based model of growth in size (carapace width or mass)
-  
-  4. a size-based model of fecundity
-  
-  5. a size-based model of survivorship (independent of fishing)
+With regards to (1) size-frequency distributions, there is an inherent bias (sometimes referred to as **selectivity**) associated with most forms of sampling and this needs to be expressed. However, this bias is not only due to sampling device (mesh size, hook size) but also due to sampling design itself being insufficiently well-informed to ensure completely random sampling, due to primarily to environmental and behavioural variability. The latter can be partially addressed through a model-based, a-posteriori, **Post-Stratification** process. This best-possible representative distribution can then be used to define identify/classify size modes and associated numerical abundance in each mode.
 
-  6. a size-based model of selectivity of survey (observation model) and fishery removals (fishing process model)
+With regards to (2) size-based understanding of life history processes, growth and fecundity are reasonably quickly determined and improved with continued monitoring. Survivorship (the complement of natural mortality) is, however, a challenge to estimate unless a population is at steady-state and so requires experimentation or assumptions to be made.
 
-  7. synthesis through a size-based model (aka, Generalized Leslie, or a **Transition matrix model**)
+With regards to (3) fishery removals, a sampling or monitoring program needs to be in place to estimate the usually size-selective removals or mortalities from the population.
 
-
-We will address each component below, towards developing a biologically complete life history model, useful for estimating life history parameters and understanding the time-dynamics of snow crab.
+Here we will attempt to address each of these components.
 
 
-## 1. A model-based based approach to reduce bias due to non-random sampling
 
-A **size-frequency distribution** of some **system** of interest is usually obtained from the observation of body size measurements (e.g., weight, length, carapace width) at various locations ("space") and times (seasonal, inter-annual). To represent the overall size distribution these observations must be summarized in some manner. If the samples are derived from a truly random sample from a "space-time-size" domain, then the usual approach of simply aggregating counts by size-intervals is sufficient to obtain a picture of the size frequency distribution. This is because these samples are **representative** and each observation has an equal amount of influence or weight in representing the system; this is usually called "independently and identically distributed"  or *iid* but also called "exchangeability" in that information content from one individual is the same as that of another, under the context of the sampling structure.
+## 1. Size-frequency distributions across space and time
 
-In dealing with the abundance of organisms across space, time and size, that is, to make them comparable across factors that can bias our estimate of abundance, means that we need to address **habitat** variability issues. By **habitat**, we mean that organisms have metabolic, physiological and behavioural preferences and limits in the environmental and ecosystem conditions they can or cannot inhabit, in the sense of XXXX (19XX). Variations in habitat result in differential growth, reproduction and movement, rendering a naive random sampling assumption, potentially invalid. In the epidemiological literature, this has come to be called (Bayesian) "post-stratification" (see [Stan documentation](https://mc-stan.org/docs/stan-users-guide/poststratification.html) and [Wikipedia](https://en.wikipedia.org/wiki/Multilevel_regression_with_poststratification) for further introduction). 
+A **size-frequency distribution** of a **system** of interest is usually obtained from the observation of body size measurements (e.g., weight, length, carapace width) at various locations ("space") and times (seasonal, inter-annual). To represent the overall size distribution, these observations must be summarized in some manner. If the samples are derived from a truly random sample of a "space-time-size" domain, then the usual approach of simply aggregating counts by size-intervals is sufficient to obtain a reasonable picture of the size frequency distribution. This is because these samples are **representative** and each individual observation has an equal amount of information in representing the system; that is, they can be considered "exchangeable" (aka, "independently and identically distributed" or *iid*), under the context of the sampling structure/design. Or in other words, each individual observed/measured carries the same **weight** of information.
+
+In dealing with the abundance of organisms pseudo-randomly sampled across space, time and size, this "weight" is not always equal. Swept area can be variable (sampling effort), or environmentally extreme conditions might be encountered. To make them comparable across such factors that can bias our estimate of abundance means that we need to address **habitat** variability issues directly. By **habitat**, we mean that organisms have metabolic, physiological and behavioural preferences and limits in the environmental and ecosystem conditions they can or cannot inhabit, in the sense of Elton (19XX). Variations in habitat result in differential growth, reproduction and movement, rendering a naive random sampling assumption, potentially invalid. 
 
 To belabour the point, animals can, due to metabolic constraints and behavioural traits (aggregation/clustering/schooling), demonstrate ontogenetic (size and age-based) shifts in such habitat preferences which ultimately results in observed/sampled data with bias due to certain environments not being observable due to sampling not accounting for this underlying structure that is not random. Further, imperfect sampling methods such as:
 
@@ -99,20 +97,16 @@ To belabour the point, animals can, due to metabolic constraints and behavioural
   - not able to access areas of high currents or rapid changes in bathymetry (cliffs and rocky protuberances)
   - sampling of one vertical stratum (size of sampling gear) and missing mobile organisms that can escape by swimming over or around the nets or others that can burrow into sediments or shelf beside rocky outcrops below the nets.
   - sampling speed to capture rapidly moving organisms (escapement)
-  - sampling mesh too large to capture small organisms (escapement)
+  - sampling mesh too large to capture small organisms (escapement).
 
-can of course cause additional biases, usually also ignored. 
+Though all these factors can of course cause additional biases, but are usually also ignored (**Lets-hope-it-is-completely-random-stratification** or LHIICRS). In actual practice, especially when little is known of a system, LHIICRS boils down to, **depth-alone-should-be-enough** as it is usually the only reasonably known factor. Thereafter, this stratification seldom changes as any additional strata often becomes exponentially more costly (in terms of needing to justify alterations from "good enough" to incrementally better, re-ananlysis, new survey locations, more data requirements and loss of trust from data end-users/clients/funders that invested in the initial approach). As such, one computes size frequency distributions, treating each observation as IID (that is, fully exchangeable) as no other recourse seems available. Indeed, this LHIICRS approach is the defacto standard in every setting that I have observed. Pragmatically, what this means is that observations may **not** be of exchangeable, that is, each observed individual may not be of equal importance in describing the system. If observations occur with more frequency in an area that is not representative of the overall system or stratum, then it’s influence would be elevated more than it should be and vice versa. For example, the flooding of an area with warm waters due to larger eddies entering the system for a year or more due to elevated and course grained climate variability and change can alter the location and extent of viable habitat and therefore render samples to be nonrandom due to this unaccounted factor in the sampling design. In other words, simply adding the observations together becomes inappropriate if they are not fully independent samples, across space, time, size (if there are ontogenetic or size-related changes in habitat preferences) and any covariates (e.g. bottom temperatures).
 
-The usual recourse is to assume some operationally simplistic **lets-hope-it-is-completely-random-stratification** (LHIICRS) will account for most or all of these above factors. In actual practice, especially when little is known of a system, LHIICRS boils down to, **depth-alone-should-be-enough** as it is usually the only known. Thereafter, this stratification seldom changes as any additional strata often becomes exhorbitantly costly (in terms of needing to justify alterations from "good enough" to incrementally better, re-ananlysis, new survey locations, more data requirements and loss of trust from data end-users/clients/funders that invested in the initial approach). As such, one computes size frequency distributions, treating each observation as IID (that is, fully exchangeable) as no other recourse seems available. Indeed, this LHIICRS approach is the defacto standard in every setting that I have observed. It is generally, also admittedly, nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent preferences, especially in a fluid, multidimensional (space, time, species, covariates) environment such as the ocean. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably at various hierarchical levels by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design.
-
-Pragmatically, what this means is that observations may not be of exchangeable, that is, they are not of equal importance in describing the system, even if one hopes this to be the case and feel there is no other recourse. For example, if observations occur with more frequently (e.g. flooding of area with warm waters due to larger eddies entering the system for a year or more due to elevated and course grained climate variability and change) in an area that is not representative of the overall system or stratum, then it’s influence would be elevated more than it should be. Similarly, if an observation occurs in an area that is highly representative of the system, then it’s influence should be higher than just a single observation. In other words, simply adding the observations together becomes inappropriate as they are not fully independent samples, across space, nor across time, nor across size (if there are ontogenetic or size-related changes in habitat preferences).
-
-Instead of directly changing the sampling design as new information arises (costly), a model-based (post-hoc, or "post-stratified" estimation) approach to (indirectly and approximately) adjust for additional information is less costly. In the context of individual level information (e.g., body size), one can estimate the relative importance of each observation in representing the overall system and ultimately reduce some of these biases, as much as the data available permits.
+It is generally, also admittedly, nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent preferences, especially in a fluid, multidimensional (space, time, species, multiply interacting environmental covariates) environment such as the ocean. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably at various hierarchical levels by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design. In simpler applications such as areal abundance indices, the general solution is to use the (fixed factorial) "year-effect", independent of any covariate effects, if any; that is, where all other covariates are held at the overall mean (random effects) or reference (fixed effect) levels. Taking the abundance as that which would have been observed at an arbitrary reference level of covariates, does not equate to an actual estimate of abundance, but rather a density estimate; the latter only becomes an abundance estimate if the areal expansion is known (implicitly it is usually assumed that the domain has a fixed surface area). In environmentally more heterogenous areas, the later assumption can be inappropriate leading to the requirement of more information about the spatial and temporal bounds of the domain. In epidemiological studies, this latter approach is known as "Post-stratification" and carries with it a greater requirement of information/models of covariate conditions (see e.g., [Stan documentation](https://mc-stan.org/docs/stan-users-guide/poststratification.html) and [Wikipedia](https://en.wikipedia.org/wiki/Multilevel_regression_with_poststratification) for further information). Instead of directly changing the sampling design as new information arises (costly), a model-based (post-hoc, or "post-stratified" estimation) approach to (indirectly and approximately) adjust for additional information is less costly. In the context of individual level information (e.g., body size), one can estimate the relative importance of each observation in representing the overall system and ultimately reduce some of these biases, as much as the data available permits.
 
 <!--
 add to discussion:
 
-This MBPS approach is operationally viable in many long-standing survey/monitoring settings. In operational testing with snow crab surveys in the Maritimes of Canada, it adds a few 10's of hours of computation and with reasonably informative predictive success (pearson correlation > 0.8). The latter can be improved with more complex and fine-tuned modelling and so can be extended to Large-Language Machine Learning approaches.
+This PS approach is operationally viable in many long-standing survey/monitoring settings. In operational testing with snow crab surveys in the Maritimes of Canada, it adds a few 10's of hours of computation and with reasonably informative predictive success (pearson correlation > 0.8). The latter can be improved with more complex and fine-tuned modelling and so can be extended to Large-Language Machine Learning approaches.
 
 
 add to conclusions: 
@@ -121,25 +115,34 @@ adaptive .. which encourages more data collection of relevant information and in
 
 --> 
 
-In other words, in this **model-based post-stratification** (MBPS) approach, we first estimate a post-stratified weight ($\omega_i$) associated with each individual observation ($i$) from an binomial Bernoulli process model. This post-stratified weight, can then be used to determine relative numbers of each size-stage_location-time group by aggregation **a posteriori** with less bias.  
-
-This post-stratified weight ($\omega$) is distinct from the standard survey design-based sampling weight which is determined **a priori**. In our case, that would be from considerations of swept area, subsampling and the surface area of the overall areal strata or spatial domain for which estimation is being made. In some well studied cases, if information is available, size selective gear effects and semi-static environmental effects can also be incorporated into the design weights. However, in general practice, most researchers ignore these sampling effects with the often encountered obfuscation: "the data are derived from a **Standard** set or sample", and variability and bias associated with such factors are abstracted away in some random effect term. In sports, this type approach is also well known as a "Hail Mary attempt". 
+In other words, in this **Post-stratification** (PS) approach, we first estimate a post-stratified weight ($\omega_i$) associated with each individual observation ($i$) from an binomial Bernoulli process model. This post-stratified weight, can then be used to determine relative numbers of each size-stage_location-time group by aggregation **a posteriori** with less bias. This **post-stratified weight** ($\omega$) determined *a posteriori* is distinct from the more commonly encountered **survey design-based sampling weight** which is determined *a priori*. In our case, the latter would be determined from considerations of swept area, subsampling and the surface area of the overall areal strata or spatial domain for which estimation is being made. In some well studied cases, if information is available, size selective gear effects and semi-static environmental effects can also be incorporated into the design weights. However, in general practice, most researchers ignore these sampling effects with the often encountered obfuscation: "the data are derived from a **standard** set or sample", and variability and bias associated with such factors are abstracted away in some random effect term. (In sports, this type approach is also well known as a "Hail Mary attempt".)
  
-Here we explore the use of such a model-based post-stratification approach to derive a less biased estimate of size-structure. The mechanism to do this involves estimating the parameters of an individual level probability model of presence or absence as a binomial Bernoulli process. In our case, this model accounts for space, time, size, sex, maturity, and any other covariates that may be informative and influential in determining an organism's presence or absence (depth, substrate composition, bottom temperatures, species assemblages). Each covariate effect may be discretized, smooth, nonlinear functions or random effects depending upon available computational resources and biological reasonable grounds for a functional form. A Generalized Linear binomial, "multilevel" regression model is specified as:
+Here we explore the use of an *a posterori* model-based post-stratification approach to derive a more precise and accurate estimate of size-structure. The mechanism to do this involves estimating the parameters of an individual level probability model of presence or absence as a binomial Bernoulli process. In our case, this model accounts for space, time, size, sex, maturity, and any other covariates that may be informative and influential in determining an organism's presence or absence (depth, substrate composition, bottom temperatures, species assemblages). Each covariate effect may be discretized, smooth, nonlinear functions or random effects depending upon available computational resources and biological reasonable grounds for a functional form. A Generalized Linear binomial, "multilevel" regression model is specified as:
 
 $$Y\sim\text{Binomial}(\eta,\theta)$$
 
 $$\text{ln}(\theta/(1-\theta)) = \boldsymbol{X}^{T}\boldsymbol{\beta}+\boldsymbol{\epsilon},$$
 
-where $Y$ is the vector of observations, taking values of 0 (absent) or 1 (present), $\eta$ is the number of trials and $\theta$ is the associated (latent) probability of success, $\boldsymbol{X}^{T}$ is the matrix of covariates with associated parameters $\boldsymbol{\beta}$, and $\epsilon$ is the residual random error. The $\text{ln}(\theta/(1-\theta))$ is also  commonly referred to as: $\text{logit}(\theta)$.
+where $Y$ is the vector of observations, taking values of 0 (absent, success) or 1 (present, failure), $\eta$ is the number of trials and $\theta$ is the associated (latent) probability of success, $\boldsymbol{X}^{T}$ is the matrix of covariates with associated parameters $\boldsymbol{\beta}$, and $\epsilon$ is the residual random error. This latter quantity can be expanded to included structured and unstructered random effects. 
+
+The log of the ratio of the probabilities, $\text{ln}(\theta/(1-\theta))$ is also commonly referred to as $logit(\theta)$:
+
+$$\text{logit}(\theta) = \boldsymbol{X}^{T}\boldsymbol{\beta}+\boldsymbol{\epsilon}.$$
   
-The posterior prediction of the probability $\theta_i$ associated with each sampled observation $i$ describes the likely number of successes for a given number of trials. Being a Bernoulli process, $\eta_i=1$ and $\theta_i = N_i / \eta_i = N_i$. The $N_i$ is the effective number that can be expected per unit effort ($1 \; m^2$).
- 
-Similarly, the posterior prediction of the probability $\theta_a$ associated with each sampled areal unit (stratum) $a$ describes the effective number of successes ($N_a$) for a given number of trials ($\eta_a=1*\text{W}_a$), where $W_a$ is the stratum weight (in our case, stratum surface area): 
+The posterior prediction of the probability $\theta_i$ associated with each sampled observation $i$ describes the likely number of successes for a given number of trials. Being a Bernoulli process, the number of trials is $\eta_i=1$. The effective number of successes expected per trial $N_i$ is, therefore:
+
+$$\begin{align*}
+N_i &= \theta_i \cdot \eta_i \\
+&= \theta_i \cdot 1.
+\end{align*}$$
+
+Each such trial is, in our case, is expressed per unit areal density, $1 \; m^2$.
+
+Similarly, the posterior prediction of the probability associated with each sampled areal unit (stratum) $a$ is $\theta_a$ and $N_a$ describes the effective number of successes for a given number of trials, $\eta_a= \text{SA}_a$, the stratum weight (in our case, stratum surface area, in $m^2$): 
 
 $$\begin{align*}
 N_a &= \theta_a \cdot \eta_a \\
-&= \theta_a \cdot \text{W}_a.
+&= \theta_a \cdot \text{SA}_a.
 \end{align*}$$
 
 The effective number of positive individual observations predicted can be rescaled to the expectations at the overall (embedding) areal unit level from their ratios: 
@@ -147,13 +150,13 @@ The effective number of positive individual observations predicted can be rescal
 
 $$\begin{align*}
 \omega_i &= N_a / N_i \\
-&= (\theta_a \cdot \text{W}_a )/ \theta_i .
+&= (\theta_a \cdot \text{SA}_a )/ (\theta_i \cdot 1).
 \end{align*}$$
-  
 
-The utility of this simple result is that the ratio of posterior samples of these probabilities provides a means of re-scaling the number of observations to an expected number that respects the model-derived estimates of each individual's sampling environment as well as that of the embedding larger areal unit/stratum while carrying forward the joint error distributions of all factors being considered. In other words, this weight can be used to construct a size frequency distribution that respects the joint distribution of all model structure and parameters! 
 
-In what follows we estimate these weighting factors and apply them to obtain such "model-based" estimates of size structure. The caveat that needs to be emphasized being that a model is never perfect and can always be improved.
+The utility of this simple result is that the ratio of posterior samples of these probabilities provides a means of re-scaling the number of successful observations to an expected number that respects the model-derived estimates of each individual's sampling environment as well as those of the larger, embedding areal unit/stratum, while simultaneously, carrying forward the joint error distributions of all factors being considered. In other words, this weight can be used to construct a size frequency distribution that respects the joint distribution of all modelled parameters! 
+
+In the next section, we estimate these weighting factors and apply them to obtain such "model-based" estimates of size structure. The caveat that needs to be emphasized being that a model is never perfect and can always be iteratively improved with the addition of more informative covariates and better functional model forms.
 
 
 
@@ -164,6 +167,7 @@ In what follows we estimate these weighting factors and apply them to obtain suc
 #| label: setup-R-environment
 
 # homedir="C:/home/jae/"  # on MSwindows
+# .bio
 
 project_name = "model_size"
 project_directory = file.path( homedir, "projects", project_name )
@@ -172,30 +176,99 @@ year_start = 1999
 year_assessment = 2024
 yrs = year_start:year_assessment
 
-
 source( file.path( project_directory, "scripts", "startup.r") )
 
- 
-# individual level data from snow crab surveys and prediction surface
-# use a log scale for size info .. full range .. it will be reduced to data range in the next step
-# male: 30+ bins seem sufficient to describe the shape (prior to modelling)
-# female: 30+ bins seem sufficient to describe the shape
- 
-model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data")  )  
+
+
+# define size spans (range in CW and number of discretizations) 
+# they will be log transformed internally
 
 
 
-for (sexid in c("female", "male")) {
+p$cw_increment = 2  $ in CW (mm)
+# p$cw_increment = 5  $ in CW (mm)
 
-    # or choose and load
-    # sexid = "female"
-    # sexid = "male"
+p$span = function( bioclass  ) {
+  out = switch(bioclass,
+    male   = c( 5,  155),
+    m.imm  = c( 5,  135),
+    m.mat  = c( 49, 155),
+    female = c( 5,   95),
+    f.imm  = c( 5,   80),
+    f.mat  = c( 35,  95)
+  )
+  ninc = diff(out) / p$cw_increment
+  out = c(out, ninc)
+  return(out)
+}
 
-    p$selection$biologicals_using_snowcrab_filter_class = sexid
-    p$carstm_model_label = sexid
+
+
+```
+
+Next we obtain the individual level data of size measurements from surveys and create the prediction surface. We use a logarithmic scale for size to describe the overall shape of the distribution.
+
+The statistical model (a "mixed" effects GLM) with a fixed component that is simple the intercept:
+
+$$\boldsymbol{X}^{T}\boldsymbol{\beta} = \text{constant intercept},$$
+
+and a structured random component $F(\cdot)$:
+
+$$\boldsymbol{\epsilon} = F( \text{size}, \text{temperature}, \text{depth}, \text{substrate gain size}\\ 
+\text{space}, \text{year}, \text{season}, \text{space x year} ).$$
+  
+where each random spatial component is following a CAR structure, random time component is following an AR1 structure, and other covariates are following RW2 structure. Simpler or more complex forms can be used. This represents a reasonable balance between computational complexity/interpretability/information availablity vs computational time/and model stabilty. 
+
+
+```{r size-data-model}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: size-data-model
+
+
+# prepare the data
+for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
+    
+    print(bioclass)
+    p$bioclass = bioclass
+    model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data")  )  
+
+}
+
+
+
+# model formula: 
+
+p$formula = as.formula( paste(
+' pa ~ 1 ',
+    ' + offset( data_offset ) ', 
+    ' + f( inla.group( cwd, method="quantile", n=13 ), model="rw2", scale.model=TRUE) ', 
+    ' + f( inla.group( cwd2, method="quantile", n=13 ), model="rw2", scale.model=TRUE, group=space2, control.group=list(model="besag", hyper=H$besag, graph=slot(sppoly, "nb") ) ) ',    
+    ' + f( time, model="ar1",  hyper=H$ar1 ) ',
+    ' + f( cyclic, model="ar1", hyper=H$ar1 )',
+    ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
+    ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="ar1", hyper=H$ar1_group)) '
+) )
+
+# alternative:
+#    ' + f( space2, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, 
+#    group=inla.group( cwd2, method="quantile", n=13 ), hyper=H$besag, control.group=list(model="rw2", hyper=H$rw2)) ', 
+
+
+
+# separate models by sex
+for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
+
+    p$bioclass = bioclass
 
     if (0) {
-      M = model_size_data_carstm( p=p, sexid=sexid )  
+      M = model_size_data_carstm( p=p )  
       
       hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
       
@@ -217,87 +290,130 @@ for (sexid in c("female", "male")) {
       rm(M); gc()
     }
     
-    
-    fit = model_size_presence_absence( 
-      sexid=sexid,
-      span=p$span(sexid), 
-      modeldir=p$modeldir, 
-      formula=p$formula,  
-      action="redo" 
+    # speed up with better starting conditions
+    theta0 = switch( p$bioclass,
+      f.imm = c(10.1157, -1.7419, 0.8820, 0.8551, 1.9417, 0.0706, 2.0576, 0.5363, -2.5326, 1.5444, 1.4648, -2.3909, 3.4197, -1.5862, -0.1608, 0.7488),
+      f.mat = c(10.0577, 0.2279, -0.1139, 1.3084, 0.8944, 0.0033, 1.3080, -3.1339, -5.9222, 0.7116, 1.8178, -3.3071, 3.0842, -2.4832, -0.5938, 1.2477), 
+      m.imm = c(),
+      m.mat = c(),
+      NULL
     )
 
-    summary(fit)
-    print(fit$model$theta)
-    theta0 = unname( fit$model$theta )
+    if (is.null(theta0)) {
+      theta0 = c(10.1157, -1.7419, 0.8820, 0.8551, 1.9417, 0.0706, 2.0576, 0.5363, -2.5326, 1.5444, 1.4648, -2.3909, 3.4197, -1.5862, -0.1608, 0.7488)
+    }
+
+    fit = model_size_presence_absence( p=p, toget="redo", theta0=theta0 )
+
+    if (0) {
+      summary(fit) 
+
+      # compare to data to predictions
+      M = model_size_data_carstm( p=p )  
+
+      cor( M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
+
+      # posterior predictive check
+      carstm_posterior_predictive_check(p=p, M=M[ , ]  )
+
+      # EXAMINE POSTERIORS AND PRIORS
+      res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
+    }
     
-
-    M = model_size_data_carstm( p=p, sexid=sexid )  
-
-    cor( M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
-
+    fit = NULL; gc()
 }
 
 
-    if (0){ 
+```
 
-male 15 and group mat:
+The predictive fits of the above are shown below:
 
-cor=0.736
+#### All Male 
+
+    predictive pearson cor=0.736
+    
+    Deviance Information Criterion (DIC) ...............: 598682.31
+    Deviance Information Criterion (DIC, saturated) ....: 597509.46
+    Effective number of parameters .....................: 7526.35
+    
+    Watanabe-Akaike information criterion (WAIC) ...: 599435.29
+    Effective number of parameters .................: 8142.80
+
+    Marginal log-Likelihood:  -3e+05
+
+
+#### All Female          
+
+    predictive pearson cor = 0.761
+
+    Deviance Information Criterion (DIC) ...............: 422159.70
+    Deviance Information Criterion (DIC, saturated) ....: 421128.08
+    Effective number of parameters .....................: 7331.66
+
+    Watanabe-Akaike information criterion (WAIC) ...: 421987.76
+    Effective number of parameters .................: 7002.57
+
+    Marginal log-Likelihood:  -209789.41
  
-Deviance Information Criterion (DIC) ...............: 598682.31
-Deviance Information Criterion (DIC, saturated) ....: 597509.46
-Effective number of parameters .....................: 7526.35
 
-Watanabe-Akaike information criterion (WAIC) ...: 599435.29
-Effective number of parameters .................: 8142.80
+---
 
-Marginal log-Likelihood:  -3e+05
+Now we load the results and extract the probabilities and compute the post-stratification ratios from joint posterior samples (to retain the overall distribution). However, as the application of areal unit surface areas depends upon the sub-domain being analysed, it's computation is deferred to a later stage and instead the ratio of probabilities is first created as it is compuationally demanding (joint posterior sampling) and potentialy large outputs:
 
+$$ \theta_{a/i} = \theta_a / \theta_i .$$
 
-         
-cor = 0.761
-
-Deviance Information Criterion (DIC) ...............: 422159.70
-Deviance Information Criterion (DIC, saturated) ....: 421128.08
-Effective number of parameters .....................: 7331.66
-
-Watanabe-Akaike information criterion (WAIC) ...: 421987.76
-Effective number of parameters .................: 7002.57
-
-Marginal log-Likelihood:  -209789.41
- 
-
-    }
-
-# fit = NULL; gc()
+Note the number of posteriors required (5000 is a safe number) -- reduce number of cores first before reducing number of posteriors if you run out of RAM.
 
 
-action = "load"
-# action = "redo"
+```{r post-stratification-ratios}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: post-stratification-ratios
 
-# both sexes are combined here:
-O = post_stratified_weights( p=p, action=action, nposteriors = 5000 ) 
+
+# careful: nposteriors=5000, nc.cores=4 required about 210 GB RAM in 2025, mc.cores=1 safest still requires ~ 125 GB (default)
+
+for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
+  p$bioclass = bioclass
+  O = post_stratified_weights( p=p, toget="redo" ) 
+}
 
 
-attr(O[["au_sa_km2"]], "units") = NULL
-class(O[["au_sa_km2"]]) = NULL
-
-hist(O$post_stratified_weight, "fd")
-summary(O$post_stratified_weight)
+hist(O$post_stratified_ratio, "fd") 
+summary(O$post_stratified_ratio)
 plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
   
 cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
 
+```
+
+---  
+
+The "post_stratified_ratio" created above does not include the surface area associated with the sub-domain of interest (predicted areal unit $W_a$). Depending upon the sub-domain, these values can be fractional/partial and so are computed once it is specificied as:
+
+$$ \omega_i = \theta_{a/i} \cdot \text{W}_a,$$
 
 
-sexid="female"
-sexid="male"
+```{r post-stratification-weights}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: post-stratification-weights
 
-yrp = "2024"
-yrp = "2023"
-yrp = "2022"
-yrp = "2019"
+# choose the combinations of interest
 
+
+
+# choose:
+bioclass = c("f.imm", "f.mat", "m.imm", "m.mat")[1]
+
+p$bioclass = bioclass
+
+O = post_stratified_weights( p=p, action="load" ) 
+
+
+# variable name containing sa estimates for the sub-domain of interest
 region = "cfaall"
 region = "cfanorth"
 region = "cfasouth"
@@ -306,34 +422,47 @@ region = "cfa23"
 region = "cfa24"
 
 
-region_sa = switch( region,
-  cfaall = "au_sa_km2",
-  cfanorth = "cfanorth_surfacearea",
-  cfasouth = "cfasouth_surfacearea",
-  cfa4x = "cfa4x_surfacearea",
-  cfa23 = "cfa23_surfacearea",
-  cfa24 = "cfa24_surfacearea"
-)
 
-O$w = O$post_stratified_weight * O[[region_sa]]
+pg = surface_area_estimates(p, pg=areal_units(p=p), region=region ) # see names(pg)
+pg = pg[ O[,AUID], on="AUID" ] # bring in SA in correct sequence
+
+# finally, this is the post-stratified weight $\omega_i$ for sub-domain of focus
+O$post_stratified_weight = O$post_stratified_ratio * pg$SA  
+
+
+if (0) {
+  # to recompute directly (without reloading ): 
+  post_stratified_weight_samples = attr(O, "samples")[] * pg$SA
+}
+
+# check some histograms
+yrp = "2024"
+#yrp = "2023"
+#yrp = "2022"
+#yrp = "2019"
+
 
 require(ggpubr)
 
-# note: w > 0 filters out other regions
+# note: post_stratified_weight > 0 filters out other regions 
+# this is ok for histograms .. but zeros need to be retained for some computations ...
  
-p1 = ggplot(O[w>0 & year==yrp  & sex==sexid ,], aes( log(cw) ) ) + 
-  geom_histogram( bins = p$span(sexid)[3], color="darkgray" ) +
+p1 = ggplot(O[post_stratified_weight>0 & year==yrp ,], aes( log(cw), group= mat, fill=mat ) ) + 
+  geom_histogram( bins = p$span(bioclass)[3] ) +
+  scale_y_continuous(trans = "log10") + 
   theme(axis.title.x=element_blank(),
     axis.text.x=element_blank(),
     axis.ticks.x=element_blank())
   
-p2 = ggplot(O[w>0 & year==yrp  & sex==sexid ,], aes( log(cw), weight=w ) ) + 
-  geom_histogram( bins = p$span(sexid)[3], color="darkgray" )  
+p2 = ggplot(O[post_stratified_weight>0 & year==yrp ,], aes( log(cw), group = mat, fill=mat, weight=post_stratified_weight ) ) + 
+  geom_histogram( bins = p$span(bioclass)[3] )  +
+  scale_y_continuous(trans = "log10")
+
 
 dev.new()
 labels = paste( 
   c("Unweighted:", "  Weighted:" ),
-  paste( sexid, region, yrp, sep="-")
+  paste( bioclass, region, yrp, sep="-")
 ) 
 ggarrange( p1, p2, nrow=2, labels=labels, align = "v", font.label=list(size=10) )
  
@@ -359,15 +488,9 @@ ggarrange( p1, p2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
 
 
 
-# posterior predictive check
-carstm_posterior_predictive_check(p=p, M=M[ , ]  )
-
-# EXAMINE POSTERIORS AND PRIORS
-res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
 
 
-
-outputdir = file.path(p$modeldir, sexid)
+outputdir = file.path(p$modeldir, bioclass)
 
 res_vars = c( names( res$hypers), names(res$fixed) )
 for (i in 1:length(res_vars) ) {
@@ -416,7 +539,7 @@ fn_root_prefix = "Predicted_presence_absence"
 fn_root = "habitat"
 # title= paste( snowcrab_filter_class, "Probability")  
 
-outputdir = file.path( p$modeldir, sexid, "figures" )
+outputdir = file.path( p$modeldir, bioclass, "figures" )
 if ( !file.exists(outputdir)) dir.create( outputdir, recursive=TRUE, showWarnings=FALSE )
 
 # plots with 95% PI
@@ -552,11 +675,7 @@ project_directory = file.path( homedir, "projects", project_name )
 year_start = 1999
 year_assessment = 2024
 yrs = year_start:year_assessment
-
-# choose one:
-sexid="male"
-sexid="female"
-
+ 
 carstm_model_label =  paste( "default", "fb", sep="_" )  # default for fb (fishable biomass)
 
 selection = list()
@@ -1627,7 +1746,7 @@ of each datum to a cluster i
 standard normal distributions as priors for \\mu and a Dirichlet distribution
 with parameters \\alpha_i as prior for w
 
-$$ \\begin{aligned} \\mu_k &\\sim \\mathcal{N}(0, 1) \\qquad (k = 1,\\ldots,K)
+$$\\begin{aligned} \\mu_k &\\sim \\mathcal{N}(0, 1) \\qquad (k = 1,\\ldots,K)
 \\ w &\\sim \\operatorname{Dirichlet}(\\alpha_1, \\ldots, \\alpha_K)
 \\end{aligned}
 
@@ -1636,7 +1755,7 @@ $$ \\begin{aligned} \\mu_k &\\sim \\mathcal{N}(0, 1) \\qquad (k = 1,\\ldots,K)
 z_i \\sim \\operatorname{Categorical}(w) \\qquad (i = 1,\\ldots,N), \\
 
 {} \\ x_i \\sim \\mathcal{N}([\\mu_{z_i}, \\mu_{z_i}]^\\mathsf{T}, I) \\qquad
-(i=1,\\ldots,N). $$
+(i=1,\\ldots,N).$$
 
 
 From simple kernel density representations of size frequency at small area unit

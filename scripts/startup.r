@@ -1,21 +1,15 @@
  
 # startup R environment for model_size 
 
-source( file.path( project_directory, "R", "loadfunctions.r") )
-
-loadfunctions( "aegis")
-loadfunctions( "bio.snowcrab")
 
 # main functions
-fns = c(
-  "sizestructure_db.R",
-  "model_size_data_carstm.R",
-  "model_size_presence_absence.R",
-  "summarize_observations.R",
-  "post_stratified_weights.R"
-)
+fns = list.files( path=project_directory, pattern="*.R$", full.names=T, recursive=T, ignore.case=T, include.dirs=F )
+fns = fns[-which( grepl( "startup.r", fns )) ]
+for (fn in fns) source( fn)
 
-for (fn in fns) source( file.path(project_directory, "R", fn) )
+# source( file.path( project_directory, "R", "loadfunctions.r") )
+loadfunctions( "aegis")
+loadfunctions( "bio.snowcrab")
 
 
 # require(bio.snowcrab)
@@ -71,31 +65,3 @@ p$prediction_ts = sort( tout$yr + tout$dyear  ) # mid-points
 
 p = temporal_parameters(p=p, dimensionality="space-time-cyclic", timezone="America/Halifax")
  
-
-# note ranges in CW will be log transformed later
-p$span = function( sexid) {
-  switch(sexid,
-    male   = c( 5, 155, 40),
-    female = c( 5, 95,  40)
-  )
-}
-
-
-p$formula = as.formula( paste(
-' pa ~ 1 ',
-    ' + offset( data_offset ) + mat ', 
-    ' + f( inla.group( cwd, method="quantile", n=13 ), model="rw2", scale.model=TRUE) ', 
-    ' + f( inla.group( cwd2, method="quantile", n=13 ), model="rw2", scale.model=TRUE, group=mat_group, hyper=H$rw2, control.group=list(model="iid", hyper=H$iid)) ', 
-    ' + f( time, model="ar1",  hyper=H$ar1 ) ',
-    ' + f( cyclic, model="ar1", hyper=H$ar1 )',
-    # ' + f( cyclic, model="seasonal", scale.model=TRUE, season.length=12, hyper=H$iid  )',
-    ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
-    ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="ar1", hyper=H$ar1_group)) '
-    # ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="iid", hyper=H$iid)) '
-) )
