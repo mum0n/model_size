@@ -8,13 +8,14 @@ model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") {
   p$carstm_model_label = p$bioclass
 
   span = p$span(p$bioclass)
+  vnsp = paste0( span, collapse="_")
 
   fn = file.path( 
-    p$project.outputdir, 
-    paste( "size_distributions_tabulated_data_zeros_", p$bioclass, "_", paste0( span, collapse="_"), ".rdz", sep="" )  
+    p$modeldir, 
+    p$bioclass,
+    paste( "size_distributions_tabulated_data_zeros_", vnsp, ".rdz", sep="" )  
   )
-
-
+ 
   Z = NULL 
   if ( ! "size_data" %in% redo ) {
     if (file.exists(fn)) {

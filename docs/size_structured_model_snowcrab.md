@@ -197,7 +197,7 @@ p$span = function( bioclass  ) {
     f.imm  = c( 5,   80),
     f.mat  = c( 35,  95)
   )
-  ninc = diff(out) / p$cw_increment
+  ninc = floor( diff(out) / p$cw_increment )
   out = c(out, ninc)
   return(out)
 }
@@ -220,23 +220,15 @@ $$\boldsymbol{\epsilon} = F( \text{size}, \text{temperature}, \text{depth}, \tex
 where each random spatial component is following a CAR structure, random time component is following an AR1 structure, and other covariates are following RW2 structure. Simpler or more complex forms can be used. This represents a reasonable balance between computational complexity/interpretability/information availablity vs computational time/and model stabilty. 
 
 
+
+
+
 ```{r size-data-model}
 #| eval: true
 #| output: false
 #| echo: false
 #| label: size-data-model
-
-
-# prepare the data
-for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
-    
-    print(bioclass)
-    p$bioclass = bioclass
-    model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data")  )  
-
-}
-
-
+ 
 
 # model formula: 
 
@@ -265,7 +257,12 @@ p$formula = as.formula( paste(
 # separate models by sex
 for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 
+    print(bioclass)
     p$bioclass = bioclass
+
+    # prepare the data
+    model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data")  )  
+ 
 
     if (0) {
       M = model_size_data_carstm( p=p )  
@@ -290,14 +287,15 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
       rm(M); gc()
     }
     
-    # speed up with better starting conditions
+   # speed up with better starting conditions
     theta0 = switch( p$bioclass,
       f.imm = c(10.1157, -1.7419, 0.8820, 0.8551, 1.9417, 0.0706, 2.0576, 0.5363, -2.5326, 1.5444, 1.4648, -2.3909, 3.4197, -1.5862, -0.1608, 0.7488),
-      f.mat = c(10.0577, 0.2279, -0.1139, 1.3084, 0.8944, 0.0033, 1.3080, -3.1339, -5.9222, 0.7116, 1.8178, -3.3071, 3.0842, -2.4832, -0.5938, 1.2477), 
-      m.imm = c(),
-      m.mat = c(),
+      f.mat = c(10.0577, 0.2279, -0.1139, 1.3084, 0.8944, 0.0033, 1.3080, -3.1339, -5.9222, 0.7116, 1.8178, -3.3071, 3.0842, -2.4832, -0.5938, 1.2477),
+      m.imm = c(10.0275, -2.5942, 1.1871, 1.6330, 2.0316, 0.0594, 2.2017, -1.2330, -1.3596, 2.5600, 2.6474, -1.9312, 3.6121, -1.1474, -0.6843, 0.8106),
+      m.mat = c(9.9187, 0.7537, 1.4333, 2.1819, 1.5773, 0.0154, 2.4820, 0.2890, 2.6447, 3.6614, 4.9175, -1.9391, 4.4982, -0.5345, 0.0749, 1.0442),
       NULL
     )
+
 
     if (is.null(theta0)) {
       theta0 = c(10.1157, -1.7419, 0.8820, 0.8551, 1.9417, 0.0706, 2.0576, 0.5363, -2.5326, 1.5444, 1.4648, -2.3909, 3.4197, -1.5862, -0.1608, 0.7488)
