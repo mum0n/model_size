@@ -1,31 +1,22 @@
 
-model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") { 
- 
- 
-  if (is.null(p$bioclass)) stop("bioclass needs to be defined in p")
-
-  p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
-  p$carstm_model_label = p$bioclass
-
-  span = p$span(p$bioclass)
-  vnsp = paste0( span, collapse="_")
+model_size_data_carstm = function(p, redo=c("") ) { 
 
   fn = file.path( 
-    p$modeldir, 
-    p$bioclass,
-    paste( "size_distributions_tabulated_data_zeros_", vnsp, ".rdz", sep="" )  
+    p$modeldir,  
+    paste( "size_distributions_tabulated_data_zeros.rdz", sep="" )  
   )
- 
+
   Z = NULL 
   if ( ! "size_data" %in% redo ) {
     if (file.exists(fn)) {
       Z = read_write_fast( fn )
-      if (tokeep=="necessary") {
-        i = which(Z$tag == "observations")
-        Z[ , uid := do.call(paste, .SD), .SDcols = c("AUID", "year", "cyclic", "cwd", "mat")]
-        tokeep = unique( Z[i,uid])
-        Z = Z[ uid %in% tokeep ,]
-      }
+      Z[ , uid := do.call(paste, .SD), .SDcols = c("AUID", "year", "cyclic", "cwd", "mat", "sex")]
+
+      i = filter.class( Z, p$selection$biologicals_using_snowcrab_filter_class )
+
+      kuid = unique( Z[i,uid])
+      Z = Z[ uid %in% kuid ,]
+
       return(Z)
     } 
   }
@@ -42,6 +33,11 @@ model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") {
    # choose one:
 
   ### -------->>>  check cyclic matches dyear dyri
+ 
+  # if (is.null(p$bioclass)) stop("bioclass needs to be defined in p")
+
+  p$selection$biologicals_using_snowcrab_filter_class = "all"
+  p$carstm_model_label = "all"
  
   # set level data from snow crab surveys 
   sppoly=areal_units( p=p )
@@ -71,7 +67,7 @@ model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") {
   isc = NULL
 
   if (exists("selection", p)) {
-    if (exists("biologicals", p$selection)) {  # filter biologicals
+    if (exists("biologicals", p$selection)) {  # filter biologicals on size
       isc = filter_data( detcm, p$selection$biologicals )
       if (length(isc) > 0) detcm = detcm[isc,]
       isc = NULL
@@ -97,23 +93,28 @@ model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") {
 
   # --- NOTE det was not always determined and so totals from det mass != totals from cat nor set for all years
   # cf_det is the weight to make it sum up to the correct total catch (vs any subsamples) and tow length, etc
-  
+
+  detcm$sex = as.character( detcm$sex )
+  detcm$mat = as.character( detcm$mat )
+
   detcm = detcm[ sex %in% c("0", "1") , ]  
   detcm = detcm[ mat %in% c("0", "1") , ]
   detcm$cw = detcm$len * 10  # mm -> cm
   detcm$logcw = log(detcm$cw)
 
-  detcm = detcm[, .(sid, mat, cw, logcw, mass, cf_det_no)]  # mass in kg
+  detcm = detcm[, .(sid, sex, mat, cw, logcw, mass, cf_det_no)]  # mass in kg
 
   # trim a few strange data points
-  o = lm( log(mass) ~ logcw , detcm)
+  o = lm( log(mass) ~ mat + sex + logcw:mat + logcw:sex , detcm)
   todrop = which(abs(o$residuals) > 0.5)
   if (length(todrop)>0) detcm = detcm[-todrop,]
 
   # internally on log 
-  lspan = span
-  lspan[1]  = log(span[1]) 
-  lspan[2]  = log(span[2]) 
+  lspan = p$span("all")
+  lspan[1]  = log(lspan[1]) 
+  lspan[2]  = log(lspan[2]) 
+
+  lbrks = discretize_data(span=lspan)
 
   todrop = detcm[ logcw < lspan[1], which=TRUE ] 
   if (length(todrop)>0) detcm = detcm[-todrop,]
@@ -123,43 +124,43 @@ model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") {
   
   # additional QA/QC 
 
-  if (p$bioclass %in% c("female", "f.imm", "f.mat" )) {
+  #if (p$bioclass %in% c("female", "f.imm", "f.mat" )) {
 
-    todrop = detcm[ logcw > log(80) & mat=="0", which=TRUE ] 
+    todrop = detcm[ logcw > log(80) & sex=="1" & mat=="0", which=TRUE ] 
     if (length(todrop)>0) detcm = detcm[-todrop,]
 
-    todrop = detcm[ logcw < log(35) & mat=="1", which=TRUE ] 
+    todrop = detcm[ logcw < log(35) & sex=="1" & mat=="1", which=TRUE ] 
     if (length(todrop)>0) detcm = detcm[-todrop,]
   
-  }
+  # }
 
-  if (p$bioclass %in% c("male", "m.imm", "m.mat" )) {
+  #if (p$bioclass %in% c("male", "m.imm", "m.mat" )) {
 
-    todrop = detcm[ logcw > log(135) & mat=="0", which=TRUE ] 
+    todrop = detcm[ logcw > log(135) & sex=="0" & mat=="0", which=TRUE ] 
     if (length(todrop)>0) detcm = detcm[-todrop,]
 
-    todrop = detcm[ logcw < log(49) & mat=="1", which=TRUE ] 
+    todrop = detcm[ logcw < log(49) & sex=="0" & mat=="1", which=TRUE ] 
     if (length(todrop)>0) detcm = detcm[-todrop,]
 
-  }
+  #}
 
-  detcm$cwd = discretize_data( detcm$logcw, span=lspan  )  # this will truncate sizes
+  detcm$cwd = discretize_data( detcm$logcw, brks=lbrks  )  # this will truncate sizes
 
   detcm = detcm[ is.finite(cwd) ,]
   detcm$N = 1
-  mats = unique(detcm$mat)
-
+  
   # length(unique(det$sid)) # 8258
 
   Z = setcm[ detcm, on=.(sid)] # 569657
-  Z$zid = paste( Z$sid, Z$mat, Z$cwd, sep="_" )
+  Z$zid = paste( Z$sid, Z$sex, Z$mat, Z$cwd, sep="_" )
 
   # zeros at sampling locations: 
   #   .. CJ required to get zero counts dim(N) # 1237368 
   #   .. this is an approximationas the number of zeros are also controlled by size resoltuion/span
   Z0 = CJ( 
+    sex=c("0", "1"), 
     mat=c("0", "1"), 
-    cwd = discretize_data(span=lspan),  # midpoints
+    cwd = lbrks,  # midpoints
     sid=setcm$sid, 
     unique=TRUE 
   )
@@ -174,15 +175,15 @@ model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") {
   Z0$data_offset = NULL
 
   Z0 = setcm[ Z0, on=.( sid ) ]  # n=2690336
-  Z0$zid = paste( Z0$sid, Z0$mat, Z0$cwd, sep="_" )
+  Z0$zid = paste( Z0$sid, Z0$sex, Z0$mat, Z0$cwd, sep="_" )
 
   withdata = unique(Z$zid)
   toremove = unique(Z0[ zid %in% withdata, which=TRUE])
-  Z0 = Z0[-toremove, ]  
+  if (length(toremove) > 0) Z0 = Z0[-toremove, ]  
 
   Z = rbind(Z, Z0) # 1683904
   # length(unique(Z$sid)) # 9374
-  # sum(Z$N, na.rm=T) # n=539181
+  # sum(Z$N, na.rm=T) # n=541445
   Z$zid = NULL
   Z0 = NULL 
   gc()
@@ -194,8 +195,9 @@ model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") {
 
   # to capture zeros 
   P0 = CJ( 
-    mat=mats, 
-    cwd=discretize_data( span=lspan ), 
+    sex=c("0", "1"), 
+    mat=c("0", "1"), 
+    cwd=lbrks, 
     pid=pred$pid, 
     mass=NA,
     N =NA,
@@ -215,31 +217,31 @@ model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") {
 
   # a final round of data trimming based upon size, sex, maturity and time of year
 
-  if (p$bioclass %in% c("female", "f.imm", "f.mat" )) {
+  #if (p$bioclass %in% c("female", "f.imm", "f.mat" )) {
       
-    todrop = Z[ logcw > log(95), which=TRUE ] 
+    todrop = Z[ sex=="1" & logcw > log(95), which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
 
-    # todrop = Z[ logcw > log(80) & mat=="0", which=TRUE ] 
+    # todrop = Z[ sex=="1" & logcw > log(80) & mat=="0", which=TRUE ] 
     # if (length(todrop)>0) Z = Z[-todrop,]
 
-    # todrop = Z[ logcw < log(35) & mat=="1", which=TRUE ] 
+    # todrop = Z[ sex=="1" & logcw < log(35) & mat=="1", which=TRUE ] 
     # if (length(todrop)>0) Z = Z[-todrop,]
   
-  }
+  #}
 
 
-  if (p$bioclass %in% c("male", "m.imm", "m.mat" )) {
+  #if (p$bioclass %in% c("male", "m.imm", "m.mat" )) {
 
-    todrop = Z[ logcw > log(155), which=TRUE ] 
+    todrop = Z[ sex=="1" & logcw > log(155), which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
 
-    # todrop = Z[ logcw > log(135) & mat=="0", which=TRUE ] 
+    # todrop = Z[ sex=="1" & logcw > log(135) & mat=="0", which=TRUE ] 
     # if (length(todrop)>0) Z = Z[-todrop,]
 
-    # todrop = Z[ logcw < log(49) & mat=="1", which=TRUE ] 
+    # todrop = Z[ sex=="1" &  logcw < log(49) & mat=="1", which=TRUE ] 
     # if (length(todrop)>0) Z = Z[-todrop,]
-  }
+  #}
   
   # match prediction range to observation range for season (cyclic)
   data_dyears = range(Z[tag=="observations", "cyclic"] ) 
@@ -259,22 +261,16 @@ model_size_data_carstm = function(p, redo=c(""), tokeep="necessary") {
   # override -- "pa" was from set level determination, here we are using individual-level bernoulli 0/1 process
   setnames(Z, "pa", "pa_set")
   setnames(Z, "N",  "pa")  
-
-  Z$mat =  as.numeric(as.character(Z$mat))
-  Z$mat_group = Z$mat  # copy needed for INLA (to use a a group)
-
+ 
   Z$cwd2 = Z$cwd
   Z$time_cw = Z$time
-
-
-  attr(Z, "bioclass") = p$bioclass
-  attr(Z, "span") = span  
+ 
+  attr(Z, "brks") = lbrks  
   attr(Z, "data_dyears") = data_dyears
   attr(Z, "yrs") = p$yrs
   attr(Z, "sppoly") = sppoly
   
   read_write_fast( data=Z, fn=fn )  # save full prediction surface .. subset on return (above)
-
 
   return("complete")
 }

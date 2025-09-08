@@ -1,10 +1,10 @@
 
 
-model_size_presence_absence = function( p, theta0=NULL, toget="load", 
-    num.threads="4:3", improve.fit=FALSE) {
+model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads="4:3", improve.fit=FALSE) {
     
     span = p$span(p$bioclass)
-
+    p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
+   
     fn = file.path(  
         p$modeldir, 
         p$bioclass,
@@ -13,7 +13,7 @@ model_size_presence_absence = function( p, theta0=NULL, toget="load",
     
 
     fit = NULL
-    if (toget != "redo" ) {
+    if ( "load" %in% todo ) {
         if (file.exists(fn)){
             message( "Loading model fit: ", fn)
             fit = read_write_fast(fn)

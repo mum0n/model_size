@@ -183,25 +183,27 @@ source( file.path( project_directory, "scripts", "startup.r") )
 # define size spans (range in CW and number of discretizations) 
 # they will be log transformed internally
 
-
-
-p$cw_increment = 2  $ in CW (mm)
-# p$cw_increment = 5  $ in CW (mm)
-
-p$span = function( bioclass  ) {
+ 
+p$span = function( bioclass ) {
   out = switch(bioclass,
+    all    = c( 5,  155),
     male   = c( 5,  155),
+    female = c( 5,   95),
     m.imm  = c( 5,  135),
     m.mat  = c( 49, 155),
-    female = c( 5,   95),
     f.imm  = c( 5,   80),
     f.mat  = c( 35,  95)
   )
-  ninc = floor( diff(out) / p$cw_increment )
+  ninc = floor( diff(out) / 2 )  # 2 mm
   out = c(out, ninc)
   return(out)
 }
 
+
+# prepare the data (if updating)
+redo = NULL
+# redo=c("carstm_inputs", "size_data")  
+model_size_data_carstm( p=p, redo=redo )  
 
 
 ```
@@ -259,10 +261,7 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 
     print(bioclass)
     p$bioclass = bioclass
-
-    # prepare the data
-    model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data")  )  
- 
+    p$selection$biologicals_using_snowcrab_filter_class = bioclass
 
     if (0) {
       M = model_size_data_carstm( p=p )  
@@ -289,10 +288,10 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
     
    # speed up with better starting conditions
     theta0 = switch( p$bioclass,
-      f.imm = c(10.1157, -1.7419, 0.8820, 0.8551, 1.9417, 0.0706, 2.0576, 0.5363, -2.5326, 1.5444, 1.4648, -2.3909, 3.4197, -1.5862, -0.1608, 0.7488),
-      f.mat = c(10.0577, 0.2279, -0.1139, 1.3084, 0.8944, 0.0033, 1.3080, -3.1339, -5.9222, 0.7116, 1.8178, -3.3071, 3.0842, -2.4832, -0.5938, 1.2477),
-      m.imm = c(10.0275, -2.5942, 1.1871, 1.6330, 2.0316, 0.0594, 2.2017, -1.2330, -1.3596, 2.5600, 2.6474, -1.9312, 3.6121, -1.1474, -0.6843, 0.8106),
-      m.mat = c(9.9187, 0.7537, 1.4333, 2.1819, 1.5773, 0.0154, 2.4820, 0.2890, 2.6447, 3.6614, 4.9175, -1.9391, 4.4982, -0.5345, 0.0749, 1.0442),
+      f.imm = c(10.0208,-2.4584,0.9774,0.8450,1.9358,0.1376,1.7901,-0.0870,-2.1267,1.4520,1.0538,-2.0687,3.3265,-1.5244,-0.1440,0.7397),
+      f.mat = c(9.9748,-0.5948,-0.0956,1.2622,0.8602,0.0001,-0.8875,-3.0676,-5.3936,0.4585,1.4723,-3.2699,2.7978,-2.4611,-0.5764,1.2460),
+      m.imm = c(9.9540,-2.6541,1.3395,1.9641,2.0462,0.1415,1.7869,-1.6138,-0.0264,1.6437,2.8025,-1.8812,3.7143,-1.0463,-0.7415,0.8390),
+      m.mat = c(9.8576,0.3833,1.5937,2.1923,1.5543,0.0403,2.7064,-0.1513,2.6987,3.7366,5.2900,-1.8202,4.4892,-0.3920,0.0911,1.0583),
       NULL
     )
 
@@ -301,7 +300,7 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
       theta0 = c(10.1157, -1.7419, 0.8820, 0.8551, 1.9417, 0.0706, 2.0576, 0.5363, -2.5326, 1.5444, 1.4648, -2.3909, 3.4197, -1.5862, -0.1608, 0.7488)
     }
 
-    fit = model_size_presence_absence( p=p, toget="redo", theta0=theta0 )
+    fit = model_size_presence_absence( p=p, todo="redo", theta0=theta0 )
 
     if (0) {
       summary(fit) 
@@ -326,7 +325,7 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 
 The predictive fits of the above are shown below:
 
-#### All Male 
+#### Male 
 
     predictive pearson cor=0.736
     
@@ -340,7 +339,7 @@ The predictive fits of the above are shown below:
     Marginal log-Likelihood:  -3e+05
 
 
-#### All Female          
+#### Female          
 
     predictive pearson cor = 0.761
 
@@ -356,9 +355,10 @@ The predictive fits of the above are shown below:
 
 ---
 
-Now we load the results and extract the probabilities and compute the post-stratification ratios from joint posterior samples (to retain the overall distribution). However, as the application of areal unit surface areas depends upon the sub-domain being analysed, it's computation is deferred to a later stage and instead the ratio of probabilities is first created as it is compuationally demanding (joint posterior sampling) and potentialy large outputs:
+ 
 
-$$ \theta_{a/i} = \theta_a / \theta_i .$$
+Now we load the results and extract the probabilities $\theta$ and the samples of post-stratification weights $\omega_i$ from joint posteriors. However, as the application of areal unit surface areas depends upon the sub-domain being analysed, it's final computation is deferred to a later stage and instead the ratio of probabilities $ \theta_{a/i} = \theta_a / \theta_i$ is first created as it is compuationally demanding (joint posterior sampling) and potentialy large outputs. 
+
 
 Note the number of posteriors required (5000 is a safe number) -- reduce number of cores first before reducing number of posteriors if you run out of RAM.
 
@@ -374,7 +374,7 @@ Note the number of posteriors required (5000 is a safe number) -- reduce number 
 
 for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
   p$bioclass = bioclass
-  O = post_stratified_weights( p=p, toget="redo" ) 
+  post_stratified_weights( p=p, toget="redo" ) 
 }
 
 
@@ -388,9 +388,9 @@ cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs")
 
 ---  
 
-The "post_stratified_ratio" created above does not include the surface area associated with the sub-domain of interest (predicted areal unit $W_a$). Depending upon the sub-domain, these values can be fractional/partial and so are computed once it is specificied as:
+The "post_stratified_ratio" created above does not include the surface area associated with the sub-domain of interest (predicted areal unit $\text{SA}_a$). Depending upon the sub-domain, these values can be fractional/partial and so are computed once it is specificied as:
 
-$$ \omega_i = \theta_{a/i} \cdot \text{W}_a,$$
+$$ \omega_i = \theta_{a/i} \cdot $\text{SA}_a,$$
 
 
 ```{r post-stratification-weights}
@@ -548,11 +548,33 @@ carstm_plot_marginaleffects( p, outputdir, fn_root )
 
 Bottom line: reasonable success in estimating individual survey/design weights.  And operationally viable (<1 day of computation).
  
+
+### Correcting for size bias/selectivity
+
+The application of the above post-stratified weights provides a distribution that scales observations of individuals to observed environmental conditions. However, bias associated with size (sampling gear "selectivity", and even design induced bias) is still present in the distribution. In fishery applications this bias is usually estimated in a process-based dynamical model as a residual nuisance factor or estimated **a priori** via experimentation and then deterministically use to correct size-distributions. 
+
+An alternative is to see the size-related effects in the above model as a size-based probability of relative "observability" of individuals; that is, the marginal effect of size on the Benoulli binomial model of presence and absence provides a parameterization of size-bias. Removing size-related effects from the probabilities associated with individuals  will therefore result in probability estimates that reduces size-related sampling/design bias. We do this by removing the random effects associated with size in the posterior samples, done in the next step.
+
+
+
+```{r post-stratification-removing-size-bias}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: post-stratification-removing-size-bias
+ 
+for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
+  p$bioclass = bioclass
+  post_stratified_weights( p=p, toget="size_effect_removed" ) 
+}
  
 
+```
 
 
 ## 2. Inference of modal sizes 
+
+
 
 For each sex, instar, maturity group, identify modal size. This is done with **Kernel Mixture Models (KMMs)** which can decompose the size structure at the level of each observation event. The modes and distributional parameters of the kernel mixture model are then modelled in space and time using a statistical spatio-temporal model. These are then reconstituted in the sampling domain to provide a model-based (weighted) size structure, that accounts for these biases as much as possible through the use of environmental covariates as well as spatial and spatiotemporal random effects to absorb the unmeasured biases.
 

@@ -1,5 +1,5 @@
 
-post_stratified_weights = function(p, toget="load", nposteriors=5000, mc.cores=1 ) {
+post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 ) {
  
     span = p$span(p$bioclass)
 
@@ -7,12 +7,15 @@ post_stratified_weights = function(p, toget="load", nposteriors=5000, mc.cores=1
 
     vns = paste("post_stratified_weights_samples", "_", paste0(span, collapse="_"), ".rdz", sep="") 
  
+    vnsb = paste("post_stratified_weights_samples_bias_adjusted", "_", paste0(span, collapse="_"), ".rdz", sep="") 
+ 
     fnout = file.path( p$modeldir, p$bioclass, vn ) 
     fnout_samples = file.path( p$modeldir, p$bioclass, vns ) 
-    
+    fnout_samples_bias = file.path( p$modeldir, p$bioclass, vnsb )
+
     O = NULL
 
-    if (toget == "load" ){
+    if ( "load" %in% todo ){
         message( "\nLoading from file: ", fnout)
         if (file.exists(fnout)) {
             O = read_write_fast(fnout)
@@ -22,7 +25,7 @@ post_stratified_weights = function(p, toget="load", nposteriors=5000, mc.cores=1
         }
     }
 
-    if (toget == "samples" ){
+    if ( "samples" %in% todo ){
         message( "\nLoading samples from file: ", fnout_samples)
         if (file.exists(fnout_samples)) {
             O = read_write_fast(fnout_samples)
@@ -31,6 +34,17 @@ post_stratified_weights = function(p, toget="load", nposteriors=5000, mc.cores=1
             }
         }
     }
+
+    if ( "bias_adjusted" %in% todo ){
+        message( "\nLoading samples from file: ", fnout_samples_bias)
+        if (file.exists(fnout_samples_bias)) {
+            O = read_write_fast(fnout_samples_bias)
+            if (!is.null(O)) {
+                return(O)
+            }
+        }
+    }
+
 
     message( "\nCreating post-stratification weights for: ", p$bioclass)
 
@@ -44,7 +58,7 @@ post_stratified_weights = function(p, toget="load", nposteriors=5000, mc.cores=1
     P = M[ipreds, ] # predictions (at areal units, a)
     M = NULL; gc()
 
-    fit = model_size_presence_absence( p=p, toget="load" ) 
+    fit = model_size_presence_absence( p=p, todo="load" ) 
 
     # fetch direct predictions of mean, sd
     O$individual_prob_mean = fit$summary.fitted.values[["mean"]][iobs]
@@ -65,19 +79,6 @@ post_stratified_weights = function(p, toget="load", nposteriors=5000, mc.cores=1
     fit = NULL; gc()
 
     message( "\nPost-processing/reformatting/merging")
-
-    for (z in c("tag", "start", "length") ) assign(z, attributes(S)[[".contents"]][[z]] )  # index info 
-
-    fkk = inla_get_indices("Predictor", tag=tag, start=start, len=length, model="direct_match")
-    fkk = unlist(fkk)
-    ndat = length(fkk)
-
-    Osamples = array(NA, dim=c( ndat,  nposteriors ) )
-    for (i in 1:nposteriors) {
-        # note: "S$latent" is on INLA's internal scale (logit) and needs to be back-transformed
-        Osamples[,i] = inverse.logit( S[[i]]$latent[fkk,] )
-    }
-    S = fkk = NULL ;  gc()
 
     # observations (i) and point estimates
     O = O[, .(
@@ -114,23 +115,56 @@ post_stratified_weights = function(p, toget="load", nposteriors=5000, mc.cores=1
 
     read_write_fast( O, fn=fnout )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
+    O = NULL
+    gc()
 
-    # these are the joint posterior samples of the above
-    # saved as an attribute ... note it had the same order as "O"
+    message( "\nPosterior samples")
 
-    O = Osamples[ipreds[ip],] / Osamples[iobs,] # same order as O, samples of the ratio of probabilities (a/i)
-    
-    ipreds = iobs = ip = Osamples = NULL; gc()
-    
-    attr(O, "bioclass" ) = p$bioclass
-    attr(O, "span" ) = p$span(p$bioclass)
-    attr(O, "formula" ) = p$formula 
+    for (z in c("tag", "start", "length") ) assign(z, attributes(S)[[".contents"]][[z]] )  # index info 
+
+    fkk = inla_get_indices("Predictor", tag=tag, start=start, len=length, model="direct_match")
+    fkk = unlist(fkk)
+    ndat = length(fkk)
+    Osamples = array(NA, dim=c( ndat,  nposteriors ) )
+    for (i in 1:nposteriors) {
+        Osamples[,i] =  S[[i]]$latent[fkk,] 
+    }
+   
+    Osamples = inverse.logit( Osamples[ipreds[ip],] ) / inverse.logit(Osamples[iobs,]) # same order as O, samples of the ratio of probabilities (a/i)
+ 
+    attr(Osamples, "bioclass" ) = p$bioclass
+    attr(Osamples, "span" ) = p$span(p$bioclass)
+    attr(Osamples, "formula" ) = p$formula 
 
     message( "\nSaving", fnout_samples )
 
-    read_write_fast( O, fn=fnout_samples )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+    read_write_fast( Osamples, fn=fnout_samples )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
-    return(O)
+    Osamples = NULL; gc()
+    
+    fss = inla_get_indices("inla.group(cwd, method = \"quantile\", n = 13)", tag=tag, start=start, len=length, model="direct_match")
+    fss = unlist(fss)
+    nobs = length(fss)
+    Osamples_bias = array(NA, dim=c( nobs,  nposteriors ) )
+     
+    for (i in 1:nposteriors) {
+        Osamples_bias[,i] = S[[i]]$latent[fss,] 
+    }
+    
+    Osamples_bias = inverse.logit(Osamples_bias )
+    
+    S = fss = NULL ;  gc()
+ 
+    attr(Osamples_bias, "bioclass" ) = p$bioclass
+    attr(Osamples_bias, "span" ) = p$span(p$bioclass)
+    attr(Osamples_bias, "formula" ) = p$formula 
+
+    message( "\nSaving", fnout_samples_bias )
+
+    read_write_fast( Osamples_bias, fn=fnout_samples_bias )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+
+
+    return(fnout)
 
 }
 
