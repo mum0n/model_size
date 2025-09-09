@@ -1,14 +1,13 @@
 
 
 model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads="4:3", improve.fit=FALSE) {
-    
-    span = p$span(p$bioclass)
+     
     p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
    
     fn = file.path(  
         p$modeldir, 
         p$bioclass,
-        paste("fit_", p$bioclass, "_", paste0(span, collapse="_"), ".rdz", sep="") 
+        paste("fit_", p$bioclass, ".rdz", sep="") 
     )
     
 
@@ -24,11 +23,7 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
     message( "Creating model fit: ", fn)
          
     M = model_size_data_carstm( p=p )  
-    
-    # additional copies
-    M$space2 = M$space
-    M$cwd2 = M$cwd
-
+   
     # summary on link scale
     MS = summarize_observations(
         obs = M[tag=="observations", pa ],

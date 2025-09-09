@@ -203,7 +203,7 @@ p$span = function( bioclass ) {
 # prepare the data (if updating)
 redo = NULL
 # redo=c("carstm_inputs", "size_data")  
-model_size_data_carstm( p=p, redo=redo )  
+model_size_data_carstm( p=p, redo=redo )  # needs 100GB to complete
 
 
 ```
@@ -261,7 +261,7 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 
     print(bioclass)
     p$bioclass = bioclass
-    p$selection$biologicals_using_snowcrab_filter_class = bioclass
+    
 
     if (0) {
       M = model_size_data_carstm( p=p )  

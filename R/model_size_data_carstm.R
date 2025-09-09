@@ -10,13 +10,43 @@ model_size_data_carstm = function(p, redo=c("") ) {
   if ( ! "size_data" %in% redo ) {
     if (file.exists(fn)) {
       Z = read_write_fast( fn )
-      Z[ , uid := do.call(paste, .SD), .SDcols = c("AUID", "year", "cyclic", "cwd", "mat", "sex")]
 
       i = filter.class( Z, p$selection$biologicals_using_snowcrab_filter_class )
+      Z = Z[i, ]
 
-      kuid = unique( Z[i,uid])
-      Z = Z[ uid %in% kuid ,]
+      key_vars = c("AUID", "year", "cyclic", "cwd", "mat", "sex" )
+      
+      tokeep = c(
+        key_vars,
+        "sid", "dyri", "dyear", "tag", "data_offset", 
+        "z", "substrate.grainsize", "t", "pca1", "pca2",
+        "space", "time", "cwd"
+      )
+      
+      Z = Z[,..tokeep]
 
+      # redundant:
+      # Z[ , uid := do.call(paste, .SD), .SDcols = key_vars ]  
+
+      # kuid = unique( Z[, uid])
+      # Z = Z[ uid %in% kuid ,]
+      
+      Z$uid = NULL
+      Z$mat = NULL
+      Z$sex = NULL
+
+      # additional copies of data for INLA, refer to model formula
+      Z$space2 = Z$space
+      Z$cwd2 = Z$cwd
+      Z$space_time = Z$space
+      
+      Z$time_space = Z$time
+      # Z$time_cw = Z$time
+    
+      # Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
+
+      Z$cwd2 = Z$cw
+      
       return(Z)
     } 
   }
@@ -62,9 +92,17 @@ model_size_data_carstm = function(p, redo=c("") ) {
   setnames(detcm, "id", "sid") 
   setnames(detcm, "id2", "did") 
 
+  # dim(setcm) [1] 9374   38
+  # dim(detcm) [1] 3452897      19
+
   isc = which( detcm$sid %in% unique( setcm$sid) )
   detcm = detcm[ isc, ]
   isc = NULL
+
+  # dim(detcm) [1] 543396     19
+  # table(detcm$data.source)
+  # groundfish   snowcrab 
+  # 2669078      579052 
 
   if (exists("selection", p)) {
     if (exists("biologicals", p$selection)) {  # filter biologicals on size
@@ -122,6 +160,8 @@ model_size_data_carstm = function(p, redo=c("") ) {
   todrop = detcm[ logcw > lspan[2], which=TRUE ] 
   if (length(todrop)>0) detcm = detcm[-todrop,]
   
+  # dim(detcm) 541530      7
+
   # additional QA/QC 
 
   #if (p$bioclass %in% c("female", "f.imm", "f.mat" )) {
@@ -149,14 +189,14 @@ model_size_data_carstm = function(p, redo=c("") ) {
   detcm = detcm[ is.finite(cwd) ,]
   detcm$N = 1
   
-  # length(unique(det$sid)) # 8258
+  # length(unique(detcm$sid)) # 7861
 
-  Z = setcm[ detcm, on=.(sid)] # 569657
+  Z = setcm[ detcm, on=.(sid)] # 541445
   Z$zid = paste( Z$sid, Z$sex, Z$mat, Z$cwd, sep="_" )
 
-  # zeros at sampling locations: 
-  #   .. CJ required to get zero counts dim(N) # 1237368 
-  #   .. this is an approximationas the number of zeros are also controlled by size resoltuion/span
+  # recover zero counts at sampling locations with no observations: 
+  #   .. CJ required to get zero counts dim(N) # 2812200 
+  #   .. this is an approximation as the number of zeros are also controlled by size resoltuion/span
   Z0 = CJ( 
     sex=c("0", "1"), 
     mat=c("0", "1"), 
@@ -169,12 +209,14 @@ model_size_data_carstm = function(p, redo=c("") ) {
   Z0$cw = exp(Z0$logcw)  #  midpoint on original scale ... and a dummy to allow merges with observations
   Z0$N = 0
 
+  # dim(Z0) # 2 812 200
+
   Z0 = setcm[,.(sid, data_offset)][ Z0, on=.(sid)] 
   
   Z0$cf_det_no = 1 / Z0$data_offset  # this is actual cf_set_no ... as no is 0, assume set swept area as multiplier
   Z0$data_offset = NULL
 
-  Z0 = setcm[ Z0, on=.( sid ) ]  # n=2690336
+  Z0 = setcm[ Z0, on=.( sid ) ]  # n=2812200
   Z0$zid = paste( Z0$sid, Z0$sex, Z0$mat, Z0$cwd, sep="_" )
 
   withdata = unique(Z$zid)
@@ -215,32 +257,33 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
   Z = rbind(Z, pred[, ..Zvn ])
 
-  # a final round of data trimming based upon size, sex, maturity and time of year
+  # a final round of data trimming based upon size, sex, maturity 
+  # as cw range is overly inclusive (permissible size ranges)
 
-  #if (p$bioclass %in% c("female", "f.imm", "f.mat" )) {
+  # if (p$bioclass %in% c("female", "f.imm", "f.mat" )) {
       
     todrop = Z[ sex=="1" & logcw > log(95), which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
 
-    # todrop = Z[ sex=="1" & logcw > log(80) & mat=="0", which=TRUE ] 
-    # if (length(todrop)>0) Z = Z[-todrop,]
+    todrop = Z[ sex=="1" & logcw > log(80) & mat=="0", which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
 
-    # todrop = Z[ sex=="1" & logcw < log(35) & mat=="1", which=TRUE ] 
-    # if (length(todrop)>0) Z = Z[-todrop,]
+    todrop = Z[ sex=="1" & logcw < log(35) & mat=="1", which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
   
   #}
 
 
   #if (p$bioclass %in% c("male", "m.imm", "m.mat" )) {
 
-    todrop = Z[ sex=="1" & logcw > log(155), which=TRUE ] 
+    todrop = Z[ sex=="0" & logcw > log(155), which=TRUE ] 
     if (length(todrop)>0) Z = Z[-todrop,]
 
-    # todrop = Z[ sex=="1" & logcw > log(135) & mat=="0", which=TRUE ] 
-    # if (length(todrop)>0) Z = Z[-todrop,]
+    todrop = Z[ sex=="0" & logcw > log(135) & mat=="0", which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
 
-    # todrop = Z[ sex=="1" &  logcw < log(49) & mat=="1", which=TRUE ] 
-    # if (length(todrop)>0) Z = Z[-todrop,]
+    todrop = Z[ sex=="0" &  logcw < log(49) & mat=="1", which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
   #}
   
   # match prediction range to observation range for season (cyclic)
@@ -249,22 +292,36 @@ model_size_data_carstm = function(p, redo=c("") ) {
   # if (length(todrop)>0) Z = Z[-todrop,]
 
   Z$cyclic = match( Z$dyri, p$cyclic_levels ) 
-  Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
-
-
   Z$year = as.factor(Z$year)
   Z$region = as.factor(Z$region)
   Z$cwd = as.numeric(as.character(Z$cwd))
   
   Z$data_offset = 1/Z$cf_det_no
+  
 
   # override -- "pa" was from set level determination, here we are using individual-level bernoulli 0/1 process
   setnames(Z, "pa", "pa_set")
   setnames(Z, "N",  "pa")  
- 
-  Z$cwd2 = Z$cwd
-  Z$time_cw = Z$time
- 
+  
+  # reduce file size .. most of these are unused or can be recovered from data
+  Z$cf_det_no = NULL
+  Z$cyclic_space  = NULL
+  Z$space_time = NULL
+  Z$space_cyclic = NULL
+  Z$log.substrate.grainsize = NULL
+  Z$sal = NULL
+  Z$oxyml=NULL
+  Z$oxysat = NULL
+  Z$mr = NULL
+  Z$smr = NULL
+  Z$yr = NULL
+  Z$residual = NULL
+  Z$mass_allspecies = NULL
+  Z$len_allspecies = NULL
+  Z$Ea = NULL
+  Z$A = NULL
+  Z$Pr.Reaction = NULL
+
   attr(Z, "brks") = lbrks  
   attr(Z, "data_dyears") = data_dyears
   attr(Z, "yrs") = p$yrs
