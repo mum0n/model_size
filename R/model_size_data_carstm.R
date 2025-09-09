@@ -20,8 +20,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
       
       tokeep = c(
         key_vars,
-        "pa",
-        "sid", "dyri", "dyear", "tag", "data_offset", 
+        "pa", "sid", "dyri", "dyear", "tag", "data_offset", 
         "z", "substrate.grainsize", "t", "pca1", "pca2",
         "space", "time"
       )
@@ -41,11 +40,12 @@ model_size_data_carstm = function(p, redo=c("") ) {
       # additional copies of data for INLA, refer to model formula
       Z$space2 = Z$space
       Z$cwd2 = Z$cwd
+
       Z$space_time = Z$space
-      
       Z$time_space = Z$time
+
       # Z$time_cw = Z$time
-    
+
       # Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
 
       Z$cwd2 = Z$cw
