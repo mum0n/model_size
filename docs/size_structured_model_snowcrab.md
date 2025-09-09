@@ -359,6 +359,7 @@ The predictive fits of the above are shown below:
 
 Now we load the results and extract the probabilities $\theta$ and the samples of post-stratification weights $\omega_i$ from joint posteriors. However, as the application of areal unit surface areas depends upon the sub-domain being analysed, it's final computation is deferred to a later stage and instead the ratio of probabilities $ \theta_{a/i} = \theta_a / \theta_i$ is first created as it is compuationally demanding (joint posterior sampling) and potentialy large outputs. 
 
+At the same time, extract the posterior samples of size selectivity for futher bias-adjustments downstream.
 
 Note the number of posteriors required (5000 is a safe number) -- reduce number of cores first before reducing number of posteriors if you run out of RAM.
 

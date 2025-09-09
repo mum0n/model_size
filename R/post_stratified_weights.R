@@ -1,17 +1,9 @@
 
 post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 ) {
  
-    span = p$span(p$bioclass)
-
-    vn = paste("post_stratified_weights", "_", paste0(span, collapse="_"), ".rdz", sep="") 
-
-    vns = paste("post_stratified_weights_samples", "_", paste0(span, collapse="_"), ".rdz", sep="") 
- 
-    vnsb = paste("post_stratified_weights_samples_bias_adjusted", "_", paste0(span, collapse="_"), ".rdz", sep="") 
- 
-    fnout = file.path( p$modeldir, p$bioclass, vn ) 
-    fnout_samples = file.path( p$modeldir, p$bioclass, vns ) 
-    fnout_samples_bias = file.path( p$modeldir, p$bioclass, vnsb )
+    fnout = file.path( p$modeldir, p$bioclass, "post_stratified_weights.rdz" ) 
+    fnout_samples = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples.rdz" ) 
+    fnout_samples_bias = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples_bias_adjusted.rdz" )
 
     O = NULL
 
@@ -108,7 +100,6 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     O$post_stratified_ratio = O$auid_prob_mean / O$individual_prob_mean   
 
     attr(O, "bioclass" ) = p$bioclass
-    attr(O, "span" ) = p$span(p$bioclass)
     attr(O, "formula" ) = p$formula 
 
     message( "\nSaving", fnout )
@@ -133,7 +124,6 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     Osamples = inverse.logit( Osamples[ipreds[ip],] ) / inverse.logit(Osamples[iobs,]) # same order as O, samples of the ratio of probabilities (a/i)
  
     attr(Osamples, "bioclass" ) = p$bioclass
-    attr(Osamples, "span" ) = p$span(p$bioclass)
     attr(Osamples, "formula" ) = p$formula 
 
     message( "\nSaving", fnout_samples )
@@ -156,7 +146,6 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     S = fss = NULL ;  gc()
  
     attr(Osamples_bias, "bioclass" ) = p$bioclass
-    attr(Osamples_bias, "span" ) = p$span(p$bioclass)
     attr(Osamples_bias, "formula" ) = p$formula 
 
     message( "\nSaving", fnout_samples_bias )

@@ -49,8 +49,11 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
         num.threads=num.threads
     )
 
-    if (improve.fit) fit = inla.hyperpar( fit, verbose=TRUE, restart=TRUE )  #  dz = 0.75, diff.logdens = 15,
-    
+    if (improve.fit) {
+        message( "Improving model fit: ", fn)
+        fit = inla.hyperpar( fit, verbose=TRUE, restart=TRUE )  #  dz = 0.75, diff.logdens = 15,
+    }
+
     fit$modelinfo = list(
         bioclass = p$bioclass, 
         H = H,
@@ -59,6 +62,7 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
         fn = fn
     )
     
+    message( "Saving model fit: ", fn)
     read_write_fast( data=fit, fn=fn )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
     return(fit)

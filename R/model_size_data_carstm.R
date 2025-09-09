@@ -1,6 +1,8 @@
 
 model_size_data_carstm = function(p, redo=c("") ) { 
 
+  # p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
+
   fn = file.path( 
     p$modeldir,  
     paste( "size_distributions_tabulated_data_zeros.rdz", sep="" )  
@@ -11,16 +13,17 @@ model_size_data_carstm = function(p, redo=c("") ) {
     if (file.exists(fn)) {
       Z = read_write_fast( fn )
 
-      i = filter.class( Z, p$selection$biologicals_using_snowcrab_filter_class )
+      i = filter.class( Z, p$bioclass )
       Z = Z[i, ]
 
       key_vars = c("AUID", "year", "cyclic", "cwd", "mat", "sex" )
       
       tokeep = c(
         key_vars,
+        "pa",
         "sid", "dyri", "dyear", "tag", "data_offset", 
         "z", "substrate.grainsize", "t", "pca1", "pca2",
-        "space", "time", "cwd"
+        "space", "time"
       )
       
       Z = Z[,..tokeep]
@@ -30,8 +33,8 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
       # kuid = unique( Z[, uid])
       # Z = Z[ uid %in% kuid ,]
+      # Z$uid = NULL
       
-      Z$uid = NULL
       Z$mat = NULL
       Z$sex = NULL
 
@@ -95,14 +98,15 @@ model_size_data_carstm = function(p, redo=c("") ) {
   # dim(setcm) [1] 9374   38
   # dim(detcm) [1] 3452897      19
 
+  # table(detcm$data.source)
+  # groundfish   snowcrab 
+  # 2669078      579052 
+
   isc = which( detcm$sid %in% unique( setcm$sid) )
   detcm = detcm[ isc, ]
   isc = NULL
 
-  # dim(detcm) [1] 543396     19
-  # table(detcm$data.source)
-  # groundfish   snowcrab 
-  # 2669078      579052 
+  # dim(detcm)  # [1] 543396     19
 
   if (exists("selection", p)) {
     if (exists("biologicals", p$selection)) {  # filter biologicals on size
@@ -135,12 +139,19 @@ model_size_data_carstm = function(p, redo=c("") ) {
   detcm$sex = as.character( detcm$sex )
   detcm$mat = as.character( detcm$mat )
 
+  # table(detcm$sex, detcm$mat)
+  #        sex 0  sex 1
+  # mat 0 240393 104653
+  # mat 1  98691  97800
+
   detcm = detcm[ sex %in% c("0", "1") , ]  
   detcm = detcm[ mat %in% c("0", "1") , ]
   detcm$cw = detcm$len * 10  # mm -> cm
   detcm$logcw = log(detcm$cw)
 
   detcm = detcm[, .(sid, sex, mat, cw, logcw, mass, cf_det_no)]  # mass in kg
+
+  # dim(detcm) # [1] 541537      7
 
   # trim a few strange data points
   o = lm( log(mass) ~ mat + sex + logcw:mat + logcw:sex , detcm)
@@ -184,7 +195,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
   #}
 
-  detcm$cwd = discretize_data( detcm$logcw, brks=lbrks  )  # this will truncate sizes
+  detcm$cwd = discretize_data( detcm$logcw, span=lspan  )  # this will truncate sizes
 
   detcm = detcm[ is.finite(cwd) ,]
   detcm$N = 1
@@ -230,7 +241,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
   Z0 = NULL 
   gc()
 
-  Z = Z[ year %in%  p$yrs, ] # n=494 541
+  Z = Z[ year %in%  p$yrs, ] # n=3189976
   
   # prediction surface
   pred$pid = paste( pred$AUID, pred$year, pred$dyri, sep="_")
@@ -256,6 +267,8 @@ model_size_data_carstm = function(p, redo=c("") ) {
   Zvn = names(Z)
 
   Z = rbind(Z, pred[, ..Zvn ])
+
+# dim(Z) # [1] 75 917 176       46
 
   # a final round of data trimming based upon size, sex, maturity 
   # as cw range is overly inclusive (permissible size ranges)
@@ -327,6 +340,18 @@ model_size_data_carstm = function(p, redo=c("") ) {
   attr(Z, "yrs") = p$yrs
   attr(Z, "sppoly") = sppoly
   
+  # dim(Z) # 45701417       30
+  # table(Z[tag=="observations", .(sex, mat) ] )  # includes zeros
+  #            mat
+  # sex      0      1
+  #   0 845639 294837
+  #   1 637057 287564
+
+  # table(detcm$sex, detcm$mat)  # excluding zeros
+  #        sex 0  sex 1
+  # mat 0 240393 104653
+  # mat 1  98691  97800
+
   read_write_fast( data=Z, fn=fn )  # save full prediction surface .. subset on return (above)
 
   return("complete")
