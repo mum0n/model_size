@@ -190,11 +190,11 @@ p$span = function( bioclass ) {
     male   = c( 5,  155),
     female = c( 5,   95),
     m.imm  = c( 5,  135),
-    m.mat  = c( 49, 155),
+    m.mat  = c( 50, 155),
     f.imm  = c( 5,   80),
     f.mat  = c( 35,  95)
   )
-  ninc = floor( diff(out) / 2 )  # 2 mm
+  ninc = floor( diff(out) / 5 )  # 5 mm
   out = c(out, ninc)
   return(out)
 }

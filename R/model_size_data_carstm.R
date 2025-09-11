@@ -22,7 +22,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
         key_vars,
         "pa", "sid", "dyri", "dyear", "tag", "data_offset", 
         "z", "substrate.grainsize", "t", "pca1", "pca2",
-        "space", "time"
+        "space", "time", "cw"
       )
       
       Z = Z[,..tokeep]
@@ -34,8 +34,8 @@ model_size_data_carstm = function(p, redo=c("") ) {
       # Z = Z[ uid %in% kuid ,]
       # Z$uid = NULL
       
-      Z$mat = NULL
-      Z$sex = NULL
+      # Z$mat = NULL
+      # Z$sex = NULL
 
       # additional copies of data for INLA, refer to model formula
       Z$space2 = Z$space
