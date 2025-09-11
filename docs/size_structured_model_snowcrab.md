@@ -211,7 +211,7 @@ model_size_data_carstm( p=p, redo=redo )  # needs 100GB to complete
 
 Next we obtain the individual level data of size measurements from surveys and create the prediction surface. We use a logarithmic scale for size to describe the overall shape of the distribution.
 
-The statistical model (a "mixed" effects GLM) with a fixed component that is simple the intercept:
+The statistical model (a "mixed" effects GLM) with a fixed component that is simply the global intercept:
 
 $$\boldsymbol{X}^{T}\boldsymbol{\beta} = \text{constant intercept},$$
 
@@ -220,7 +220,7 @@ and a structured random component $F(\cdot)$:
 $$\boldsymbol{\epsilon} = F( \text{size}, \text{temperature}, \text{depth}, \text{substrate gain size}\\ 
 \text{space}, \text{year}, \text{season}, \text{space x year} ).$$
   
-where each random spatial component is following a CAR structure, random time component is following an AR1 structure, and other covariates are following RW2 structure. Simpler or more complex forms can be used. This represents a reasonable balance between computational complexity/interpretability/information availablity vs computational time/and model stabilty. 
+where each random spatial component is follows a CAR structure, random time components follow an AR1 structure, and all other covariates follow a RW2 structure. Simpler or more complex forms can be used. This represents a reasonable balance between computational complexity/interpretability/information availability vs computational time/model stability. 
 
 
 
