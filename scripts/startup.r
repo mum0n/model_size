@@ -52,14 +52,21 @@ if ( !file.exists(p$project.outputdir) ) dir.create( p$project.outputdir, showWa
 
 p$ny = length(p$yrs)
 p$nw = 12 
-p$nt = p$ny * p$nw  # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
+p$nt = p$ny
+
+# p$nt = p$ny * p$nw  # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
 
 p$tres = 1/ p$nw # time resolution .. predictions are made with models that use seasonal components
 p$dyears = discretize_data( span=c(0, 1, p$nw), toreturn="lower" )  # left breaks .. get 12 intervals of decimal years... fractional year breaks
 
 # used for creating timeslices and predictions  .. needs to match the values in aegis_parameters()
 # output timeslices for predictions in decimla years, yes all of them here
-dyears_midpoints = discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ) 
+# dyears_midpoints = discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ) 
+dyears_midpoints = p$prediction_dyear
+
+p$prediction_dyear = lubridate::decimal_date( lubridate::ymd("0000/Sep/01"))
+# output timeslices for predictions in decimal years, yes all of them here
+ 
 tout = expand.grid( yr=p$yrs, dyear=dyears_midpoints , KEEP.OUT.ATTRS=FALSE )
 p$prediction_ts = sort( tout$yr + tout$dyear  ) # mid-points
 

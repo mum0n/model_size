@@ -13,18 +13,13 @@ model_size_data_carstm = function(p, redo=c("") ) {
     if (file.exists(fn)) {
       Z = read_write_fast( fn )
 
-      # internally on log 
-      span = p$span( p$bioclass )
-      todrop = Z[ cw < span[1], which=TRUE ] 
+      sizerange = p$size_range( p$bioclass )
+      todrop = Z[ cw < sizerange[1], which=TRUE ] 
       if (length(todrop)>0) Z = Z[-todrop,]
 
-      todrop = Z[ cw > span[2], which=TRUE ] 
+      todrop = Z[ cw > sizerange[2], which=TRUE ] 
       if (length(todrop)>0) Z = Z[-todrop,]
-  
-      # for filter.class: (data.table will be smart about it but just to be exact)
-      Z$mat = as.numeric(Z$mat)
-      Z$sex = as.numeric(Z$sex)
-      
+       
       i = filter.class( Z, p$bioclass )
       Z = Z[i, ]
 
@@ -96,6 +91,8 @@ model_size_data_carstm = function(p, redo=c("") ) {
   setnames(setcm, "id", "sid") 
   setnames(setcm, "mass", "mass_allspecies") 
   setnames(setcm, "len", "len_allspecies") 
+  setcm$pa = NULL
+
   # length(unique(setcm$sid)) # 9375
   
   pred = setcm[tag=="predictions",] 
@@ -127,8 +124,8 @@ model_size_data_carstm = function(p, redo=c("") ) {
     }
 
     if (exists("biologicals_using_snowcrab_filter_class", p$selection)) {  # filter biologicals using snow crab short-form ID
-      warning( "Filtering using snow crab 'types' requires more data than is carried by survey_db. \n 
-        .. Adding data directly from snowcrab.db .. this also means dropping other sources of data \n")
+      # warning( "Filtering using snow crab 'types' requires more data than is carried by survey_db. \n 
+      #  .. Adding data directly from snowcrab.db .. this also means dropping other sources of data \n")
       det_sc = bio.snowcrab::snowcrab.db( DS ="det.georeferenced" )
       det_sc$spec = 2526
       det_sc$spec_bio =  taxonomy.recode( from="spec", to="parsimonious", tolookup=det_sc$spec ) # snow crab using groundfish codes
@@ -146,62 +143,52 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
   # --- NOTE det was not always determined and so totals from det mass != totals from cat nor set for all years
   # cf_det is the weight to make it sum up to the correct total catch (vs any subsamples) and tow length, etc
-
-  detcm$sex = as.character( detcm$sex )
-  detcm$mat = as.character( detcm$mat )
-
-  # table(detcm$sex, detcm$mat)
+ 
+  # table(detcm$sex, detcm$mat) # 541537
   #        sex 0  sex 1
   # mat 0 240393 104653
   # mat 1  98691  97800
 
-  detcm = detcm[ sex %in% c("0", "1") , ]  
-  detcm = detcm[ mat %in% c("0", "1") , ]
+  detcm = detcm[ sex %in% c(0, 1) , ]  
+  detcm = detcm[ mat %in% c(0, 1) , ]
+
   detcm$cw = detcm$len * 10  # mm -> cm
   detcm$logcw = log(detcm$cw)
 
   detcm = detcm[, .(sid, sex, mat, cw, logcw, mass, cf_det_no)]  # mass in kg
 
-  # dim(detcm) # [1] 541537      7
-
+  
   # trim a few strange data points
-  o = lm( log(mass) ~ mat + sex + logcw:mat + logcw:sex , detcm)
+  o = lm( log(mass) ~ as.factor(mat) + as.factor(sex) + logcw:as.factor(mat) + logcw:as.factor(sex), detcm)
   todrop = which(abs(o$residuals) > 0.5)
   if (length(todrop)>0) detcm = detcm[-todrop,]
 
   # internally on log 
-  lspan = p$span("all")
-  lspan[1]  = log(lspan[1]) 
-  lspan[2]  = log(lspan[2]) 
+  lspan = c( log(p$size_range("all")), p$size_bandwidth) 
 
   lbrks = discretize_data(span=lspan)
-
-  todrop = detcm[ logcw < lspan[1], which=TRUE ] 
-  if (length(todrop)>0) detcm = detcm[-todrop,]
-
-  todrop = detcm[ logcw > lspan[2], which=TRUE ] 
-  if (length(todrop)>0) detcm = detcm[-todrop,]
   
-  # dim(detcm) 541530      7
+  # dim(detcm) # [1] 541533
+
 
   # additional QA/QC 
 
   detcm$cwd = discretize_data( detcm$logcw, span=lspan  )  # this will truncate sizes
 
   detcm = detcm[ is.finite(cwd) ,]
-  detcm$N = 1
+  detcm$pa = 1
   
   # length(unique(detcm$sid)) # 7861
 
-  Z = setcm[ detcm, on=.(sid)] # 541445
+  Z = setcm[ detcm, on=.(sid)] # 541533
   Z$zid = paste( Z$sid, Z$sex, Z$mat, Z$cwd, sep="_" )
 
   # recover zero counts at sampling locations with no observations: 
-  #   .. CJ required to get zero counts dim(N) # 2812200 
+  #   .. CJ required to get zero counts # 2812200 
   #   .. this is an approximation as the number of zeros are also controlled by size resoltuion/span
   Z0 = CJ( 
-    sex=c("0", "1"), 
-    mat=c("0", "1"), 
+    sex=c(0, 1), 
+    mat=c(0, 1), 
     cwd = lbrks,  # midpoints
     sid=setcm$sid, 
     unique=TRUE 
@@ -209,9 +196,9 @@ model_size_data_carstm = function(p, redo=c("") ) {
   Z0$mass = NA
   Z0$logcw = Z0$cwd  # fill with midpoints 
   Z0$cw = exp(Z0$logcw)  #  midpoint on original scale ... and a dummy to allow merges with observations
-  Z0$N = 0
+  Z0$pa = 0
 
-  # dim(Z0) # 2 812 200
+  # dim(Z0) # 1124880
 
   Z0 = setcm[,.(sid, data_offset)][ Z0, on=.(sid)] 
   
@@ -225,9 +212,9 @@ model_size_data_carstm = function(p, redo=c("") ) {
   toremove = unique(Z0[ zid %in% withdata, which=TRUE])
   if (length(toremove) > 0) Z0 = Z0[-toremove, ]  
 
-  Z = rbind(Z, Z0) # 1683904
+  Z = rbind(Z, Z0) # 1565641
   # length(unique(Z$sid)) # 9374
-  # sum(Z$N, na.rm=T) # n=541445
+  # sum(Z$pa, na.rm=T) # 541533
   Z$zid = NULL
   Z0 = NULL 
   gc()
@@ -239,69 +226,51 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
   # to capture zeros 
   P0 = CJ( 
-    sex=c("0", "1"), 
-    mat=c("0", "1"), 
+    sex=c(0, 1), 
+    mat=c(0, 1), 
     cwd=lbrks, 
     pid=pred$pid, 
     mass=NA,
-    N =NA,
+    pa =NA,
     cf_det_no = 1,
     unique=TRUE 
   )
 
   P0$logcw = P0$cwd
 
-  pred = P0[ pred, on=.(pid), allow.cartesian=TRUE]
+  pred = P0[ pred, on=.(pid), allow.cartesian=TRUE]  # 29090880
   pred$cw = exp(pred$logcw)
   setnames(pred, "pid", "sid" )
   
-  Zvn = names(Z)
+  vnkeep = c(
+    "sid", "AUID", "tag", "data_offset", 
+    "z", "substrate.grainsize", "t", "pca1", "pca2",
+    "year", "dyear", "dyri", "space", "time",  
+    "sex", "mat", "cw", "logcw", "cwd", "mass", "cf_det_no",  "pa" 
+  )
 
-  Z = rbind(Z, pred[, ..Zvn ])
-
-  # dim(Z) # [1] 75 917 176       46
+  Z = rbind(Z[, ..vnkeep], pred[, ..vnkeep ])  # 30,656,521
+ 
+  Z$cyclic = match( Z$dyri, p$cyclic_levels ) 
+  Z$year = as.factor(Z$year)
+  
+  Z$data_offset = 1/Z$cf_det_no
+  Z$cf_det_no = NULL 
 
   # match prediction range to observation range for season (cyclic)
-  data_dyears = range(Z[tag=="observations", "cyclic"] ) 
+  # data_dyears = range(Z[tag=="observations", "cyclic"] ) 
   # todrop = which(Z$cyclic < data_dyears[1] | Z$cyclic > data_dyears[2] )
   # if (length(todrop)>0) Z = Z[-todrop,]
 
-  Z$cyclic = match( Z$dyri, p$cyclic_levels ) 
-  Z$year = as.factor(Z$year)
-  Z$region = as.factor(Z$region)
-  Z$cwd = as.numeric(as.character(Z$cwd))
-  
-  Z$data_offset = 1/Z$cf_det_no
-  
-
   # override -- "pa" was from set level determination, here we are using individual-level bernoulli 0/1 process
-  setnames(Z, "pa", "pa_set")
-  setnames(Z, "N",  "pa")  
-  
+ 
   # reduce file size .. most of these are unused or can be recovered from data
-  Z$cf_det_no = NULL
-  Z$cyclic_space  = NULL
-  Z$space_time = NULL
-  Z$space_cyclic = NULL
-  Z$log.substrate.grainsize = NULL
-  Z$sal = NULL
-  Z$oxyml=NULL
-  Z$oxysat = NULL
-  Z$mr = NULL
-  Z$smr = NULL
-  Z$yr = NULL
-  Z$residual = NULL
-  Z$mass_allspecies = NULL
-  Z$len_allspecies = NULL
-  Z$Ea = NULL
-  Z$A = NULL
-  Z$Pr.Reaction = NULL
 
   attr(Z, "brks") = lbrks  
-  attr(Z, "data_dyears") = data_dyears
   attr(Z, "yrs") = p$yrs
   attr(Z, "sppoly") = sppoly
   
+  # attr(Z, "data_dyears") = data_dyears
   # dim(Z) # 45701417       30
   # table(Z[tag=="observations", .(sex, mat) ] )  # includes zeros
   #            mat

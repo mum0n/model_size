@@ -183,8 +183,8 @@ source( file.path( project_directory, "scripts", "startup.r") )
 # define size spans (range in CW and number of discretizations) 
 # they will be log transformed internally
 
- 
-p$span = function( bioclass, nout=30 ) {
+p$size_bandwidth = 30
+p$size_range = function( bioclass ) {
   # note: nout is only relevant for "all" .. which is used to discretize all data to a common basis
   out = switch(bioclass,
     all    = c( 5,  155),
@@ -194,8 +194,7 @@ p$span = function( bioclass, nout=30 ) {
     m.mat  = c( 50, 155),
     f.imm  = c( 5,   80),
     f.mat  = c( 35,  95)
-  )
-  out = c(out, nout)
+  ) 
   return(out)
 }
 
@@ -204,7 +203,7 @@ p$span = function( bioclass, nout=30 ) {
 redo = NULL
 # redo=c("carstm_inputs", "size_data")  
 # redo=c( "size_data")  
-model_size_data_carstm( p=p, redo=redo )  # needs 100GB to complete
+model_size_data_carstm( p=p, redo=redo )  
 
 
 ```
