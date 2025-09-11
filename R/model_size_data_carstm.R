@@ -13,8 +13,23 @@ model_size_data_carstm = function(p, redo=c("") ) {
     if (file.exists(fn)) {
       Z = read_write_fast( fn )
 
+      # internally on log 
+      span = p$span( p$bioclass )
+      todrop = Z[ cw < span[1], which=TRUE ] 
+      if (length(todrop)>0) Z = Z[-todrop,]
+
+      todrop = Z[ cw > span[2], which=TRUE ] 
+      if (length(todrop)>0) Z = Z[-todrop,]
+  
+      # for filter.class: (data.table will be smart about it but just to be exact)
+      Z$mat = as.numeric(Z$mat)
+      Z$sex = as.numeric(Z$sex)
+      
       i = filter.class( Z, p$bioclass )
       Z = Z[i, ]
+
+      Z$mat = as.character(Z$mat)
+      Z$sex = as.character(Z$sex)
 
       key_vars = c("AUID", "year", "cyclic", "cwd", "mat", "sex" )
       
@@ -33,9 +48,6 @@ model_size_data_carstm = function(p, redo=c("") ) {
       # kuid = unique( Z[, uid])
       # Z = Z[ uid %in% kuid ,]
       # Z$uid = NULL
-      
-      # Z$mat = NULL
-      # Z$sex = NULL
 
       # additional copies of data for INLA, refer to model formula
       Z$space2 = Z$space
@@ -48,8 +60,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
       # Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
 
-      # Z$cwd2 = Z$cw
-      
+     
       return(Z)
     } 
   }
@@ -175,26 +186,6 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
   # additional QA/QC 
 
-  #if (p$bioclass %in% c("female", "f.imm", "f.mat" )) {
-
-    todrop = detcm[ logcw > log(80) & sex=="1" & mat=="0", which=TRUE ] 
-    if (length(todrop)>0) detcm = detcm[-todrop,]
-
-    todrop = detcm[ logcw < log(35) & sex=="1" & mat=="1", which=TRUE ] 
-    if (length(todrop)>0) detcm = detcm[-todrop,]
-  
-  # }
-
-  #if (p$bioclass %in% c("male", "m.imm", "m.mat" )) {
-
-    todrop = detcm[ logcw > log(135) & sex=="0" & mat=="0", which=TRUE ] 
-    if (length(todrop)>0) detcm = detcm[-todrop,]
-
-    todrop = detcm[ logcw < log(49) & sex=="0" & mat=="1", which=TRUE ] 
-    if (length(todrop)>0) detcm = detcm[-todrop,]
-
-  #}
-
   detcm$cwd = discretize_data( detcm$logcw, span=lspan  )  # this will truncate sizes
 
   detcm = detcm[ is.finite(cwd) ,]
@@ -268,37 +259,8 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
   Z = rbind(Z, pred[, ..Zvn ])
 
-# dim(Z) # [1] 75 917 176       46
+  # dim(Z) # [1] 75 917 176       46
 
-  # a final round of data trimming based upon size, sex, maturity 
-  # as cw range is overly inclusive (permissible size ranges)
-
-  # if (p$bioclass %in% c("female", "f.imm", "f.mat" )) {
-      
-    todrop = Z[ sex=="1" & logcw > log(95), which=TRUE ] 
-    if (length(todrop)>0) Z = Z[-todrop,]
-
-    todrop = Z[ sex=="1" & logcw > log(80) & mat=="0", which=TRUE ] 
-    if (length(todrop)>0) Z = Z[-todrop,]
-
-    todrop = Z[ sex=="1" & logcw < log(35) & mat=="1", which=TRUE ] 
-    if (length(todrop)>0) Z = Z[-todrop,]
-  
-  #}
-
-
-  #if (p$bioclass %in% c("male", "m.imm", "m.mat" )) {
-
-    todrop = Z[ sex=="0" & logcw > log(155), which=TRUE ] 
-    if (length(todrop)>0) Z = Z[-todrop,]
-
-    todrop = Z[ sex=="0" & logcw > log(135) & mat=="0", which=TRUE ] 
-    if (length(todrop)>0) Z = Z[-todrop,]
-
-    todrop = Z[ sex=="0" &  logcw < log(49) & mat=="1", which=TRUE ] 
-    if (length(todrop)>0) Z = Z[-todrop,]
-  #}
-  
   # match prediction range to observation range for season (cyclic)
   data_dyears = range(Z[tag=="observations", "cyclic"] ) 
   # todrop = which(Z$cyclic < data_dyears[1] | Z$cyclic > data_dyears[2] )
@@ -352,6 +314,8 @@ model_size_data_carstm = function(p, redo=c("") ) {
   # mat 0 240393 104653
   # mat 1  98691  97800
 
+  message("Saving data file: ", fn )
+  
   read_write_fast( data=Z, fn=fn )  # save full prediction surface .. subset on return (above)
 
   return("complete")

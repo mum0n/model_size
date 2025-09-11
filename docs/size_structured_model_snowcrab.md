@@ -184,7 +184,8 @@ source( file.path( project_directory, "scripts", "startup.r") )
 # they will be log transformed internally
 
  
-p$span = function( bioclass ) {
+p$span = function( bioclass, nout=30 ) {
+  # note: nout is only relevant for "all" .. which is used to discretize all data to a common basis
   out = switch(bioclass,
     all    = c( 5,  155),
     male   = c( 5,  155),
@@ -194,8 +195,7 @@ p$span = function( bioclass ) {
     f.imm  = c( 5,   80),
     f.mat  = c( 35,  95)
   )
-  ninc = floor( diff(out) / 5 )  # 5 mm
-  out = c(out, ninc)
+  out = c(out, nout)
   return(out)
 }
 
@@ -203,6 +203,7 @@ p$span = function( bioclass ) {
 # prepare the data (if updating)
 redo = NULL
 # redo=c("carstm_inputs", "size_data")  
+# redo=c( "size_data")  
 model_size_data_carstm( p=p, redo=redo )  # needs 100GB to complete
 
 
