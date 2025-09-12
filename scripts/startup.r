@@ -52,9 +52,7 @@ if ( !file.exists(p$project.outputdir) ) dir.create( p$project.outputdir, showWa
 
 p$ny = length(p$yrs)
 p$nw = 12 
-p$nt = p$ny
-
-# p$nt = p$ny * p$nw  # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
+p$nt = p$ny * p$nw  # must specify, else assumed = 1 (1= no time)  ## nt=ny annual time steps, nt = ny*nw is seassonal
 
 p$tres = 1/ p$nw # time resolution .. predictions are made with models that use seasonal components
 p$dyears = discretize_data( span=c(0, 1, p$nw), toreturn="lower" )  # left breaks .. get 12 intervals of decimal years... fractional year breaks
