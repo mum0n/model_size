@@ -13,19 +13,6 @@ model_size_data_carstm = function(p, redo=c("") ) {
     if (file.exists(fn)) {
       Z = read_write_fast( fn )
 
-      sizerange = p$size_range( p$bioclass )
-      todrop = Z[ cw < sizerange[1], which=TRUE ] 
-      if (length(todrop)>0) Z = Z[-todrop,]
-
-      todrop = Z[ cw > sizerange[2], which=TRUE ] 
-      if (length(todrop)>0) Z = Z[-todrop,]
-       
-      i = filter.class( Z, p$bioclass )
-      Z = Z[i, ]
-
-      Z$mat = as.character(Z$mat)
-      Z$sex = as.character(Z$sex)
-
       key_vars = c("AUID", "year", "cyclic", "cwd", "mat", "sex" )
       
       tokeep = c(
@@ -36,13 +23,31 @@ model_size_data_carstm = function(p, redo=c("") ) {
       )
       
       Z = Z[,..tokeep]
+ 
+      i = filter.class( Z, p$bioclass )
+      if (length(i) > 0) Z = Z[i, ]
 
-      # redundant:
-      # Z[ , uid := do.call(paste, .SD), .SDcols = key_vars ]  
+      Z$mat = as.character(Z$mat)
+      Z$sex = as.character(Z$sex)
 
-      # kuid = unique( Z[, uid])
-      # Z = Z[ uid %in% kuid ,]
-      # Z$uid = NULL
+      sizerange = p$size_range( p$bioclass )
+
+      todrop = Z[ cw < sizerange[1], which=TRUE ] 
+      if (length(todrop)>0) Z = Z[-todrop,]
+
+      todrop = Z[ cw > sizerange[2], which=TRUE ] 
+      if (length(todrop)>0) Z = Z[-todrop,]
+       
+      # subset data to predict on only time slices with data or prediction grid otherwise it gets to memory demanding
+      Z[ , uid := do.call(paste, .SD), .SDcols = key_vars ]  
+
+      kuid = unique( 
+        Z[ tag=="observations", uid],
+        Z[ cyclic==p$prediction_dyear_index, uid ]  # add att time-slice for prediction period (1 sept)
+      )
+
+      Z = Z[ uid %in% kuid ,]
+      Z$uid = NULL
 
       # additional copies of data for INLA, refer to model formula
       Z$space2 = Z$space

@@ -61,14 +61,29 @@ p$dyears = discretize_data( span=c(0, 1, p$nw), toreturn="lower" )  # left break
 
 # used for creating timeslices and predictions  .. needs to match the values in aegis_parameters()
 # output timeslices for predictions in decimla years, yes all of them here
-# dyears_midpoints = discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ) 
-dyears_midpoints = p$prediction_dyear
+dyears_midpoints = discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ) 
 
-p$prediction_dyear = lubridate::decimal_date( lubridate::ymd("0000/Sep/01"))
 # output timeslices for predictions in decimal years, yes all of them here
- 
 tout = expand.grid( yr=p$yrs, dyear=dyears_midpoints , KEEP.OUT.ATTRS=FALSE )
 p$prediction_ts = sort( tout$yr + tout$dyear  ) # mid-points
 
+# a time-slice to predict upon in order to remove seasonal effects
+p$prediction_dyear_index = 9  # (month) september
+
 p = temporal_parameters(p=p, dimensionality="space-time-cyclic", timezone="America/Halifax")
  
+# define size range in CW .. log transformed internally
+p$size_range = function( bioclass ) {
+  out = switch(bioclass,
+    all    = c( 5,  155),
+    male   = c( 5,  155),
+    female = c( 5,   95),
+    m.imm  = c( 5,  135),
+    m.mat  = c( 50, 155),
+    f.imm  = c( 5,   80),
+    f.mat  = c( 35,  95)
+  ) 
+  return(out)
+}
+
+p$size_bandwidth = 30  # no of size bins (for modelling size-bias only) .. on a log scale internally
