@@ -2,7 +2,8 @@
 post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 ) {
  
     fnout = file.path( p$modeldir, p$bioclass, "post_stratified_weights.rdz" ) 
-    fnout_samples = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples.rdz" ) 
+    fnout_samples_preds = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples.rdz" ) 
+    fnout_samples_preds2 = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples2.rdz" ) 
     fnout_samples_bias = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples_bias_adjusted.rdz" )
 
     O = NULL
@@ -18,9 +19,19 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     }
 
     if ( "samples" %in% todo ){
-        message( "\nLoading samples from file: ", fnout_samples)
-        if (file.exists(fnout_samples)) {
-            O = read_write_fast(fnout_samples)
+        message( "\nLoading samples from file: ", fnout_samples_preds)
+        if (file.exists(fnout_samples_preds)) {
+            O = read_write_fast(fnout_samples_preds)
+            if (!is.null(O)) {
+                return(O)
+            }
+        }
+    }
+
+    if ( "samples2" %in% todo ){
+        message( "\nLoading samples from file: ", fnout_samples_preds2)
+        if (file.exists(fnout_samples_preds2)) {
+            O = read_write_fast(fnout_samples_preds2)
             if (!is.null(O)) {
                 return(O)
             }
@@ -37,55 +48,57 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
         }
     }
 
-
     message( "\nCreating post-stratification weights for: ", p$bioclass)
 
+    fit = model_size_presence_absence( p=p, todo="load" ) 
+    
     M = model_size_data_carstm( p=p )  
     M$year = factor2number( M$year )
+
+    uuiidd = c("AUID", "year", "cyclic", "cwd", "mat")
+
+    M = M[ , OPID := do.call(paste, .SD), .SDcols = uuiidd ]
+    # fetch direct predictions of mean, sd
+    M$individual_prob_mean = fit$summary.fitted.values[["mean"]] 
+    M$individual_prob_sd   = fit$summary.fitted.values[["sd"]] 
 
     iobs = which(M$tag == "observations")
     ipreds = which(M$tag == "predictions")
     
-    O = M[iobs, ]   # observations (individual, i)
-    P = M[ipreds, ] # predictions (at areal units, a)
-    M = NULL; gc()
 
-    fit = model_size_presence_absence( p=p, todo="load" ) 
-
-    # fetch direct predictions of mean, sd
-    O$individual_prob_mean = fit$summary.fitted.values[["mean"]][iobs]
-    O$individual_prob_sd   = fit$summary.fitted.values[["sd"]][iobs]
-
-    P$auid_prob_mean = fit$summary.fitted.values[["mean"]][ipreds]
-    P$auid_prob_sd   = fit$summary.fitted.values[["sd"]][ipreds]
-
-    P = P[, .(AUID, year, cyclic, cwd, mat, auid_prob_mean, auid_prob_sd)]
-    P = P[ , PID := do.call(paste, .SD), .SDcols = c("AUID", "year", "cyclic", "cwd", "mat")]
-
-    # obtain joint-posterior samples
-
-    message( "\nExtracting samples of joint posteriors")
-
-    S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
-        
-    fit = NULL; gc()
-
-    message( "\nPost-processing/reformatting/merging")
-
-    # observations (i) and point estimates
-    O = O[, .(
+    # observations (individual, i)
+    O = M[iobs, .(
         AUID, year, cyclic, cwd, mat, 
         z, substrate.grainsize, dyear, t, pca1, pca2, sid,
         totno, totwgt, meansize, data.source, gear, cw, mass, data_offset,
-        individual_prob_mean, individual_prob_sd
+        OPID, individual_prob_mean, individual_prob_sd
     )]
+    
+    O$cyclic2 = p$prediction_dyear_index
+    uuiidd2 = c("AUID", "year", "cyclic2", "cwd", "mat")
+    O = O[, := do.call(paste, .SD), .SDcols = uuiidd2 ]
 
+    # predictions (at areal units, a)
+    P = M[ipreds, .(OPID, individual_prob_mean, individual_prob_sd ) ]
+
+    # get correct row order of areal units to match observations
+    ip = match( O$OPID, P$OPID )
+    ip2 = match( O$OPID2, P$OPID )
+
+    M = NULL; gc()
+   
     # O$year = factor2number( O$year )
     # P$year = factor2number( P$year ) 
 
     # add associated areal unit level predictions (a)
-    O = P[ O, on=.(AUID, year, cyclic, cwd, mat)]
-    ip = match( O$PID, P$PID )  # get correct row order of areal units to match observations
+    O$auid_prob_mean = P$individual_prob_mean[ ip ]
+    O$auid_prob_sd = P$individual_prob_sd[ ip ]
+    O$post_stratified_ratio = O$auid_prob_mean / O$individual_prob_mean   
+ 
+    O$auid_prob_mean2 = P$individual_prob_mean[ ip2 ]
+    O$auid_prob_sd2 = P$individual_prob_sd[ ip2 ]
+    O$post_stratified_ratio2 = O$auid_prob_mean2 / O$individual_prob_mean2   
+ 
     P = NULL
     gc()
 
@@ -97,7 +110,6 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     
     # means are already on user scale .. probability 
     # this is the overall point estimate ... still needs multiplication with SA 
-    O$post_stratified_ratio = O$auid_prob_mean / O$individual_prob_mean   
 
     attr(O, "bioclass" ) = p$bioclass
     attr(O, "formula" ) = p$formula 
@@ -109,7 +121,13 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     O = NULL
     gc()
 
-    message( "\nPosterior samples")
+    # obtain joint-posterior samples
+
+    message( "\nExtracting samples of joint posteriors")
+
+    S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
+        
+    fit = NULL; gc() # no longer needed
 
     for (z in c("tag", "start", "length") ) assign(z, attributes(S)[[".contents"]][[z]] )  # index info 
 
@@ -120,37 +138,39 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     for (i in 1:nposteriors) {
         Osamples[,i] =  S[[i]]$latent[fkk,] 
     }
-   
-    Osamples = inverse.logit( Osamples[ipreds[ip],] ) / inverse.logit(Osamples[iobs,]) # same order as O, samples of the ratio of probabilities (a/i)
- 
-    attr(Osamples, "bioclass" ) = p$bioclass
-    attr(Osamples, "formula" ) = p$formula 
+    
 
     message( "\nSaving", fnout_samples )
 
-    read_write_fast( Osamples, fn=fnout_samples )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+    # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+    read_write_fast( Osamples[iobs,], fn=fnout_samples )  # on logit scale
 
-    Osamples = NULL; gc()
-    
+    message( "\nSaving", fnout_samples_preds )
+
+    # same order as O, samples of the ratio of probabilities (a/i)
+    read_write_fast( Osamples[ipreds[ip],], fn=fnout_samples_preds )  # on logit scale
+  
+    message( "\nSaving", fnout_samples_preds2 )
+
+    read_write_fast( Osamples[ipreds[ip2],], fn=fnout_samples_preds2 )  # on logit scale
+
+
     fss = inla_get_indices("inla.group(cwd, method = \"quantile\", n = 13)", tag=tag, start=start, len=length, model="direct_match")
     fss = unlist(fss)
     nobs = length(fss)
-    Osamples_bias = array(NA, dim=c( nobs,  nposteriors ) )
+    Osamples = array(NA, dim=c( nobs,  nposteriors ) )
      
     for (i in 1:nposteriors) {
-        Osamples_bias[,i] = S[[i]]$latent[fss,] 
+        Osamples[,i] = S[[i]]$latent[fss,] 
     }
     
-    Osamples_bias = inverse.logit(Osamples_bias )
+    Osamples = inverse.logit(Osamples )
     
     S = fss = NULL ;  gc()
- 
-    attr(Osamples_bias, "bioclass" ) = p$bioclass
-    attr(Osamples_bias, "formula" ) = p$formula 
-
+  
     message( "\nSaving", fnout_samples_bias )
 
-    read_write_fast( Osamples_bias, fn=fnout_samples_bias )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+    read_write_fast( Osamples, fn=fnout_samples_bias )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
 
     return(fnout)
