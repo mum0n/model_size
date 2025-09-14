@@ -2,6 +2,7 @@
 post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 ) {
  
     fnout = file.path( p$modeldir, p$bioclass, "post_stratified_weights.rdz" ) 
+    fnout_samples_obs = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples_obs.rdz" ) 
     fnout_samples_preds = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples.rdz" ) 
     fnout_samples_preds2 = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples2.rdz" ) 
     fnout_samples_bias = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples_bias_adjusted.rdz" )
@@ -70,7 +71,7 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     O = M[iobs, .(
         AUID, year, cyclic, cwd, mat, 
         z, substrate.grainsize, dyear, t, pca1, pca2, sid,
-        totno, totwgt, meansize, data.source, gear, cw, mass, data_offset,
+        cw, data_offset,
         OPID, individual_prob_mean, individual_prob_sd
     )]
     
@@ -141,10 +142,10 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     }
     
 
-    message( "\nSaving", fnout_samples )
+    message( "\nSaving", fnout_samples_obs )
 
     # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
-    read_write_fast( Osamples[iobs,], fn=fnout_samples )  # on logit scale
+    read_write_fast( Osamples[iobs,], fn=fnout_samples_obs )  # on logit scale
 
     message( "\nSaving", fnout_samples_preds )
 
