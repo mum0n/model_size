@@ -74,9 +74,10 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
         OPID, individual_prob_mean, individual_prob_sd
     )]
     
+    # matches to prediction time slice ( 1 September )
     O$cyclic2 = p$prediction_dyear_index
     uuiidd2 = c("AUID", "year", "cyclic2", "cwd", "mat")
-    O = O[, := do.call(paste, .SD), .SDcols = uuiidd2 ]
+    O = O[, OPID2 := do.call(paste, .SD), .SDcols = uuiidd2 ]
 
     # predictions (at areal units, a)
     P = M[ipreds, .(OPID, individual_prob_mean, individual_prob_sd ) ]
