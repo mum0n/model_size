@@ -56,6 +56,9 @@ model_size_data_carstm = function(p, redo=c("") ) {
       Z$space_time = Z$space
       Z$time_space = Z$time
 
+
+      Z$cwd3 = Z$cwd
+      Z$time3 = Z$time
       # Z$time_cw = Z$time
 
       # Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index

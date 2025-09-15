@@ -218,8 +218,9 @@ where each random spatial component is follows a CAR structure, random time comp
 p$formula = as.formula( paste(
 ' pa ~ 1 ',
     ' + offset( data_offset ) ', 
-    ' + f( inla.group( cwd, method="quantile", n=13 ), model="rw2", scale.model=TRUE) ', 
-    ' + f( inla.group( cwd2, method="quantile", n=13 ), model="rw2", scale.model=TRUE, group=space2, control.group=list(model="besag", hyper=H$besag, graph=slot(sppoly, "nb") ) ) ',    
+    ' + f( inla.group( cwd, method="quantile", n=11 ), model="rw2", scale.model=TRUE) ', 
+    ' + f( inla.group( cwd2, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=space2, control.group=list(model="besag", hyper=H$besag, graph=slot(sppoly, "nb") ) ) ',    
+    ' + f( inla.group( cwd3, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=time3, control.group=list(model="ar1", hyper=H$ar1) ) ',   
     ' + f( time, model="ar1",  hyper=H$ar1 ) ',
     ' + f( cyclic, model="ar1", hyper=H$ar1 )',
     ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
@@ -360,12 +361,6 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 }
 
 
-hist(O$post_stratified_ratio, "fd") 
-summary(O$post_stratified_ratio)
-plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
-  
-cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
-
 ```
 
 ---  
@@ -390,7 +385,35 @@ bioclass = c("f.imm", "f.mat", "m.imm", "m.mat")[1]
 
 p$bioclass = bioclass
 
-O = post_stratified_weights( p=p, action="load" ) 
+
+# p$bioclass = "f.imm"
+# p$bioclass = "f.mat"
+# p$bioclass = "m.imm"
+# p$bioclass = "m.mat"
+
+O = post_stratified_weights( p=p, todo="load" ) 
+
+# hist(O$post_stratified_ratio, "fd") 
+summary(O$post_stratified_ratio)
+plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
+  
+cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
+
+f = model_size_presence_absence( p=p, todo="load" ) 
+# f = read_write_fast("/home/jae/projects/model_size/outputs/modelled/f.imm/fit_f.imm_5_80_37.rdz")
+
+g=(f$summary.random$'inla.group(cwd, method = "quantile", n = 13)')
+
+
+plot( (g[,2]) ~ exp(g[,1]))   log odds ratio
+
+plot(exp(g[,2])~ exp(g[,1]))  # odds ratio
+
+plot(1/exp(g[,2])~ exp(g[,1])) # selectivity ratio
+
+g=(f$summary.random$'inla.group(cwd2, method = "quantile", n = 13)')
+a=776; i=a*13+(1:13); plot(exp(g$mean[i])~exp(g$ID[i]))
+
 
 
 # variable name containing sa estimates for the sub-domain of interest
