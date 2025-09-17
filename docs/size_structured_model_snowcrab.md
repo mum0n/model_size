@@ -179,14 +179,6 @@ yrs = year_start:year_assessment
 source( file.path( project_directory, "scripts", "startup.r") )
  
  
-
-# prepare the data (if updating)
-redo = NULL
-# redo=c("carstm_inputs", "size_data")  
-# redo=c( "size_data")  
-model_size_data_carstm( p=p, redo=redo )  
-
-
 ```
 
 Next we obtain the individual level data of size measurements from surveys and create the prediction surface. We use a logarithmic scale for size to describe the overall shape of the distribution.
@@ -212,92 +204,72 @@ where each random spatial component is follows a CAR structure, random time comp
 #| echo: false
 #| label: size-data-model
  
+ 
 
-# model formula: 
+# prepare the data (if updating)
+redo = NULL
+# redo=c("carstm_inputs", "size_data")  
+# redo=c( "size_data")  
+model_size_data_carstm( p=p, redo=redo )  
 
-p$formula = as.formula( paste(
-' pa ~ 1 ',
-    ' + offset( data_offset ) ', 
-    ' + f( inla.group( cwd, method="quantile", n=11 ), model="rw2", scale.model=TRUE) ', 
-    ' + f( inla.group( cwd2, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=space2, control.group=list(model="besag", hyper=H$besag, graph=slot(sppoly, "nb") ) ) ',    
-    ' + f( inla.group( cwd3, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=time3, control.group=list(model="ar1", hyper=H$ar1_group) ) ',   
-    ' + f( time, model="ar1",  hyper=H$ar1 ) ',
-    ' + f( cyclic, model="ar1", hyper=H$ar1 )',
-    ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-    ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
-    ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="ar1", hyper=H$ar1_group)) '
-) )
+if (0) {
+  M = model_size_data_carstm( p=p )  
+  
+  hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
+  
+  plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
+  plot(jitter(pa) ~ year, M, pch="." )  
+      # males -- variance compression: 2002  
+      # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
 
-# alternative:
-#    ' + f( space2, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, 
-#    group=inla.group( cwd2, method="quantile", n=13 ), hyper=H$besag, control.group=list(model="rw2", hyper=H$rw2)) ', 
+  plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
+
+  plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
+  plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
+  plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
+
+  # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
+  plot(jitter(pa) ~ t, M, pch=".")
+  plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
+
+  rm(M); gc()
+}
 
 
-
-# separate models by sex
+# separate models by sex and maturity
 for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 
     print(bioclass)
     p$bioclass = bioclass
-    
 
-    if (0) {
-      M = model_size_data_carstm( p=p )  
-      
-      hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
-      
-      plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
-      plot(jitter(pa) ~ year, M, pch="." )  
-          # males -- variance compression: 2002  
-          # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
-
-      plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
-
-      plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
-      plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
-      plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
-
-      # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
-      plot(jitter(pa) ~ t, M, pch=".")
-      plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
-
-      rm(M); gc()
-    }
-    
-   # speed up with better starting conditions
+    # speed up with better starting conditions
     theta0 = switch( p$bioclass,
-      f.imm = c(10.0208,-2.4584,0.9774,0.8450,1.9358,0.1376,1.7901,-0.0870,-2.1267,1.4520,1.0538,-2.0687,3.3265,-1.5244,-0.1440,0.7397),
-      f.mat = c(9.9748,-0.5948,-0.0956,1.2622,0.8602,0.0001,-0.8875,-3.0676,-5.3936,0.4585,1.4723,-3.2699,2.7978,-2.4611,-0.5764,1.2460),
-      m.imm = c(9.9540,-2.6541,1.3395,1.9641,2.0462,0.1415,1.7869,-1.6138,-0.0264,1.6437,2.8025,-1.8812,3.7143,-1.0463,-0.7415,0.8390),
-      m.mat = c(9.8576,0.3833,1.5937,2.1923,1.5543,0.0403,2.7064,-0.1513,2.6987,3.7366,5.2900,-1.8202,4.4892,-0.3920,0.0911,1.0583),
+      f.imm = c(10.1329, -2.8369, -1.8350, 1.2112, 0.4354, 0.3740, 1.7719, -0.0049, -0.3890, -1.3901, -2.1339, 2.4755, 2.2667, -2.3851, 3.1558, -1.8944, -0.1666, 0.7510),
+      f.mat = c(9.9259, -1.2770, 0.8736, 1.5573, -0.7555, 1.3739, -0.0517, 0.7740, 0.7502, -3.8818, -4.9230, 1.6256, 1.1813, -3.8467, 2.4112, -3.1540, -0.7202, 1.2429),
+      m.imm = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
+      m.mat = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
       NULL
     )
 
-
-    if (is.null(theta0)) {
-      theta0 = c(10.1157, -1.7419, 0.8820, 0.8551, 1.9417, 0.0706, 2.0576, 0.5363, -2.5326, 1.5444, 1.4648, -2.3909, 3.4197, -1.5862, -0.1608, 0.7488)
-    }
-
+    # theta[1] = Intercept
+    # theta[2] = [Log precision for inla.group(cwd3, method = "quantile", n = 11)]
+    # theta[3] = [Group rho_intern for inla.group(cwd3, method = "quantile", n = 11)]
+    # theta[4] = [Log precision for time]
+    # theta[5] = [Rho_intern for time]
+    # theta[6] = [Log precision for cyclic]
+    # theta[7] = [Rho_intern for cyclic]
+    # theta[8] = [Log precision for inla.group(t, method = "quantile", n = 9)]
+    # theta[9] = [Log precision for inla.group(z, method = "quantile", n = 9)]
+    # theta[10] = [Log precision for inla.group(substrate.grainsize, method = "quantile", n = 9)]
+    # theta[11] = [Log precision for inla.group(pca1, method = "quantile", n = 9)]
+    # theta[12] = [Log precision for inla.group(pca2, method = "quantile", n = 9)]
+    # theta[13] = [Log precision for space]
+    # theta[14] = [Logit phi for space]
+    # theta[15] = [Log precision for space_time]
+    # theta[16] = [Logit phi for space_time]
+    # theta[17] = [Group rho_intern for space_time]
+ 
     fit = model_size_presence_absence( p=p, todo="redo", theta0=theta0 )
-
-    if (0) {
-      summary(fit) 
-
-      # compare to data to predictions
-      M = model_size_data_carstm( p=p )  
-
-      cor( M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
-
-      # posterior predictive check
-      carstm_posterior_predictive_check(p=p, M=M[ , ]  )
-
-      # EXAMINE POSTERIORS AND PRIORS
-      res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
-    }
     
     fit = NULL; gc()
 }
@@ -305,45 +277,12 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 
 ```
 
-The predictive fits of the above are shown below:
-
-#### Male 
-
-    predictive pearson cor=0.736
-    
-    Deviance Information Criterion (DIC) ...............: 598682.31
-    Deviance Information Criterion (DIC, saturated) ....: 597509.46
-    Effective number of parameters .....................: 7526.35
-    
-    Watanabe-Akaike information criterion (WAIC) ...: 599435.29
-    Effective number of parameters .................: 8142.80
-
-    Marginal log-Likelihood:  -3e+05
-
-
-#### Female          
-
-    predictive pearson cor = 0.761
-
-    Deviance Information Criterion (DIC) ...............: 422159.70
-    Deviance Information Criterion (DIC, saturated) ....: 421128.08
-    Effective number of parameters .....................: 7331.66
-
-    Watanabe-Akaike information criterion (WAIC) ...: 421987.76
-    Effective number of parameters .................: 7002.57
-
-    Marginal log-Likelihood:  -209789.41
- 
-
----
-
- 
 
 Now we load the results and extract the probabilities $\theta$ and the samples of post-stratification weights $\omega_i$ from joint posteriors. However, as the application of areal unit surface areas depends upon the sub-domain being analysed, it's final computation is deferred to a later stage and instead the ratio of probabilities $ \theta_{a/i} = \theta_a / \theta_i$ is first created as it is compuationally demanding (joint posterior sampling) and potentialy large outputs. 
 
 At the same time, extract the posterior samples of size selectivity for futher bias-adjustments downstream.
 
-Note the number of posteriors required (5000 is a safe number) -- reduce number of cores first before reducing number of posteriors if you run out of RAM.
+Note the number of posteriors required (5000), is a safe number but can be reduced; reducing number of cores allocated can also help.
 
 
 ```{r post-stratification-ratios}
@@ -351,6 +290,34 @@ Note the number of posteriors required (5000 is a safe number) -- reduce number 
 #| output: false
 #| echo: false
 #| label: post-stratification-ratios
+
+
+
+# choose the combinations of interest
+
+bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
+
+p$bioclass = bioclasses[1]
+p$bioclass = bioclasses[2]
+p$bioclass = bioclasses[3]
+p$bioclass = bioclasses[4]
+
+fit = model_size_presence_absence( p=p )
+
+summary(fit) 
+
+# compare to data to predictions
+M = model_size_data_carstm( p=p )  
+
+cor( M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
+
+# posterior predictive check
+carstm_posterior_predictive_check(p=p, M=M[ , ]  )
+
+# EXAMINE POSTERIORS AND PRIORS
+res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
+
+
 
 
 # careful: nposteriors=5000, nc.cores=4 required about 210 GB RAM in 2025, mc.cores=1 safest still requires ~ 125 GB (default)
@@ -378,23 +345,18 @@ $$ \omega_i = \theta_{a/i} \cdot $\text{SA}_a,$$
 
 # choose the combinations of interest
 
+bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
 
-
-# choose:
-bioclass = c("f.imm", "f.mat", "m.imm", "m.mat")[1]
-
-p$bioclass = bioclass
-
-
-# p$bioclass = "f.imm"
-# p$bioclass = "f.mat"
-# p$bioclass = "m.imm"
-# p$bioclass = "m.mat"
+p$bioclass = bioclasses[1]
+p$bioclass = bioclasses[2]
+p$bioclass = bioclasses[3]
+p$bioclass = bioclasses[4]
 
 O = post_stratified_weights( p=p, todo="load" ) 
 
 # hist(O$post_stratified_ratio, "fd") 
 summary(O$post_stratified_ratio)
+
 plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
   
 cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
@@ -402,7 +364,7 @@ cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs")
 f = model_size_presence_absence( p=p, todo="load" ) 
 # f = read_write_fast("/home/jae/projects/model_size/outputs/modelled/f.imm/fit_f.imm_5_80_37.rdz")
 
-g=(f$summary.random$'inla.group(cwd, method = "quantile", n = 13)')
+g = f$summary.random$'inla.group(cwd, method = "quantile", n = 11)'
 
 
 plot( (g[,2]) ~ exp(g[,1]))   log odds ratio
@@ -411,9 +373,8 @@ plot(exp(g[,2])~ exp(g[,1]))  # odds ratio
 
 plot(1/exp(g[,2])~ exp(g[,1])) # selectivity ratio
 
-g=(f$summary.random$'inla.group(cwd2, method = "quantile", n = 13)')
-a=776; i=a*13+(1:13); plot(exp(g$mean[i])~exp(g$ID[i]))
-
+g = f$summary.random$'inla.group(cwd2, method = "quantile", n = 11)'
+a = 776; i = a*11+(1:11); plot(exp(g$mean[i])~exp(g$ID[i]))
 
 
 # variable name containing sa estimates for the sub-domain of interest
@@ -423,7 +384,6 @@ region = "cfasouth"
 region = "cfa4x"
 region = "cfa23"
 region = "cfa24"
-
 
 
 pg = surface_area_estimates(p, pg=areal_units(p=p), region=region ) # see names(pg)

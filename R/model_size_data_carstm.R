@@ -7,47 +7,29 @@ model_size_data_carstm = function(p, redo=c("") ) {
     p$modeldir,  
     paste( "size_distributions_tabulated_data_zeros.rdz", sep="" )  
   )
+ 
 
   Z = NULL 
   if ( ! "size_data" %in% redo ) {
     if (file.exists(fn)) {
       Z = read_write_fast( fn )
 
-      key_vars = c("AUID", "year", "cyclic", "cwd", "mat", "sex" )
-      
-      tokeep = c(
-        key_vars,
-        "pa", "sid", "dyri", "dyear", "tag", "data_offset", 
-        "z", "substrate.grainsize", "t", "pca1", "pca2",
-        "space", "time", "cw"
-      )
-      
-      Z = Z[,..tokeep]
- 
+      if (p$bioclass == "all") return(Z)  
+
       i = filter.class( Z, p$bioclass )
       if (length(i) > 0) Z = Z[i, ]
 
       Z$mat = as.character(Z$mat)
       Z$sex = as.character(Z$sex)
-
-      sizerange = p$size_range( p$bioclass )
-
-      todrop = Z[ cw < sizerange[1], which=TRUE ] 
-      if (length(todrop)>0) Z = Z[-todrop,]
-
-      todrop = Z[ cw > sizerange[2], which=TRUE ] 
-      if (length(todrop)>0) Z = Z[-todrop,]
-       
-      # subset data to predict on only time slices with data or prediction grid otherwise it gets to memory demanding
-      Z[ , uid := do.call(paste, .SD), .SDcols = key_vars ]  
-
-      kuid = unique( 
-        Z[ tag=="observations", uid],
-        Z[ cyclic==p$prediction_dyear_index, uid ]  # add att time-slice for prediction period (1 sept)
+      
+      # subset data 
+      # essentially drop all predict times except those required to reduce computations
+      ukuid = unique( 
+        Z[ tag=="observations", kuid],  # add all observations
+        Z[ cyclic==p$prediction_dyear_index, kuid ]  # and add time-slice for prediction period (1 sept)
       )
 
-      Z = Z[ uid %in% kuid ,]
-      Z$uid = NULL
+      Z = Z[ kuid %in% ukuid ,]
 
       # additional copies of data for INLA, refer to model formula
       Z$space2 = Z$space
@@ -63,7 +45,6 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
       # Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
 
-     
       return(Z)
     } 
   }
@@ -258,12 +239,45 @@ model_size_data_carstm = function(p, redo=c("") ) {
   )
 
   Z = rbind(Z[, ..vnkeep], pred[, ..vnkeep ])  # 30,656,521
- 
+
+  # size truncation to range of reliable data
+  bc = "f.imm"
+    sizerange = log(p$size_range( bc ))
+    todrop = Z[ sex==1 & mat==0 & cwd < sizerange[1], which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
+    todrop = Z[ sex==1 & mat==0 & cwd > sizerange[2], which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
+  
+  bc = "f.mat"
+    sizerange = log(p$size_range( bc ))
+    todrop = Z[ sex==1 & mat==1 & cwd < sizerange[1], which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
+    todrop = Z[ sex==1 & mat==1 & cwd > sizerange[2], which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
+  
+  bc = "m.imm"
+    sizerange = log(p$size_range( bc ))
+    todrop = Z[ sex==0 & mat==0 & cwd < sizerange[1], which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
+    todrop = Z[ sex==0 & mat==0 & cwd > sizerange[2], which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
+  
+  bc = "m.mat"
+    sizerange = log(p$size_range( bc ))
+    todrop = Z[ sex==0 & mat==1 & cwd < sizerange[1], which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
+    todrop = Z[ sex==0 & mat==1 & cwd > sizerange[2], which=TRUE ] 
+    if (length(todrop)>0) Z = Z[-todrop,]
+
   Z$cyclic = match( Z$dyri, p$cyclic_levels ) 
   Z$year = as.factor(Z$year)
   
   Z$data_offset = 1/Z$cf_det_no
   Z$cf_det_no = NULL 
+  
+  key_vars = c("AUID", "year", "cyclic", "cwd", "mat", "sex" )
+
+  Z[ , kuid := do.call(paste, .SD), .SDcols = key_vars ]  
 
   # match prediction range to observation range for season (cyclic)
   # data_dyears = range(Z[tag=="observations", "cyclic"] ) 

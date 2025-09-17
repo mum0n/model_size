@@ -85,3 +85,28 @@ p$size_range = function( bioclass ) {
 }
 
 p$size_bandwidth = 30  # no of size bins (for modelling size-bias only) .. on a log scale internally
+
+
+# model formula: 
+
+p$formula = as.formula( paste(
+' pa ~ 1 ',
+    ' + offset( data_offset ) ', 
+    ' + f( inla.group( cwd, method="quantile", n=11 ), model="rw2", scale.model=TRUE) ', 
+    ' + f( inla.group( cwd2, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=space2, control.group=list(model="besag", hyper=H$besag, graph=slot(sppoly, "nb") ) ) ',    
+    ' + f( inla.group( cwd3, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=time3, control.group=list(model="ar1", hyper=H$ar1_group) ) ',   
+    ' + f( time, model="ar1",  hyper=H$ar1 ) ',
+    ' + f( cyclic, model="ar1", hyper=H$ar1 )',
+    ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+    ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
+    ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="ar1", hyper=H$ar1_group)) '
+) )
+
+# alternative:
+#    ' + f( space2, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, 
+#    group=inla.group( cwd2, method="quantile", n=11 ), hyper=H$besag, control.group=list(model="rw2", hyper=H$rw2)) ', 
+
