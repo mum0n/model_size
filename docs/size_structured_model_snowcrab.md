@@ -255,18 +255,7 @@ if (0) {
 
 # separate models by sex and maturity
 for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
-
-    print(bioclass)
-    p$bioclass = bioclass
-
-    # speed up with better starting conditions
-  rm(M); gc()
-}
-
-
-# separate models by sex and maturity
-for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
-
+ 
     print(bioclass)
     p$bioclass = bioclass
 
@@ -300,25 +289,7 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
     # theta[15] = [Log precision for space_time]
     # theta[16] = [Logit phi for space_time]
     # theta[17] = [Group rho_intern for space_time]
- 
-    # theta[1] = Intercept
-    # theta[2] = [Log precision for inla.group(cwd3, method = "quantile", n = 11)]
-    # theta[3] = [Group rho_intern for inla.group(cwd3, method = "quantile", n = 11)]
-    # theta[4] = [Log precision for time]
-    # theta[5] = [Rho_intern for time]
-    # theta[6] = [Log precision for cyclic]
-    # theta[7] = [Rho_intern for cyclic]
-    # theta[8] = [Log precision for inla.group(t, method = "quantile", n = 9)]
-    # theta[9] = [Log precision for inla.group(z, method = "quantile", n = 9)]
-    # theta[10] = [Log precision for inla.group(substrate.grainsize, method = "quantile", n = 9)]
-    # theta[11] = [Log precision for inla.group(pca1, method = "quantile", n = 9)]
-    # theta[12] = [Log precision for inla.group(pca2, method = "quantile", n = 9)]
-    # theta[13] = [Log precision for space]
-    # theta[14] = [Logit phi for space]
-    # theta[15] = [Log precision for space_time]
-    # theta[16] = [Logit phi for space_time]
-    # theta[17] = [Group rho_intern for space_time]
- 
+  
     fit = model_size_presence_absence( p=p, todo="redo", theta0=theta0 )
     
     fit = NULL; gc()
@@ -353,34 +324,7 @@ p$bioclass = bioclasses[2]
 p$bioclass = bioclasses[3]
 p$bioclass = bioclasses[4]
 
-fit = model_size_presence_absence( p=p )
-
-summary(fit) 
-
-# compare to data to predictions
-M = model_size_data_carstm( p=p )  
-
-cor( M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
-
-# posterior predictive check
-carstm_posterior_predictive_check(p=p, M=M[ , ]  )
-
-# EXAMINE POSTERIORS AND PRIORS
-res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
-
-
-
-
-
-# choose the combinations of interest
-
-bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
-
-p$bioclass = bioclasses[1]
-p$bioclass = bioclasses[2]
-p$bioclass = bioclasses[3]
-p$bioclass = bioclasses[4]
-
+  
 fit = model_size_presence_absence( p=p )
 
 summary(fit) 
@@ -425,12 +369,7 @@ $$ \omega_i = \theta_{a/i} \cdot $\text{SA}_a,$$
 # choose the combinations of interest
 
 bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
-bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
-
-p$bioclass = bioclasses[1]
-p$bioclass = bioclasses[2]
-p$bioclass = bioclasses[3]
-p$bioclass = bioclasses[4]
+  
 p$bioclass = bioclasses[1]
 p$bioclass = bioclasses[2]
 p$bioclass = bioclasses[3]
@@ -449,8 +388,7 @@ cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs")
 f = model_size_presence_absence( p=p, todo="load" ) 
 # f = read_write_fast("/home/jae/projects/model_size/outputs/modelled/f.imm/fit_f.imm_5_80_37.rdz")
 
-g = f$summary.random$'inla.group(cwd, method = "quantile", n = 11)'
-g = f$summary.random$'inla.group(cwd, method = "quantile", n = 11)'
+g = f$summary.random$'inla.group(cwd, method = "quantile", n = 11)' 
 
 
 plot( (g[,2]) ~ exp(g[,1]))   log odds ratio

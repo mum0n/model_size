@@ -73,12 +73,6 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     fit = NULL; gc() # no longer needed
 
 
-    fit_summ_mean = fit$summary.fitted.values[["mean"]] 
-    fit_summ_sd = fit$summary.fitted.values[["sd"]] 
-    S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
-    fit = NULL; gc() # no longer needed
-
-
     M = model_size_data_carstm( p=p )  
     
     
@@ -88,11 +82,7 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     M$individual_prob_mean = fit_summ_mean
     M$individual_prob_sd   = fit_summ_sd 
 
-    fit_summ_sd = fit_summ_mean = NULL
-    M$individual_prob_mean = fit_summ_mean
-    M$individual_prob_sd   = fit_summ_sd 
-
-    fit_summ_sd = fit_summ_mean = NULL
+    fit_summ_sd = fit_summ_mean = NULL 
 
     iobs = which(M$tag == "observations")
     ipreds = which(M$tag == "predictions")
@@ -118,13 +108,8 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     ip  = ipreds[ match( O$kuid,  M$kuid[ipreds] ) ]    # predictions (at areal units, a) on M
 
     ip2 = ipreds[ match( O$kuid_pred, M$kuid[ipreds] )]  # prediction time-slice on M
-    ip  = ipreds[ match( O$kuid,  M$kuid[ipreds] ) ]    # predictions (at areal units, a) on M
-
-    ip2 = ipreds[ match( O$kuid_pred, M$kuid[ipreds] )]  # prediction time-slice on M
-
+ 
     # add associated areal unit level predictions (a)
-    O$auid_prob_mean = M$individual_prob_mean[ ip ]
-    O$auid_prob_sd = M$individual_prob_sd[ ip ]
     O$auid_prob_mean = M$individual_prob_mean[ ip ]
     O$auid_prob_sd = M$individual_prob_sd[ ip ]
     O$post_stratified_ratio = O$auid_prob_mean / O$individual_prob_mean   
@@ -134,13 +119,7 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     O$post_stratified_ratio2 = O$auid_prob_mean2 / O$individual_prob_mean   
 
     M = NULL; gc()
-
-    O$auid_prob_mean2 = M$individual_prob_mean[ ip2 ]
-    O$auid_prob_sd2 = M$individual_prob_sd[ ip2 ]
-    O$post_stratified_ratio2 = O$auid_prob_mean2 / O$individual_prob_mean   
-
-    M = NULL; gc()
-
+ 
     gc()
 
     # note: 
@@ -167,9 +146,18 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     message( "\nExtracting samples of joint posteriors")
 
 
-    for (z in c("tag", "start", "length") ) assign(z, attributes(S)[[".contents"]][[z]] )  # index info 
+    for (z in c("tag", "start", "length") ) {
+        assign(z, attributes(S)[[".contents"]][[z]] )  # index info 
+    }
 
-    fkk = inla_get_indices("Predictor", tag=tag, start=start, len=length, model="direct_match")
+    fkk = inla_get_indices(
+        "Predictor", 
+        tag=tag, 
+        start=start, 
+        len=length, 
+        model="direct_match"
+    )
+    
     fkk = unlist(fkk)
     ndat = length(fkk)
     Osamples = array(NA, dim=c( ndat,  nposteriors ) )
@@ -193,7 +181,13 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     read_write_fast( Osamples[ ip2,], fn=fnout_samples_preds2 )  # on logit scale
 
 
-    fss = inla_get_indices("inla.group(cwd, method = \"quantile\", n = 13)", tag=tag, start=start, len=length, model="direct_match")
+    fss = inla_get_indices(
+        "inla.group(cwd, method = \"quantile\", n = 11)", 
+        tag=tag, start=start, 
+        len=length, 
+        model="direct_match"
+    )
+    
     fss = unlist(fss)
     nobs = length(fss)
     Osamples = array(NA, dim=c( nobs,  nposteriors ) )
