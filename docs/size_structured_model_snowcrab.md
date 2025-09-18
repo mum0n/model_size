@@ -212,46 +212,6 @@ redo = NULL
 # redo=c( "size_data")  
 model_size_data_carstm( p=p, redo=redo )  
 
-if (0) {
-    
-  bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat", "all")
-
-  p$bioclass = bioclasses[1]
-  p$bioclass = bioclasses[2]
-  p$bioclass = bioclasses[3]
-  p$bioclass = bioclasses[4]
-
-  p$bioclass = bioclasses[5]
-
-  M = model_size_data_carstm( p=p )  
-  
-  hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
-  
-  plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
-  plot(jitter(pa) ~ year, M, pch="." )  
-      # males -- variance compression: 2002  
-      # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
-
-  plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
-  plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
-
-  plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
-  plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
-  plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
-  plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
-  plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
-  plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
-
-  # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
-  plot(jitter(pa) ~ t, M, pch=".")
-  plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
-  # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
-  plot(jitter(pa) ~ t, M, pch=".")
-  plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
-
-  rm(M); gc()
-}
-
 
 # separate models by sex and maturity
 for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
@@ -261,10 +221,6 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 
     # speed up with better starting conditions
     theta0 = switch( p$bioclass,
-      f.imm = c(10.1329, -2.8369, -1.8350, 1.2112, 0.4354, 0.3740, 1.7719, -0.0049, -0.3890, -1.3901, -2.1339, 2.4755, 2.2667, -2.3851, 3.1558, -1.8944, -0.1666, 0.7510),
-      f.mat = c(9.9259, -1.2770, 0.8736, 1.5573, -0.7555, 1.3739, -0.0517, 0.7740, 0.7502, -3.8818, -4.9230, 1.6256, 1.1813, -3.8467, 2.4112, -3.1540, -0.7202, 1.2429),
-      m.imm = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
-      m.mat = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
       f.imm = c(10.1329, -2.8369, -1.8350, 1.2112, 0.4354, 0.3740, 1.7719, -0.0049, -0.3890, -1.3901, -2.1339, 2.4755, 2.2667, -2.3851, 3.1558, -1.8944, -0.1666, 0.7510),
       f.mat = c(9.9259, -1.2770, 0.8736, 1.5573, -0.7555, 1.3739, -0.0517, 0.7740, 0.7502, -3.8818, -4.9230, 1.6256, 1.1813, -3.8467, 2.4112, -3.1540, -0.7202, 1.2429),
       m.imm = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
@@ -296,15 +252,68 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 }
 
 
+  if (0) {
+      
+    bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat", "all")
+
+    p$bioclass = bioclasses[1]
+    p$bioclass = bioclasses[2]
+    p$bioclass = bioclasses[3]
+    p$bioclass = bioclasses[4]
+
+    p$bioclass = bioclasses[5]
+
+    M = model_size_data_carstm( p=p )  
+    
+    hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
+    
+    plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
+    
+        # males -- variance compression: 2002  
+        # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
+
+    plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
+  
+    plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
+    plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
+    plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
+
+    # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
+    plot(jitter(pa) ~ t, M, pch=".")
+    plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
+  
+    rm(M); gc()
+
+
+      
+    fit = model_size_presence_absence( p=p )
+
+    summary(fit) 
+
+    # compare to data to predictions
+    M = model_size_data_carstm( p=p )  
+
+    cor( M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
+
+    # posterior predictive check
+    carstm_posterior_predictive_check(p=p, M=M[ , ]  )
+
+    # EXAMINE POSTERIORS AND PRIORS
+    res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
+
+  }
+
+
+
 ```
 
 
-Now we load the results and extract the probabilities $\theta$ and the samples of post-stratification weights $\omega_i$ from joint posteriors. However, as the application of areal unit surface areas depends upon the sub-domain being analysed, it's final computation is deferred to a later stage and instead the ratio of probabilities $ \theta_{a/i} = \theta_a / \theta_i$ is first created as it is compuationally demanding (joint posterior sampling) and potentialy large outputs. 
+Now we load the model parameters and probabilities $\theta$ and then compute the samples of post-stratification weights $\omega_i$ from joint posteriors. However, as the application of areal unit surface areas depends upon the sub-domain that it is being applied, it's final computation is deferred to a later stage. Instead, the ratio of probabilities $ \theta_{a/i} = \theta_a / \theta_i$ is first created as it is compuationally demanding (joint posterior sampling). 
 
 At the same time, extract the posterior samples of size selectivity for futher bias-adjustments downstream.
 
 Note the number of posteriors required (5000), is a safe number but can be reduced; reducing number of cores allocated can also help.
-Note the number of posteriors required (5000), is a safe number but can be reduced; reducing number of cores allocated can also help.
+
 
 
 ```{r post-stratification-ratios}
@@ -313,42 +322,19 @@ Note the number of posteriors required (5000), is a safe number but can be reduc
 #| echo: false
 #| label: post-stratification-ratios
 
-
-
-# choose the combinations of interest
-
-bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
-
-p$bioclass = bioclasses[1]
-p$bioclass = bioclasses[2]
-p$bioclass = bioclasses[3]
-p$bioclass = bioclasses[4]
-
-  
-fit = model_size_presence_absence( p=p )
-
-summary(fit) 
-
-# compare to data to predictions
-M = model_size_data_carstm( p=p )  
-
-cor( M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
-
-# posterior predictive check
-carstm_posterior_predictive_check(p=p, M=M[ , ]  )
-
-# EXAMINE POSTERIORS AND PRIORS
-res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
-
-
-
+ 
 
 # careful: nposteriors=5000, nc.cores=4 required about 210 GB RAM in 2025, mc.cores=1 safest still requires ~ 125 GB (default)
 
-for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
+bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
+
+for ( bioclass in bioclasses) {
   p$bioclass = bioclass
-  post_stratified_weights( p=p, toget="redo" ) 
+  post_stratified_predictions( p=p, todo="redo" )   # extract posteriors
 }
+
+# bring all mats and sexes together
+O = post_stratified_results(p=p, todo="redo" )  # compute weights and correction factors and combine all groups into one data set
 
 
 ```
@@ -367,15 +353,8 @@ $$ \omega_i = \theta_{a/i} \cdot $\text{SA}_a,$$
 #| label: post-stratification-weights
 
 # choose the combinations of interest
-
-bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
-  
-p$bioclass = bioclasses[1]
-p$bioclass = bioclasses[2]
-p$bioclass = bioclasses[3]
-p$bioclass = bioclasses[4]
-
-O = post_stratified_weights( p=p, todo="load" ) 
+ 
+O = post_stratified_results( p=p, todo="load" ) 
 
 # hist(O$post_stratified_ratio, "fd") 
 summary(O$post_stratified_ratio)
@@ -398,10 +377,7 @@ plot(exp(g[,2])~ exp(g[,1]))  # odds ratio
 plot(1/exp(g[,2])~ exp(g[,1])) # selectivity ratio
 
 g = f$summary.random$'inla.group(cwd2, method = "quantile", n = 11)'
-a = 776; i = a*11+(1:11); plot(exp(g$mean[i])~exp(g$ID[i]))
-g = f$summary.random$'inla.group(cwd2, method = "quantile", n = 11)'
-a = 776; i = a*11+(1:11); plot(exp(g$mean[i])~exp(g$ID[i]))
-
+a = 776; i = a*11+(1:11); plot(exp(g$mean[i])~exp(g$ID[i])) 
 
 # variable name containing sa estimates for the sub-domain of interest
 region = "cfaall"
@@ -473,11 +449,7 @@ ggarrange( p1, p2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
 # p$cyclic_name = as.character(p$cyclic_levels)
 # p$cyclic_id = 1:p$nw
 
-
-
-
-
-
+ 
 
 outputdir = file.path(p$modeldir, bioclass)
 
@@ -519,6 +491,7 @@ carstm_model_label= paste( "female_size_structure" )
 
 io = which(M$tag=="observations")
 ip = which(M$tag=="predictions")
+
 iq = unique( c( which( M$totno > 0), ip ) )
 iw = unique( c( which( M$totno > 5), ip ) )  # need a good sample to estimate mean size
 
@@ -554,11 +527,10 @@ An alternative is to see the size-related effects in the above model as a size-b
 #| echo: false
 #| label: post-stratification-removing-size-bias
  
-for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
-  p$bioclass = bioclass
-  post_stratified_weights( p=p, toget="size_effect_removed" ) 
-}
- 
+
+
+
+
 
 ```
 

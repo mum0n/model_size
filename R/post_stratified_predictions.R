@@ -1,5 +1,5 @@
 
-post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 ) {
+post_stratified_predictions = function(p, todo="load", nposteriors=5000, mc.cores=1 ) {
  
     fnout = file.path( p$modeldir, p$bioclass, "post_stratified_weights.rdz" ) 
     fnout_samples_obs = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples_obs.rdz" ) 
@@ -18,7 +18,6 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
             }
         }
     }
-
  
 
     if ( "observation_samples" %in% todo ){
@@ -31,7 +30,6 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
         }
     }
  
-
     if ( "prediction_samples" %in% todo ){
         message( "\nLoading prediction samples from file (at observations): ", fnout_samples_preds)
         if (file.exists(fnout_samples_preds)) {
@@ -69,6 +67,12 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     fit = model_size_presence_absence( p=p, todo="load" ) 
     fit_summ_mean = fit$summary.fitted.values[["mean"]] 
     fit_summ_sd = fit$summary.fitted.values[["sd"]] 
+
+    size_selectivity = fit$summary.random$'inla.group(cwd, method = "quantile", n = 11)' 
+    # plot( (size_selectivity[,2]) ~ exp(size_selectivity[,1]))   log odds ratio
+    # plot(exp(size_selectivity[,2])~ exp(size_selectivity[,1]))  # odds ratio
+    # plot(1/exp(size_selectivity[,2])~ exp(size_selectivity[,1])) # selectivity ratio
+
     S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
     fit = NULL; gc() # no longer needed
 
@@ -106,18 +110,15 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
 
     # get correct row order of areal units to match observations
     ip  = ipreds[ match( O$kuid,  M$kuid[ipreds] ) ]    # predictions (at areal units, a) on M
-
     ip2 = ipreds[ match( O$kuid_pred, M$kuid[ipreds] )]  # prediction time-slice on M
  
     # add associated areal unit level predictions (a)
     O$auid_prob_mean = M$individual_prob_mean[ ip ]
     O$auid_prob_sd = M$individual_prob_sd[ ip ]
-    O$post_stratified_ratio = O$auid_prob_mean / O$individual_prob_mean   
  
     O$auid_prob_mean2 = M$individual_prob_mean[ ip2 ]
     O$auid_prob_sd2 = M$individual_prob_sd[ ip2 ]
-    O$post_stratified_ratio2 = O$auid_prob_mean2 / O$individual_prob_mean   
-
+    
     M = NULL; gc()
  
     gc()
@@ -133,6 +134,7 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
 
     attr(O, "bioclass" ) = p$bioclass
     attr(O, "formula" ) = p$formula 
+    attr(O, "size_selectivity") = size_selectivity
 
     message( "\nSaving", fnout )
 
@@ -167,18 +169,19 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     
 
     message( "\nSaving", fnout_samples_obs )
-
-    # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+ 
     read_write_fast( Osamples[iobs,], fn=fnout_samples_obs )  # on logit scale
 
+
     message( "\nSaving", fnout_samples_preds )
-
     # same order as O, samples of the ratio of probabilities (a/i)
-    read_write_fast( Osamples[ ip,], fn=fnout_samples_preds )  # on logit scale
-  
-    message( "\nSaving", fnout_samples_preds2 )
+    post_stratified_ratio  = Osamples[ ip,] / Osamples[iobs,]  
+    read_write_fast( post_stratified_ratio, fn=fnout_samples_preds )  # on logit scale
+    post_stratified_ratio = NULL
 
-    read_write_fast( Osamples[ ip2,], fn=fnout_samples_preds2 )  # on logit scale
+    message( "\nSaving", fnout_samples_preds2 )
+    post_stratified_ratio2 = Osamples[ ip2,] / Osamples[iobs,]   
+    read_write_fast( post_stratified_ratio2, fn=fnout_samples_preds2 )  # on logit scale
 
 
     fss = inla_get_indices(
@@ -193,18 +196,17 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
     Osamples = array(NA, dim=c( nobs,  nposteriors ) )
      
     for (i in 1:nposteriors) {
-        Osamples[,i] = S[[i]]$latent[fss,] 
+        Osamples[,i] = S[[i]]$latent[fss,]   # log odds ratio
     }
     
-    Osamples = inverse.logit(Osamples )
+    Osamples = exp(Osamples )
     
     S = fss = NULL ;  gc()
   
     message( "\nSaving", fnout_samples_bias )
 
     read_write_fast( Osamples, fn=fnout_samples_bias )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
-
-
+ 
     return(fnout)
 
 }
