@@ -213,6 +213,16 @@ redo = NULL
 model_size_data_carstm( p=p, redo=redo )  
 
 if (0) {
+    
+  bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat", "all")
+
+  p$bioclass = bioclasses[1]
+  p$bioclass = bioclasses[2]
+  p$bioclass = bioclasses[3]
+  p$bioclass = bioclasses[4]
+
+  p$bioclass = bioclasses[5]
+
   M = model_size_data_carstm( p=p )  
   
   hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
@@ -223,7 +233,11 @@ if (0) {
       # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
 
   plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
+  plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
 
+  plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
+  plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
+  plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
   plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
   plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
   plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
@@ -231,7 +245,21 @@ if (0) {
   # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
   plot(jitter(pa) ~ t, M, pch=".")
   plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
+  # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
+  plot(jitter(pa) ~ t, M, pch=".")
+  plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
 
+  rm(M); gc()
+}
+
+
+# separate models by sex and maturity
+for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
+
+    print(bioclass)
+    p$bioclass = bioclass
+
+    # speed up with better starting conditions
   rm(M); gc()
 }
 
@@ -248,9 +276,31 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
       f.mat = c(9.9259, -1.2770, 0.8736, 1.5573, -0.7555, 1.3739, -0.0517, 0.7740, 0.7502, -3.8818, -4.9230, 1.6256, 1.1813, -3.8467, 2.4112, -3.1540, -0.7202, 1.2429),
       m.imm = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
       m.mat = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
+      f.imm = c(10.1329, -2.8369, -1.8350, 1.2112, 0.4354, 0.3740, 1.7719, -0.0049, -0.3890, -1.3901, -2.1339, 2.4755, 2.2667, -2.3851, 3.1558, -1.8944, -0.1666, 0.7510),
+      f.mat = c(9.9259, -1.2770, 0.8736, 1.5573, -0.7555, 1.3739, -0.0517, 0.7740, 0.7502, -3.8818, -4.9230, 1.6256, 1.1813, -3.8467, 2.4112, -3.1540, -0.7202, 1.2429),
+      m.imm = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
+      m.mat = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
       NULL
     )
 
+    # theta[1] = Intercept
+    # theta[2] = [Log precision for inla.group(cwd3, method = "quantile", n = 11)]
+    # theta[3] = [Group rho_intern for inla.group(cwd3, method = "quantile", n = 11)]
+    # theta[4] = [Log precision for time]
+    # theta[5] = [Rho_intern for time]
+    # theta[6] = [Log precision for cyclic]
+    # theta[7] = [Rho_intern for cyclic]
+    # theta[8] = [Log precision for inla.group(t, method = "quantile", n = 9)]
+    # theta[9] = [Log precision for inla.group(z, method = "quantile", n = 9)]
+    # theta[10] = [Log precision for inla.group(substrate.grainsize, method = "quantile", n = 9)]
+    # theta[11] = [Log precision for inla.group(pca1, method = "quantile", n = 9)]
+    # theta[12] = [Log precision for inla.group(pca2, method = "quantile", n = 9)]
+    # theta[13] = [Log precision for space]
+    # theta[14] = [Logit phi for space]
+    # theta[15] = [Log precision for space_time]
+    # theta[16] = [Logit phi for space_time]
+    # theta[17] = [Group rho_intern for space_time]
+ 
     # theta[1] = Intercept
     # theta[2] = [Log precision for inla.group(cwd3, method = "quantile", n = 11)]
     # theta[3] = [Group rho_intern for inla.group(cwd3, method = "quantile", n = 11)]
@@ -283,6 +333,7 @@ Now we load the results and extract the probabilities $\theta$ and the samples o
 At the same time, extract the posterior samples of size selectivity for futher bias-adjustments downstream.
 
 Note the number of posteriors required (5000), is a safe number but can be reduced; reducing number of cores allocated can also help.
+Note the number of posteriors required (5000), is a safe number but can be reduced; reducing number of cores allocated can also help.
 
 
 ```{r post-stratification-ratios}
@@ -290,6 +341,34 @@ Note the number of posteriors required (5000), is a safe number but can be reduc
 #| output: false
 #| echo: false
 #| label: post-stratification-ratios
+
+
+
+# choose the combinations of interest
+
+bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
+
+p$bioclass = bioclasses[1]
+p$bioclass = bioclasses[2]
+p$bioclass = bioclasses[3]
+p$bioclass = bioclasses[4]
+
+fit = model_size_presence_absence( p=p )
+
+summary(fit) 
+
+# compare to data to predictions
+M = model_size_data_carstm( p=p )  
+
+cor( M$pa, fit$summary.fitted.values$mean, use="pairwise.complete.obs" )
+
+# posterior predictive check
+carstm_posterior_predictive_check(p=p, M=M[ , ]  )
+
+# EXAMINE POSTERIORS AND PRIORS
+res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
+
+
 
 
 
@@ -346,7 +425,12 @@ $$ \omega_i = \theta_{a/i} \cdot $\text{SA}_a,$$
 # choose the combinations of interest
 
 bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
+bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
 
+p$bioclass = bioclasses[1]
+p$bioclass = bioclasses[2]
+p$bioclass = bioclasses[3]
+p$bioclass = bioclasses[4]
 p$bioclass = bioclasses[1]
 p$bioclass = bioclasses[2]
 p$bioclass = bioclasses[3]
@@ -357,6 +441,7 @@ O = post_stratified_weights( p=p, todo="load" )
 # hist(O$post_stratified_ratio, "fd") 
 summary(O$post_stratified_ratio)
 
+
 plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
   
 cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
@@ -364,6 +449,7 @@ cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs")
 f = model_size_presence_absence( p=p, todo="load" ) 
 # f = read_write_fast("/home/jae/projects/model_size/outputs/modelled/f.imm/fit_f.imm_5_80_37.rdz")
 
+g = f$summary.random$'inla.group(cwd, method = "quantile", n = 11)'
 g = f$summary.random$'inla.group(cwd, method = "quantile", n = 11)'
 
 
@@ -373,6 +459,8 @@ plot(exp(g[,2])~ exp(g[,1]))  # odds ratio
 
 plot(1/exp(g[,2])~ exp(g[,1])) # selectivity ratio
 
+g = f$summary.random$'inla.group(cwd2, method = "quantile", n = 11)'
+a = 776; i = a*11+(1:11); plot(exp(g$mean[i])~exp(g$ID[i]))
 g = f$summary.random$'inla.group(cwd2, method = "quantile", n = 11)'
 a = 776; i = a*11+(1:11); plot(exp(g$mean[i])~exp(g$ID[i]))
 

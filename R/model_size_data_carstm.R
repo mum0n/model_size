@@ -7,12 +7,15 @@ model_size_data_carstm = function(p, redo=c("") ) {
     p$modeldir,  
     paste( "size_distributions_tabulated_data_zeros.rdz", sep="" )  
   )
- 
+  
+
 
   Z = NULL 
   if ( ! "size_data" %in% redo ) {
     if (file.exists(fn)) {
       Z = read_write_fast( fn )
+
+      if (p$bioclass == "all") return(Z)  
 
       if (p$bioclass == "all") return(Z)  
 
@@ -24,11 +27,11 @@ model_size_data_carstm = function(p, redo=c("") ) {
       
       # subset data 
       # essentially drop all predict times except those required to reduce computations
-      ukuid = unique( 
-        Z[ tag=="observations", kuid],  # add all observations
-        Z[ cyclic==p$prediction_dyear_index, kuid ]  # and add time-slice for prediction period (1 sept)
-      )
-
+      ukuid_obs  = unique(Z[ tag=="observations", kuid])  # add all observations
+      ukuid_pred = unique(Z[ cyclic==p$prediction_dyear_index, kuid ])  # and add time-slice for prediction period (1 sept)
+      
+      ukuid = unique( ukuid_obs, ukuid_pred )
+      
       Z = Z[ kuid %in% ukuid ,]
 
       # additional copies of data for INLA, refer to model formula
@@ -44,6 +47,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
       # Z$time_cw = Z$time
 
       # Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
+
 
       return(Z)
     } 
