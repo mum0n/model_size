@@ -19,6 +19,7 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
         }
     }
 
+ 
 
     if ( "observation_samples" %in% todo ){
         message( "\nLoading obserevation samples from file: ", fnout_samples_obs)
@@ -29,19 +30,7 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
             }
         }
     }
-
-    if ( "prediction_samples" %in% todo ){
-        message( "\nLoading prediction samples from file (at observations): ", fnout_samples_preds)
-
-    if ( "observation_samples" %in% todo ){
-        message( "\nLoading obserevation samples from file: ", fnout_samples_obs)
-        if (file.exists(fnout_samples_obs)) {
-            O = read_write_fast(fnout_samples_obs)
-            if (!is.null(O)) {
-                return(O)
-            }
-        }
-    }
+ 
 
     if ( "prediction_samples" %in% todo ){
         message( "\nLoading prediction samples from file (at observations): ", fnout_samples_preds)
@@ -51,10 +40,10 @@ post_stratified_weights = function(p, todo="load", nposteriors=5000, mc.cores=1 
                 return(O)
             }
         }
-    }
 
-    if ( "prediction_prediction_samples2" %in% todo ){
-        message( "\nLoading prediction prediction samples from file (at prediction time-slice) (at prediction time-slice): ", fnout_samples_preds2)
+    }
+    if ( "prediction_samples2" %in% todo ){
+        message( "\nLoading prediction samples from file (at prediction time-slice): ", fnout_samples_preds2)
         if (file.exists(fnout_samples_preds2)) {
             O = read_write_fast(fnout_samples_preds2)
             if (!is.null(O)) {
