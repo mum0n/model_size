@@ -3,9 +3,9 @@ post_stratified_results = function(p, todo="load"){
     fn = file.path( p$modeldir, "post_stratified_results.rdz" ) 
 
     if ( "load" %in% todo ){
-        message( "\nLoading from file: ", fnout)
-        if (file.exists(fnout)) {
-            O = read_write_fast(fnout)
+        message( "\nLoading from file: ", fn)
+        if (file.exists(fn)) {
+            O = read_write_fast(fn)
             if (!is.null(O)) {
                 return(O)
             }
