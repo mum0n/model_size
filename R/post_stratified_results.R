@@ -28,7 +28,7 @@ post_stratified_results = function(p, todo="load"){
         # plot(exp(ss[,2])~ exp(ss[,1]))  # odds ratio
         # plot(1/exp(ss[,2])~ exp(ss[,1])) # selectivity ratio
 
-        o$odds_ratio = splinefun(
+        o$odds_ratio = spline(
             x = exp(ss[,1]), 
             y = exp(ss[,2]), 
             xout=o$cw 
