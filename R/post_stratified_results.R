@@ -19,7 +19,8 @@ post_stratified_results = function(p, todo="load"){
     size_selectivity = list()
 
     for (bc in c("f.imm", "f.mat", "m.imm", "m.mat") ){
-        p$bioclass = bioclass
+        print(bc)
+				p$bioclass = bc
         o = NULL
         o = post_stratified_predictions( p=p, todo="load" )
         ss = size_selectivity[[bc]] = attr(o, "size_selectivity") 
