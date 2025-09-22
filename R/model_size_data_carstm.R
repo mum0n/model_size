@@ -15,8 +15,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
     if (file.exists(fn)) {
       Z = read_write_fast( fn )
 
-      if (p$bioclass == "all") return(Z)  
-
+      if (!exists("bioclass", p)) return(Z)  
       if (p$bioclass == "all") return(Z)  
 
       i = filter.class( Z, p$bioclass )
@@ -125,7 +124,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
       det_sc$individual = paste( det_sc$trip, det_sc$set, det_sc$spec_bio, det_sc$crabno, sep=".")
       det_sc$filter.class = p$selection$biologicals_using_snowcrab_filter_class
       isc = bio.snowcrab::filter.class( x=det_sc, type=p$selection$biologicals_using_snowcrab_filter_class )
-      if (length(isc) > 0) det_sc = det_sc[isc, c("individual", "filter.class") ]
+      if (length(isc) > 0) det_sc = det_sc[isc, c("individual", "crabno",  "filter.class") ]
       isc = NULL
       setDT( det_sc )
       detcm$individual = paste( detcm$did, detcm$individual, sep=".")
@@ -148,7 +147,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
   detcm$cw = detcm$len * 10  # mm -> cm
   detcm$logcw = log(detcm$cw)
 
-  detcm = detcm[, .(sid, sex, mat, cw, logcw, mass, cf_det_no)]  # mass in kg
+  detcm = detcm[, .(sid, crabno, sex, mat, cw, logcw, mass, cf_det_no)]  # mass in kg
 
   
   # trim a few strange data points
@@ -190,7 +189,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
   Z0$logcw = Z0$cwd  # fill with midpoints 
   Z0$cw = exp(Z0$logcw)  #  midpoint on original scale ... and a dummy to allow merges with observations
   Z0$pa = 0
-
+	
   # dim(Z0) # 1124880
 
   Z0 = setcm[,.(sid, data_offset)][ Z0, on=.(sid)] 
@@ -204,6 +203,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
   withdata = unique(Z$zid)
   toremove = unique(Z0[ zid %in% withdata, which=TRUE])
   if (length(toremove) > 0) Z0 = Z0[-toremove, ]  
+	Z0$crabno = 0
 
   Z = rbind(Z, Z0) # 1565641
   # length(unique(Z$sid)) # 9374
@@ -234,9 +234,10 @@ model_size_data_carstm = function(p, redo=c("") ) {
   pred = P0[ pred, on=.(pid), allow.cartesian=TRUE]  # 29090880
   pred$cw = exp(pred$logcw)
   setnames(pred, "pid", "sid" )
+	pred$crabno = 0
   
   vnkeep = c(
-    "sid", "AUID", "tag", "data_offset", 
+    "sid", "AUID", "crabno",  "tag", "data_offset", 
     "z", "substrate.grainsize", "t", "pca1", "pca2",
     "year", "dyear", "dyri", "space", "time",  
     "sex", "mat", "cw", "logcw", "cwd", "mass", "cf_det_no",  "pa" 
