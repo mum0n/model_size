@@ -29,7 +29,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
       ukuid_obs  = unique(Z[ tag=="observations", kuid])  # add all observations
       ukuid_pred = unique(Z[ cyclic==p$prediction_dyear_index, kuid ])  # and add time-slice for prediction period (1 sept)
       
-      ukuid = unique( ukuid_obs, ukuid_pred )
+      ukuid = unique( c(ukuid_obs, ukuid_pred) )
       
       Z = Z[ kuid %in% ukuid ,]
 
