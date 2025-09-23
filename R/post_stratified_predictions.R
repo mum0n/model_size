@@ -78,8 +78,7 @@ post_stratified_predictions = function(p, todo="load", nposteriors=5000, mc.core
 
 
     M = model_size_data_carstm( p=p )  
-    
-    
+     
     M$year = factor2number( M$year )
 
     # fetch direct predictions of mean, sd

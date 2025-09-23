@@ -220,11 +220,23 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
     p$bioclass = bioclass
 
     # speed up with better starting conditions
-    theta0 = switch( p$bioclass,
-      f.imm = c(10.1329, -2.8369, -1.8350, 1.2112, 0.4354, 0.3740, 1.7719, -0.0049, -0.3890, -1.3901, -2.1339, 2.4755, 2.2667, -2.3851, 3.1558, -1.8944, -0.1666, 0.7510),
-      f.mat = c(9.9259, -1.2770, 0.8736, 1.5573, -0.7555, 1.3739, -0.0517, 0.7740, 0.7502, -3.8818, -4.9230, 1.6256, 1.1813, -3.8467, 2.4112, -3.1540, -0.7202, 1.2429),
-      m.imm = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
-      m.mat = c(10.0018, -2.9767, -1.9610, 1.5405, 0.7629, 0.9357, 1.4377, 0.1902, 0.9168, -1.6631, -1.7156, 3.1555, 3.0674, -2.4025, 3.6690, -1.6667, -0.8290, 0.8037),
+     theta0 = switch( p$bioclass,
+      f.imm = c(
+        10.0103, -2.8335, -1.8774, 1.2587, 0.3378, 0.5079,
+        1.7428, 0.0006, -0.1227, -1.4111, -2.1910, 2.5600, 2.2825, -2.4290,
+        3.3563, -1.8929, -0.1821, 0.7523),
+      f.mat = c(
+        9.9229, -0.4964, 1.5286, 2.1544, -0.7488, 1.4175,
+        -0.1088, 0.7826, 0.7994, -3.8180, -4.9030, 1.5875, 1.1872, -3.9298,
+        2.3930, -3.1264, -0.6926, 1.2534),
+      m.imm = c(
+        9.9108, -2.9779, -2.1801, 1.7836, 0.7575, 0.8628,
+        1.5447, 0.2624, 1.7903, -1.6019, -1.7978, 4.0169, 3.8359, -2.4041,
+        3.9444, -1.6640, -0.8214, 0.8023),
+      m.mat = c(
+        9.9007, -0.0995, 1.1615, 2.2689, 0.4018, 2.4738,
+        1.1796, -0.0002, 1.9781, -0.9786, 1.4524, 4.0080, 4.2422, -2.5959,
+        4.3386, -1.4514, -0.4950, 0.9850 ),
       NULL
     )
 
@@ -301,6 +313,80 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
     # EXAMINE POSTERIORS AND PRIORS
     res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
 
+
+    # posteriors and effects plots
+
+    # set level data from snow crab surveys 
+    # sppoly=areal_units( p=p )
+      
+    # p$space_name = sppoly$AUID 
+    # p$space_id = 1:length(p$space_name)  # must match M$space
+
+    # p$time_name = as.character(p$yrs)
+    # p$time_id =  1:p$ny
+
+    # p$cyclic_levels = factor( discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ), ordered=TRUE ) # default midpoints; same as:
+    # p$cyclic_name = as.character(p$cyclic_levels)
+    # p$cyclic_id = 1:p$nw
+
+    
+
+    outputdir = file.path(p$modeldir, bioclass)
+
+    res_vars = c( names( res$hypers), names(res$fixed) )
+    for (i in 1:length(res_vars) ) {
+      o = carstm_prior_posterior_compare( fit, vn=res_vars[i], outputdir=outputdir  )  
+      dev.new(); print(o)
+    }     
+
+
+    plot( jitter(M$pa), fit$summary.fitted.values$mean, pch="." ) 
+    cor( jitter(M$pa), fit$summary.fitted.values$mean ) # 0.5441
+
+    vn = 'inla.group(cw, method = "quantile", n = 15)'
+    o = fit$summary.random[[vn]]
+    plot( o$ID, (o$mean) )
+
+    vn = 'inla.group(z, method = "quantile", n = 9)'
+    o = fit$summary.random[[vn]]
+    plot( o$ID, (o$mean) )
+
+    vn = 'inla.group(t, method = "quantile", n = 9)'
+    o = fit$summary.random[[vn]]
+    plot( o$ID, (o$mean) )
+
+    o = fit$summary.fixed
+    plot( (o$mean) )
+
+
+    ## to add spatial effects:
+    yrs = 1999:2024
+
+    spec_bio = bio.taxonomy::taxonomy.recode( from="spec", to="parsimonious", tolookup=2526 )
+
+    snowcrab_filter_class = "fb"     # fishable biomass (including soft-shelled )  "m.mat" "f.mat" "imm"
+
+    carstm_model_label= paste( "male_size_structure" )
+    carstm_model_label= paste( "female_size_structure" )
+
+    io = which(M$tag=="observations")
+    ip = which(M$tag=="predictions")
+
+    iq = unique( c( which( M$totno > 0), ip ) )
+    iw = unique( c( which( M$totno > 5), ip ) )  # need a good sample to estimate mean size
+
+
+    ylab = "Probability"
+    fn_root_prefix = "Predicted_presence_absence"
+    fn_root = "habitat"
+    # title= paste( snowcrab_filter_class, "Probability")  
+
+    outputdir = file.path( p$modeldir, bioclass, "figures" )
+    if ( !file.exists(outputdir)) dir.create( outputdir, recursive=TRUE, showWarnings=FALSE )
+
+    # plots with 95% PI
+    carstm_plot_marginaleffects( p, outputdir, fn_root )
+
   }
 
 
@@ -322,26 +408,25 @@ Note the number of posteriors required (5000), is a safe number but can be reduc
 #| echo: false
 #| label: post-stratification-ratios
 
- 
 
-# careful: nposteriors=5000, nc.cores=4 required about 210 GB RAM in 2025, mc.cores=1 safest still requires ~ 125 GB (default)
+# careful: nposteriors=5000, nc.cores=4 required about 210 GB RAM in 2025, 
+# mc.cores=1 safest still requires ~ 125 GB (default)
 
-bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat")
-
-for ( bioclass in bioclasses) {
+for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat") ) {
   p$bioclass = bioclass
-  post_stratified_predictions( p=p, todo="redo" )   # extract posteriors
+  post_stratified_predictions( p=p, todo="redo" )   # extract posteriors (observations and predictions)
 }
 
-# bring all mats and sexes together
-O = post_stratified_results(p=p, todo="redo" )  # compute weights and correction factors and combine all groups into one data set
+# bring all mats and sexes together (each row is an individual observation) 
+# with associated computed weights and correction factors
 
+O = post_stratified_results(p=p, todo="redo" )  
 
 ```
 
 ---  
 
-The "post_stratified_ratio" created above does not include the surface area associated with the sub-domain of interest (predicted areal unit $\text{SA}_a$). Depending upon the sub-domain, these values can be fractional/partial and so are computed once it is specificied as:
+The "post_stratified_ratio" created above does not include the surface area associated with the sub-domain of interest (predicted areal unit $\text{SA}_a$). Depending upon the sub-domain, these values can be fractional/partial and so the final weights are computed once known. 
 
 $$ \omega_i = \theta_{a/i} \cdot $\text{SA}_a,$$
 
@@ -352,33 +437,8 @@ $$ \omega_i = \theta_{a/i} \cdot $\text{SA}_a,$$
 #| echo: false
 #| label: post-stratification-weights
 
-# choose the combinations of interest
+# choose region of interest
  
-O = post_stratified_results( p=p, todo="load" ) 
-
-# hist(O$post_stratified_ratio, "fd") 
-summary(O$post_stratified_ratio)
-
-
-plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
-  
-cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
-
-f = model_size_presence_absence( p=p, todo="load" ) 
-# f = read_write_fast("/home/jae/projects/model_size/outputs/modelled/f.imm/fit_f.imm_5_80_37.rdz")
-
-g = f$summary.random$'inla.group(cwd, method = "quantile", n = 11)' 
-
-
-plot( (g[,2]) ~ exp(g[,1]))   log odds ratio
-
-plot(exp(g[,2])~ exp(g[,1]))  # odds ratio
-
-plot(1/exp(g[,2])~ exp(g[,1])) # selectivity ratio
-
-g = f$summary.random$'inla.group(cwd2, method = "quantile", n = 11)'
-a = 776; i = a*11+(1:11); plot(exp(g$mean[i])~exp(g$ID[i])) 
-
 # variable name containing sa estimates for the sub-domain of interest
 region = "cfaall"
 region = "cfanorth"
@@ -387,18 +447,15 @@ region = "cfa4x"
 region = "cfa23"
 region = "cfa24"
 
+O = post_stratified_results( p=p, todo="area_weighted", region=region ) 
+ 
+# hist(O$post_stratified_ratio, "fd") 
+summary(O$post_stratified_ratio)
 
-pg = surface_area_estimates(p, pg=areal_units(p=p), region=region ) # see names(pg)
-pg = pg[ O[,AUID], on="AUID" ] # bring in SA in correct sequence
+plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
+  
+cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
 
-# finally, this is the post-stratified weight $\omega_i$ for sub-domain of focus
-O$post_stratified_weight = O$post_stratified_ratio * pg$SA  
-
-
-if (0) {
-  # to recompute directly (without reloading ): 
-  post_stratified_weight_samples = attr(O, "samples")[] * pg$SA
-}
 
 # check some histograms
 yrp = "2024"
@@ -406,20 +463,22 @@ yrp = "2024"
 #yrp = "2022"
 #yrp = "2019"
 
+# note: post_stratified_weight > 0 filters out other regions 
+
+k = females = O[ sex==1, post_stratified_weight>0 & year==yrp, which=TRUE]
+k = males   = O[ sex==0, post_stratified_weight>0 & year==yrp, which=TRUE]
 
 require(ggpubr)
 
-# note: post_stratified_weight > 0 filters out other regions 
 # this is ok for histograms .. but zeros need to be retained for some computations ...
- 
-p1 = ggplot(O[post_stratified_weight>0 & year==yrp ,], aes( log(cw), group= mat, fill=mat ) ) + 
+p1 = ggplot(O[k,], aes( log(cw), group= mat, fill=mat ) ) + 
   geom_histogram( bins = p$span(bioclass)[3] ) +
   scale_y_continuous(trans = "log10") + 
   theme(axis.title.x=element_blank(),
     axis.text.x=element_blank(),
     axis.ticks.x=element_blank())
   
-p2 = ggplot(O[post_stratified_weight>0 & year==yrp ,], aes( log(cw), group = mat, fill=mat, weight=post_stratified_weight ) ) + 
+p2 = ggplot(O[k,], aes( log(cw), group = mat, fill=mat, weight=post_stratified_weight ) ) + 
   geom_histogram( bins = p$span(bioclass)[3] )  +
   scale_y_continuous(trans = "log10")
 
@@ -430,83 +489,6 @@ labels = paste(
   paste( bioclass, region, yrp, sep="-")
 ) 
 ggarrange( p1, p2, nrow=2, labels=labels, align = "v", font.label=list(size=10) )
- 
-
-
-
-# posteriors and effects plots
-
-# set level data from snow crab surveys 
-# sppoly=areal_units( p=p )
-  
-# p$space_name = sppoly$AUID 
-# p$space_id = 1:length(p$space_name)  # must match M$space
-
-# p$time_name = as.character(p$yrs)
-# p$time_id =  1:p$ny
-
-# p$cyclic_levels = factor( discretize_data( span=c(0, 1, p$nw), toreturn="midpoints" ), ordered=TRUE ) # default midpoints; same as:
-# p$cyclic_name = as.character(p$cyclic_levels)
-# p$cyclic_id = 1:p$nw
-
- 
-
-outputdir = file.path(p$modeldir, bioclass)
-
-res_vars = c( names( res$hypers), names(res$fixed) )
-for (i in 1:length(res_vars) ) {
-  o = carstm_prior_posterior_compare( fit, vn=res_vars[i], outputdir=outputdir  )  
-  dev.new(); print(o)
-}     
-
-
-plot( jitter(M$pa), fit$summary.fitted.values$mean, pch="." ) 
-cor( jitter(M$pa), fit$summary.fitted.values$mean ) # 0.5441
-
-vn = 'inla.group(cw, method = "quantile", n = 15)'
-o = fit$summary.random[[vn]]
-plot( o$ID, (o$mean) )
-
-vn = 'inla.group(z, method = "quantile", n = 9)'
-o = fit$summary.random[[vn]]
-plot( o$ID, (o$mean) )
-
-vn = 'inla.group(t, method = "quantile", n = 9)'
-o = fit$summary.random[[vn]]
-plot( o$ID, (o$mean) )
-
-o = fit$summary.fixed
-plot( (o$mean) )
-
-
-## to add spatial effects:
-yrs = 1999:2024
-
-spec_bio = bio.taxonomy::taxonomy.recode( from="spec", to="parsimonious", tolookup=2526 )
-
-snowcrab_filter_class = "fb"     # fishable biomass (including soft-shelled )  "m.mat" "f.mat" "imm"
-
-carstm_model_label= paste( "male_size_structure" )
-carstm_model_label= paste( "female_size_structure" )
-
-io = which(M$tag=="observations")
-ip = which(M$tag=="predictions")
-
-iq = unique( c( which( M$totno > 0), ip ) )
-iw = unique( c( which( M$totno > 5), ip ) )  # need a good sample to estimate mean size
-
-
-ylab = "Probability"
-fn_root_prefix = "Predicted_presence_absence"
-fn_root = "habitat"
-# title= paste( snowcrab_filter_class, "Probability")  
-
-outputdir = file.path( p$modeldir, bioclass, "figures" )
-if ( !file.exists(outputdir)) dir.create( outputdir, recursive=TRUE, showWarnings=FALSE )
-
-# plots with 95% PI
-carstm_plot_marginaleffects( p, outputdir, fn_root )
-
 
 ```
 
@@ -517,19 +499,34 @@ Bottom line: reasonable success in estimating individual survey/design weights. 
 
 The application of the above post-stratified weights provides a distribution that scales observations of individuals to observed environmental conditions. However, bias associated with size (sampling gear "selectivity", and even design induced bias) is still present in the distribution. In fishery applications this bias is usually estimated in a process-based dynamical model as a residual nuisance factor or estimated **a priori** via experimentation and then deterministically use to correct size-distributions. 
 
-An alternative is to see the size-related effects in the above model as a size-based probability of relative "observability" of individuals; that is, the marginal effect of size on the Benoulli binomial model of presence and absence provides a parameterization of size-bias. Removing size-related effects from the probabilities associated with individuals  will therefore result in probability estimates that reduces size-related sampling/design bias. We do this by removing the random effects associated with size in the posterior samples, done in the next step.
+An alternative is to see the size-related effects in the above model as a size-based probability of relative "observability" of individuals; that is, the marginal effect of size on the Bernoulli binomial model of presence and absence provides a parameterization of size-bias. Removing size-related effects from the probabilities associated with individuals will, therefore, provide probability estimates that adjusts for size-related sampling/design bias. We do this by removing the random effects associated with size in the posterior estimates and samples:
 
 
-
-```{r post-stratification-removing-size-bias}
+```{r post-stratification-size-bias}
 #| eval: true
 #| output: false
 #| echo: false
-#| label: post-stratification-removing-size-bias
- 
+#| label: post-stratification-size-bias
 
+# look at size selectivity (bias) curve:
+# choose region of interest
+region = "cfaall"
+region = "cfanorth"
+region = "cfasouth"
+region = "cfa4x"
+region = "cfa23"
+region = "cfa24"
 
+ss = post_stratified_results( p=p, todo="size_selectivity", region=region )
 
+plot( ( ss[,2]) ~ exp( ss[,1])) #  log odds ratio
+
+plot(exp( ss[,2])~ exp( ss[,1]))  # odds ratio
+
+plot(1/exp( ss[,2])~ exp( ss[,1])) # selectivity ratio
+
+# 11 is the number of discretizations in the model fit for cwd
+a = 776; i = a*11+(1:11); plot(exp( ss$mean[i])~exp( ss$ID[i])) 
 
 
 ```
