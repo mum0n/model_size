@@ -222,9 +222,7 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
     # speed up with better starting conditions
      theta0 = switch( p$bioclass,
       f.imm = c(
-        10.0103, -2.8335, -1.8774, 1.2587, 0.3378, 0.5079,
-        1.7428, 0.0006, -0.1227, -1.4111, -2.1910, 2.5600, 2.2825, -2.4290,
-        3.3563, -1.8929, -0.1821, 0.7523),
+        9.9565,-2.7419,-1.3184,1.0630,0.5357,0.6060,1.7591,0.0005,0.1856,-1.5798,-1.1560,2.3885,2.0125,-2.4281,3.3866,-1.8981,-0.1713,0.7615),
       f.mat = c(
         9.9229, -0.4964, 1.5286, 2.1544, -0.7488, 1.4175,
         -0.1088, 0.7826, 0.7994, -3.8180, -4.9030, 1.5875, 1.1872, -3.9298,
@@ -394,9 +392,7 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 ```
 
 
-Now we load the model parameters and probabilities $\theta$ and then compute the samples of post-stratification weights $\omega_i$ from joint posteriors. However, as the application of areal unit surface areas depends upon the sub-domain that it is being applied, it's final computation is deferred to a later stage. Instead, the ratio of probabilities $ \theta_{a/i} = \theta_a / \theta_i$ is first created as it is compuationally demanding (joint posterior sampling). 
-
-At the same time, extract the posterior samples of size selectivity for futher bias-adjustments downstream.
+Now that we have parameter estimates and predictions of probabilities $\theta$ for each sex and maturity class, we generate and store samples of these post-stratification weights $\omega_i$ from the joint posteriors to carry them forward for futher analysis and synthesis. However, as the application of areal unit surface areas depends upon the sub-domain that it is being applied, this latter computation is deferred to a later stage. Instead, the ratio of probabilities $ \theta_{a/i} = \theta_a / \theta_i$ is first created as it is also compuationally demanding. 
 
 Note the number of posteriors required (5000), is a safe number but can be reduced; reducing number of cores allocated can also help.
 
@@ -412,15 +408,16 @@ Note the number of posteriors required (5000), is a safe number but can be reduc
 # careful: nposteriors=5000, nc.cores=4 required about 210 GB RAM in 2025, 
 # mc.cores=1 safest still requires ~ 125 GB (default)
 
+# extract posteriors (observations and predictions)
 for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat") ) {
   p$bioclass = bioclass
-  post_stratified_predictions( p=p, todo="redo" )   # extract posteriors (observations and predictions)
+  model_size_results( p=p, todo="observation_ratios_redo" )   
 }
 
 # bring all mats and sexes together (each row is an individual observation) 
 # with associated computed weights and correction factors
-
-O = post_stratified_results(p=p, todo="redo" )  
+ 
+O = model_size_results(p=p, todo="observation_results_redo" )  
 
 ```
 
@@ -447,7 +444,8 @@ region = "cfa4x"
 region = "cfa23"
 region = "cfa24"
 
-O = post_stratified_results( p=p, todo="area_weighted", region=region ) 
+
+O = model_size_results( p=p, todo="observation_weights", region=region ) 
  
 # hist(O$post_stratified_ratio, "fd") 
 summary(O$post_stratified_ratio)
@@ -499,7 +497,7 @@ Bottom line: reasonable success in estimating individual survey/design weights. 
 
 The application of the above post-stratified weights provides a distribution that scales observations of individuals to observed environmental conditions. However, bias associated with size (sampling gear "selectivity", and even design induced bias) is still present in the distribution. In fishery applications this bias is usually estimated in a process-based dynamical model as a residual nuisance factor or estimated **a priori** via experimentation and then deterministically use to correct size-distributions. 
 
-An alternative is to see the size-related effects in the above model as a size-based probability of relative "observability" of individuals; that is, the marginal effect of size on the Bernoulli binomial model of presence and absence provides a parameterization of size-bias. Removing size-related effects from the probabilities associated with individuals will, therefore, provide probability estimates that adjusts for size-related sampling/design bias. We do this by removing the random effects associated with size in the posterior estimates and samples:
+An alternative is to see the size-related effects in the above model as a size-based probability of relative "observability" of individuals; that is, the marginal effect of size on the Bernoulli binomial model of presence and absence provides a parameterization of size-bias. Removing size-related effects from the probabilities associated with individuals will, therefore, provide probability estimates that adjusts for size-related sampling/design bias. We do this by removing the random effects associated with size in the posterior estimates and samples. These were actually stored in the previous step and can be accessed as follows. 
 
 
 ```{r post-stratification-size-bias}
@@ -517,7 +515,7 @@ region = "cfa4x"
 region = "cfa23"
 region = "cfa24"
 
-ss = post_stratified_results( p=p, todo="size_selectivity", region=region )
+ss = model_size_results( p=p, todo="size_selectivity", region=region )
 
 plot( ( ss[,2]) ~ exp( ss[,1])) #  log odds ratio
 
@@ -531,9 +529,49 @@ a = 776; i = a*11+(1:11); plot(exp( ss$mean[i])~exp( ss$ID[i]))
 
 ```
 
+The above are mean estimates and to compute the posterir samples of these effects removed is simple but requires returning to the internal representation of these values (log odds ratios and logit probabilities) in INLA. These are extracted and saved in the next step.
+
+
+```{r post-stratification-size-bias-samples}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: post-stratification-size-bias-samples
+
+# look at size selectivity (bias) curve:
+# choose region of interest
+region = "cfaall"
+region = "cfanorth"
+region = "cfasouth"
+region = "cfa4x"
+region = "cfa23"
+region = "cfa24"
+
+
+-- todo 
+
+ss = post_stratified_samples( p=p, todo="size_selectivity", region=region )
+
+plot( ( ss[,2]) ~ exp( ss[,1])) #  log odds ratio
+
+plot(exp( ss[,2])~ exp( ss[,1]))  # odds ratio
+
+plot(1/exp( ss[,2])~ exp( ss[,1])) # selectivity ratio
+
+n = nrow(ss) # n=11 is the number of discretizations in the model fit for cwd
+
+# choosing a location/time slice at random and plotting it
+  a = 776; 
+  a = 1;
+  i = a*n+(1:n); 
+  plot(exp( ss$mean[i])~exp( ss$ID[i])) 
+
+
+```
+
+
 
 ## 2. Inference of modal sizes 
-
 
 
 For each sex, instar, maturity group, identify modal size. This is done with **Kernel Mixture Models (KMMs)** which can decompose the size structure at the level of each observation event. The modes and distributional parameters of the kernel mixture model are then modelled in space and time using a statistical spatio-temporal model. These are then reconstituted in the sampling domain to provide a model-based (weighted) size structure, that accounts for these biases as much as possible through the use of environmental covariates as well as spatial and spatiotemporal random effects to absorb the unmeasured biases.
