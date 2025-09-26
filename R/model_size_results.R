@@ -10,7 +10,7 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
       observation_samples = file.path( fn_loc, "post_stratified_weights_samples_obs.rdz" ) 
       prediction_samples = file.path( fn_loc, "post_stratified_weights_samples.rdz" ) 
       prediction_samples2 = file.path( fn_loc, "post_stratified_weights_samples2.rdz" ) 
-      bias_adjusted = file.path( fn_loc, "post_stratified_weights_samples_bias_adjusted.rdz" )
+      size_selectivity_samples = file.path( fn_loc, "post_stratified_size_selectivity_samples.rdz" )
     }
 
     O = NULL
@@ -22,7 +22,7 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
       observation_samples = observation_samples,
       prediction_samples = prediction_samples,
       prediction_samples2 = prediction_samples2,
-      bias_adjusted = bias_adjusted,
+      size_selectivity_samples = size_selectivity_samples,
       NULL
     )
 
@@ -289,11 +289,11 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
         
         S = fss = NULL ;  gc()
     
-        message( "\nSaving", bias_adjusted )
+        message( "\nSaving", size_selectivity_samples )
 
-        read_write_fast( Osamples, fn=bias_adjusted )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+        read_write_fast( Osamples, fn=size_selectivity_samples )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
  
-        return(bias_adjusted)
+        return(size_selectivity_samples)
     }
 
 
