@@ -181,7 +181,7 @@ year_assessment = 2024
 yrs = year_start:year_assessment
 
 source( file.path( project_directory, "scripts", "startup.r") )
- 
+
  
 ```
 
@@ -234,9 +234,7 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
       m.imm = c(
         9.9200, -3.0405, -2.3969, 1.9333, 0.6128, 1.0123, 1.5371, 0.1702, 1.2130, -3.1902, -1.2038, 3.6389, 3.3960, -2.3632, 3.9804, -1.6675, -0.7746, 0.8269),
       m.mat = c(
-        9.9007, -0.0995, 1.1615, 2.2689, 0.4018, 2.4738,
-        1.1796, -0.0002, 1.9781, -0.9786, 1.4524, 4.0080, 4.2422, -2.5959,
-        4.3386, -1.4514, -0.4950, 0.9850 ),
+        9.9153, -0.3066, 1.0842, 2.1462, 0.3983, 2.3851, 1.2793, 0.0335, 1.8924, -2.1858, 1.5771, 3.9561, 4.3029, -2.5842, 4.3530, -1.4667, -0.4409, 0.9858 ),
       NULL
     )
 
@@ -417,7 +415,7 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat") ) {
 # bring all mats and sexes together (each row is an individual observation) 
 # with associated computed weights and correction factors
  
-O = model_size_results(p=p, todo="observation_results_redo" )  
+O = model_size_results(p=p, todo="post_stratified_weights_redo" )  
 
 ```
 

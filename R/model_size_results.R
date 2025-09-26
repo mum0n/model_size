@@ -1,27 +1,28 @@
 model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores=1, region=NULL) {
 
-    # all classes (observations)
-    fnout_results = file.path( p$modeldir, "post_stratified_results.rdz" ) 
+    # all classes (observations) 
+    post_stratified_weights = file.path( p$modeldir, "post_stratified_results.rdz" ) 
 
     # class-specific results
     if (exists("bioclass", p)) {
-      fnout_ratios = file.path( p$modeldir, p$bioclass, "post_stratified_ratios.rdz" ) 
-      fnout_samples_obs = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples_obs.rdz" ) 
-      fnout_samples_preds = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples.rdz" ) 
-      fnout_samples_preds2 = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples2.rdz" ) 
-      fnout_samples_bias = file.path( p$modeldir, p$bioclass, "post_stratified_weights_samples_bias_adjusted.rdz" )
+      fn_loc = file.path( p$modeldir, p$bioclass )
+      observation_ratios = file.path( fn_loc, "post_stratified_ratios.rdz" ) 
+      observation_samples = file.path( fn_loc, "post_stratified_weights_samples_obs.rdz" ) 
+      prediction_samples = file.path( fn_loc, "post_stratified_weights_samples.rdz" ) 
+      prediction_samples2 = file.path( fn_loc, "post_stratified_weights_samples2.rdz" ) 
+      bias_adjusted = file.path( fn_loc, "post_stratified_weights_samples_bias_adjusted.rdz" )
     }
 
     O = NULL
     size_selectivity = list()
 
     fno = switch( todo,
-      observation_results = fnout_results,
-      observation_ratios = fnout_ratios,
-      observation_samples = fnout_samples_obs,
-      prediction_samples = fnout_samples_preds,
-      prediction_samples2 = fnout_samples_preds2,
-      bias_adjusted = fnout_samples_bias,
+      post_stratified_weights = post_stratified_weights,
+      observation_ratios = observation_ratios,
+      observation_samples = observation_samples,
+      prediction_samples = prediction_samples,
+      prediction_samples2 = prediction_samples2,
+      bias_adjusted = bias_adjusted,
       NULL
     )
 
@@ -33,14 +34,15 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
 
     
     if ("size_selectivity" %in% todo) {
-        O = model_size_results(p=p, todo="observation_results" ) 
+        O = model_size_results(p=p, todo="post_stratified_weights" ) 
         size_selectivity = attr(O, "size_selectivity")
         if (!is.null(region)) size_selectivity = size_selectivity[[region]]
         return( size_selectivity )
     }
 
 
-    if ( "observation_results_redo" %in% todo ){
+    if ( "post_stratified_weights_redo" %in% todo ){
+      # assemble all bioclasses 
       # surface area
       pg = areal_units(p=p)
 
@@ -68,7 +70,7 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
           print(bc)
           p$bioclass = bc
           o = NULL
-          o = model_size_results( p=p, todo="observation_results" )
+          o = model_size_results( p=p, todo="observation_ratios" )
           ss = size_selectivity[[bc]] = attr(o, "size_selectivity") 
           # plot( (ss[,2]) ~ exp(ss[,1]))   log odds ratio
           # plot(exp(ss[,2])~ exp(ss[,1]))  # odds ratio
@@ -107,16 +109,17 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
 
       attr(O, "size_selectivity") = size_selectivity
 
-      read_write_fast( O, fn=fnout_results )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+      read_write_fast( O, fn=post_stratified_weights )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
       return(O)
     }
 
 
     if ("observation_weights" %in% todo) {
+        # add region SA to results
         
         if (is.null(region)) stop("The parameter 'region' needs to be sent.")
-        O = model_size_results(p=p, todo="observation_results" ) 
+        O = model_size_results(p=p, todo="post_stratified_weights" ) 
         pg = attr(O, "pg") 
 
         region_sa = switch( region,
@@ -219,9 +222,9 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
         attr(O, "formula" ) = p$formula 
         attr(O, "size_selectivity") = size_selectivity
 
-        message( "\nSaving", fnout_ratios )
+        message( "\nSaving", observation_ratios )
 
-        read_write_fast( O, fn=fnout_ratios )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+        read_write_fast( O, fn=observation_ratios )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
         O = NULL
         gc()
@@ -251,20 +254,20 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
         }
         
 
-        message( "\nSaving", fnout_samples_obs )
+        message( "\nSaving", observation_samples )
     
-        read_write_fast( Osamples[iobs,], fn=fnout_samples_obs )  # on logit scale
+        read_write_fast( Osamples[iobs,], fn=observation_samples )  # on logit scale
 
 
-        message( "\nSaving", fnout_samples_preds )
+        message( "\nSaving", prediction_samples )
         # same order as O, samples of the ratio of probabilities (a/i)
         post_stratified_ratio  = Osamples[ ip,] / Osamples[iobs,]  
-        read_write_fast( post_stratified_ratio, fn=fnout_samples_preds )  # on logit scale
+        read_write_fast( post_stratified_ratio, fn=prediction_samples )  # on logit scale
         post_stratified_ratio = NULL
 
-        message( "\nSaving", fnout_samples_preds2 )
+        message( "\nSaving", prediction_samples2 )
         post_stratified_ratio2 = Osamples[ ip2,] / Osamples[iobs,]   
-        read_write_fast( post_stratified_ratio2, fn=fnout_samples_preds2 )  # on logit scale
+        read_write_fast( post_stratified_ratio2, fn=prediction_samples2 )  # on logit scale
 
 
         fss = inla_get_indices(
@@ -286,11 +289,11 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
         
         S = fss = NULL ;  gc()
     
-        message( "\nSaving", fnout_samples_bias )
+        message( "\nSaving", bias_adjusted )
 
-        read_write_fast( Osamples, fn=fnout_samples_bias )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+        read_write_fast( Osamples, fn=bias_adjusted )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
  
-        return(fnout_samples_bias)
+        return(bias_adjusted)
     }
 
 
