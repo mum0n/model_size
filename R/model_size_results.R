@@ -1,47 +1,65 @@
-model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores=1, region=NULL) {
+model_size_results = function(p, todo="post_stratified_weights", 
+  nposteriors=5000, mc.cores=1, only_observations=TRUE ) {
 
     # all classes (observations) 
-    post_stratified_weights = file.path( p$modeldir, "post_stratified_results.rdz" ) 
+    fn_post_stratified_weights = file.path( p$modeldir, "post_stratified_results.rdz" ) 
+    fn_size_selectivity = file.path( p$modeldir, "size_selectivity.rdz" )
+    fn_fixed_effects = file.path( p$modeldir, "fixed_effects.rdz" )
 
     # class-specific results
     if (exists("bioclass", p)) {
       fn_loc = file.path( p$modeldir, p$bioclass )
-      observation_ratios = file.path( fn_loc, "post_stratified_ratios.rdz" ) 
-      observation_samples = file.path( fn_loc, "post_stratified_weights_samples_obs.rdz" ) 
-      prediction_samples = file.path( fn_loc, "post_stratified_weights_samples.rdz" ) 
-      prediction_samples2 = file.path( fn_loc, "post_stratified_weights_samples2.rdz" ) 
-      size_selectivity_samples = file.path( fn_loc, "post_stratified_size_selectivity_samples.rdz" )
+      fn_observation_ratios = file.path( fn_loc, "post_stratified_ratios.rdz" ) 
+      fn_observation_samples = file.path( fn_loc, "post_stratified_weights_samples_obs.rdz" ) 
+      fn_prediction_samples = file.path( fn_loc, "post_stratified_weights_samples_pred.rdz" ) 
+      fn_prediction_samples_obs = file.path( fn_loc, "post_stratified_weights_samples_pred_obs.rdz" ) 
+      fn_size_selectivity_samples = file.path( fn_loc, "post_stratified_size_selectivity_samples.rdz" )
+      fn_fixed_effects_samples =  file.path( fn_loc, "fixed_effects_samples.rdz" )
     }
 
-    O = NULL
-    size_selectivity = list()
-
     fno = switch( todo,
-      post_stratified_weights = post_stratified_weights,
-      observation_ratios = observation_ratios,
-      observation_samples = observation_samples,
-      prediction_samples = prediction_samples,
-      prediction_samples2 = prediction_samples2,
-      size_selectivity_samples = size_selectivity_samples,
+      observation_ratios = fn_observation_ratios,
+      observation_samples = fn_observation_samples,
+      prediction_samples = fn_prediction_samples,
+      prediction_samples_obs = fn_prediction_samples_obs,
+      size_selectivity_samples = fn_size_selectivity_samples,
+      fixed_effects_samples = fn_fixed_effects_samples,
       NULL
     )
 
+    out = NULL
+    size_selectivity = list()
+    fixed_effects = list()
+
     if (!is.null(fno)) {
       message( "\nLoading from file: ", fno)
-      if (file.exists(fno)) O = read_write_fast(fno)
-      if (!is.null(O)) return(O)
+      if (file.exists(fno)) out = read_write_fast(fno)
+      if (!is.null(out)) return(out)
     }
 
+    if ( todo == "post_stratified_weights" ) {
+        post_stratified_weights = read_write_fast(fn_post_stratified_weights) # n=1106430   
+        if (only_observations) {
+          # remove non-observations: 
+          # when crabno==0 they represent data points with no observations but predictions are still made .. 
+          # to be conservative we ignore them  .. the associated probabilities can be used as a post-stratified "weight" to zero-values 
+          post_stratified_weights = post_stratified_weights[ crabno > 0, ]  # n=532176   ]
+        }
+        return( post_stratified_weights )
+    }
+ 
     
-    if ("size_selectivity" %in% todo) {
-        O = model_size_results(p=p, todo="post_stratified_weights" ) 
-        size_selectivity = attr(O, "size_selectivity")
-        if (!is.null(region)) size_selectivity = size_selectivity[[region]]
+    if ( todo == "size_selectivity" ) {
+        size_selectivity = read_write_fast(fn_size_selectivity)
         return( size_selectivity )
     }
 
+    if (todo == "fixed_effects" ) {
+        fixed_effects = read_write_fast(fn_fixed_effects)
+        return( fixed_effects )
+    }
 
-    if ( "post_stratified_weights_redo" %in% todo ){
+    if ( todo == "post_stratified_weights_redo" ){
       # assemble all bioclasses 
       # surface area
       pg = areal_units(p=p)
@@ -67,103 +85,28 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
       class(pg[["au_sa_km2"]]) = NULL
 
       for (bc in c("f.imm", "f.mat", "m.imm", "m.mat") ){
-          print(bc)
-          p$bioclass = bc
-          o = NULL
-          o = model_size_results( p=p, todo="observation_ratios" )
-          ss = size_selectivity[[bc]] = attr(o, "size_selectivity") 
-          # plot( (ss[,2]) ~ exp(ss[,1]))   log odds ratio
-          # plot(exp(ss[,2])~ exp(ss[,1]))  # odds ratio
-          # plot(1/exp(ss[,2])~ exp(ss[,1])) # selectivity ratio
-
-          oddsratio = spline(
-              x = exp(ss[,1]), 
-              y = exp(ss[,2]), 
-              xout=o$cw 
-          )
-          o$odds_ratio = oddsratio$y
-          oddsratio = NULL
-          o = o[, .(
-              individual_prob_mean,
-              individual_prob_sd,
-              auid_prob_mean,
-              auid_prob_sd,
-              auid_prob_mean2,
-              auid_prob_sd2,
-              odds_ratio
-          )]
-
-          M = NULL
-          M = model_size_data_carstm( p=p )  
-          M = M[tag=="observations",]
-
-          O = rbind( O, cbind(M, o) )
-          M = NULL
-          o = NULL
-      }
-
-      O$post_stratified_ratio  = O$auid_prob_mean  / O$individual_prob_mean   
-      O$post_stratified_ratio2 = O$auid_prob_mean2 / O$individual_prob_mean   
-
-      attr(O, "pg") = pg
-
-      attr(O, "size_selectivity") = size_selectivity
-
-      read_write_fast( O, fn=post_stratified_weights )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
-
-      return(O)
-    }
-
-
-    if ("observation_weights" %in% todo) {
-        # add region SA to results
         
-        if (is.null(region)) stop("The parameter 'region' needs to be sent.")
-        O = model_size_results(p=p, todo="post_stratified_weights" ) 
-        pg = attr(O, "pg") 
+        p$bioclass = bc
 
-        region_sa = switch( region,
-          cfaall = "au_sa_km2",
-          cfanorth = "cfanorth_surfacearea",
-          cfasouth = "cfasouth_surfacearea",
-          cfa4x = "cfa4x_surfacearea",
-          cfa23 = "cfa23_surfacearea",
-          cfa24 = "cfa24_surfacearea"
-        )
-        vn_keep = c("AUID", region_sa )
-        pg = pg[, ..vn_keep]
-        colnames(pg) = c("AUID", "SA")
-
-        pg = pg[ O[,AUID], on="AUID" ] # bring in SA in correct sequence
-
-        # finally, this is the post-stratified weight $\omega_i$ for sub-domain of focus
-        O$post_stratified_weight = O$post_stratified_ratio * pg$SA  
-
-        return(O)
-    }
-
-
-    if ( "observation_ratios_redo" %in% todo ){
-
-        if (!exists("bioclass", p)) stop("Need to specify bioclass")
+        # operate upon "fit" first and remove from memory to reduce RAM demand 
         
-        message( "\nCreating post-stratification weights for: ", p$bioclass)
-
-        # operate upon fit first and remove from meory to reduce RAM demand 
-        # operate upon fit first and remove from meory to reduce RAM demand 
+        message("Loading model fit into memory: ", bc)
         fit = model_size_presence_absence( p=p, todo="load" ) 
+
+        message("Sampling and extracting for: ", bc)
+        S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
+
         fit_summ_mean = fit$summary.fitted.values[["mean"]] 
         fit_summ_sd = fit$summary.fitted.values[["sd"]] 
+        fixeff = fit$summary.fixed
+        sizeselect = fit$summary.random$'inla.group(cwd, method = "quantile", n = 11)' 
 
-        size_selectivity = fit$summary.random$'inla.group(cwd, method = "quantile", n = 11)' 
-        # plot( (size_selectivity[,2]) ~ exp(size_selectivity[,1]))   log odds ratio
-        # plot(exp(size_selectivity[,2])~ exp(size_selectivity[,1]))  # odds ratio
-        # plot(1/exp(size_selectivity[,2])~ exp(size_selectivity[,1])) # selectivity ratio
-
-        S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
+        # plot( (sizeselect[,2]) ~ exp(sizeselect[,1]))   log odds ratio
+        # plot(exp(sizeselect[,2])~ exp(sizeselect[,1]))  # odds ratio
+        # plot(1/exp(sizeselect[,2])~ exp(sizeselect[,1])) # selectivity ratio
         fit = NULL; gc() # no longer needed
 
-
+        # input data 
         M = model_size_data_carstm( p=p )  
         
         M$year = factor2number( M$year )
@@ -195,15 +138,15 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
         O$cyclic_pred = NULL
 
         # get correct row order of areal units to match observations
-        ip  = ipreds[ match( O$kuid,  M$kuid[ipreds] ) ]    # predictions (at areal units, a) on M
-        ip2 = ipreds[ match( O$kuid_pred, M$kuid[ipreds] )]  # prediction time-slice on M
+        ip  = ipreds[ match( O$kuid,      M$kuid[ipreds] ) ]    # predictions (at areal units, a) on M
+        ipo = ipreds[ match( O$kuid_pred, M$kuid[ipreds] )]  # prediction time-slice on M
     
         # add associated areal unit level predictions (a)
         O$auid_prob_mean = M$individual_prob_mean[ ip ]
         O$auid_prob_sd = M$individual_prob_sd[ ip ]
     
-        O$auid_prob_mean2 = M$individual_prob_mean[ ip2 ]
-        O$auid_prob_sd2 = M$individual_prob_sd[ ip2 ]
+        O$auid_prob_mean2 = M$individual_prob_mean[ ipo ]
+        O$auid_prob_sd2 = M$individual_prob_sd[ ipo ]
         
         M = NULL; gc()
     
@@ -220,19 +163,26 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
 
         attr(O, "bioclass" ) = p$bioclass
         attr(O, "formula" ) = p$formula 
-        attr(O, "size_selectivity") = size_selectivity
+        attr(O, "fixed_effects") = fixeff
+        attr(O, "size_selectivity") = sizeselect
 
-        message( "\nSaving", observation_ratios )
+        message( "\nSaving: ", fn_observation_ratios )
+        read_write_fast( O, fn=fn_observation_ratios )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
-        read_write_fast( O, fn=observation_ratios )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+        # bring in input data 
+        # M = model_size_data_carstm( p=p )  
+        # M = M[tag=="observations",]
+        # M$bioclass = bc
+        # O = cbind(M, O)
+
+        out = rbind( out, O )  # retain for aggregate save at the end
 
         O = NULL
         gc()
 
         # obtain joint-posterior samples
 
-        message( "\nExtracting samples of joint posteriors")
-
+        message( "\nSaving samples of joint posteriors")
 
         for (z in c("tag", "start", "length") ) {
             assign(z, attributes(S)[[".contents"]][[z]] )  # index info 
@@ -252,22 +202,38 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
         for (i in 1:nposteriors) {
             Osamples[,i] =  S[[i]]$latent[fkk,] 
         }
-        
+        message( "\nSaving:  ", fn_observation_samples )
+        read_write_fast( Osamples[iobs,], fn=fn_observation_samples )  # on logit scale
 
-        message( "\nSaving", observation_samples )
-    
-        read_write_fast( Osamples[iobs,], fn=observation_samples )  # on logit scale
-
-
-        message( "\nSaving", prediction_samples )
         # same order as O, samples of the ratio of probabilities (a/i)
         post_stratified_ratio  = Osamples[ ip,] / Osamples[iobs,]  
-        read_write_fast( post_stratified_ratio, fn=prediction_samples )  # on logit scale
+        
+        message( "\nSaving:  ", fn_prediction_samples )
+        read_write_fast( post_stratified_ratio, fn=fn_prediction_samples )  # on logit scale
         post_stratified_ratio = NULL
 
-        message( "\nSaving", prediction_samples2 )
-        post_stratified_ratio2 = Osamples[ ip2,] / Osamples[iobs,]   
-        read_write_fast( post_stratified_ratio2, fn=prediction_samples2 )  # on logit scale
+        post_stratified_ratio_obs = Osamples[ ipo,] / Osamples[iobs,]   
+        message( "\nSaving:  ", fn_prediction_samples_obs )
+        read_write_fast( post_stratified_ratio_obs, fn=fn_prediction_samples_obs )  # on logit scale
+
+        fe = inla_get_indices(
+            "(Intercept)", 
+            tag=tag, 
+            start=start, 
+            len=length, 
+            model="direct_match"
+        )
+
+        fe = unlist(fe)
+        nobs = length(fe)
+        Osamples = array(NA, dim=c( nobs,  nposteriors ) )
+        
+        for (i in 1:nposteriors) {
+            Osamples[,i] = S[[i]]$latent[fe,]   # log odds ratio
+        }
+        
+        message( "\nSaving:  ", fn_fixed_effects_samples )
+        read_write_fast( Osamples, fn=fn_fixed_effects_samples )   # on logit scale
 
 
         fss = inla_get_indices(
@@ -285,16 +251,30 @@ model_size_results = function(p, todo="load_results", nposteriors=5000, mc.cores
             Osamples[,i] = S[[i]]$latent[fss,]   # log odds ratio
         }
         
-        Osamples = exp(Osamples )
+        # Osamples = exp(Osamples )
         
         S = fss = NULL ;  gc()
     
-        message( "\nSaving", size_selectivity_samples )
+        message( "\nSaving:  ", fn_size_selectivity_samples )
+        read_write_fast( Osamples, fn=fn_size_selectivity_samples )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+          
+        size_selectivity[[bc]] = sizeselect
+        fixed_effects[[bc]] = fixeff
 
-        read_write_fast( Osamples, fn=size_selectivity_samples )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+      }
+
+      out = pg[out, on="AUID"] # merge SA's
  
-        return(size_selectivity_samples)
+      out$post_stratified_ratio_obs  = out$auid_prob_mean  / out$individual_prob_mean    # observation time
+      out$post_stratified_ratio = out$auid_prob_mean2 / out$individual_prob_mean    # time shifted 
+
+      read_write_fast( out, fn=fn_post_stratified_weights )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
+      read_write_fast( size_selectivity, fn=fn_size_selectivity)
+      read_write_fast( fixed_effects, fn=fn_fixed_effects)
+
+      return(out)
     }
 
-
 }
+
+

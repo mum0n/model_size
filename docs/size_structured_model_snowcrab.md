@@ -99,7 +99,7 @@ To belabour the point, animals can, due to metabolic constraints and behavioural
   - sampling speed to capture rapidly moving organisms (escapement)
   - sampling mesh too large to capture small organisms (escapement).
 
-Though all these factors can of course cause additional biases, they are usually also ignored giving rise to the current common practice of **Let's-hope-for-the-best** (LHFTB). In actual practice, especially when little is known of a system at the start of surveys, LHFTB boils down to, **depth is the best we can do stratification** as it is usually the only reasonably well-known factor. Once established, this stratification seldom changes as any additional strata often becomes exponentially more costly (in terms of needing to justify alterations from LHFTB  to incrementally better, re-ananlysis, new survey locations, more data requirements and potential loss of face/trust from data end-users/clients/funders that invested in the initial approach). As such, one computes size frequency distributions, treating each observation as IID (that is, fully exchangeable) as no other recourse seems available. Indeed, this LHIICRS approach is the defacto standard in every setting that I have observed. Pragmatically, what this means is that each observation of an organism may **not be of exchangeable**, that is, each observed individual may not be of equal importance in describing the system or stratum $S$. If observations occur with more frequency in an area that is not representative of $S$, then it’s relative influence would be more elevated causing bias in describing $S$, and vice versa. For example, the flooding of an area with warm waters due to larger eddies entering the system for a year or more due to elevated and course grained climate variability and change can alter the location and extent of viable habitat and therefore render samples to be nonrandom due to this previously unaccounted factor in the initial sampling design. In other words, treating observations as random samples would be incorrect as they are not fully independent samples, across space, time, size (if there are ontogenetic or size-related changes in habitat preferences) and any covariates (e.g. bottom temperatures).
+Though all these factors can of course cause additional biases, they are usually also ignored giving rise to the current common practice of **Let's-hope-for-the-best** (LHFTB). In actual practice, especially when little is known of a system at the start of surveys, LHFTB boils down to, **depth is the best we can do stratification** as depth is usually the only reasonably well-known factor. Once established, this stratification seldom changes as any additional strata often becomes exponentially more costly (in terms of needing to justify alterations from LHFTB  to incrementally better, re-ananlysis, new survey locations, more data requirements and potential loss of face/trust from data end-users/clients/funders that invested in the initial approach). As such, one computes size frequency distributions, treating each observation as IID (that is, fully exchangeable) as no other recourse seems available. Indeed, this LHIICRS approach is the defacto standard in every setting that I have observed. Pragmatically, what this means is that each observation of an organism may **not be of exchangeable**, that is, each observed individual may not be of equal importance in describing the system or stratum $S$. If observations occur with more frequency in an area that is not representative of $S$, then it’s relative influence would be more elevated causing bias in describing $S$, and vice versa. For example, the flooding of an area with warm waters due to larger eddies entering the system for a year or more due to elevated and course grained climate variability and change can alter the location and extent of viable habitat and therefore render samples to be nonrandom due to this previously unaccounted factor in the initial sampling design. In other words, treating observations as random samples would be incorrect as they are not fully independent samples, across space, time, size (if there are ontogenetic or size-related changes in habitat preferences) and any covariates (e.g. bottom temperatures).
 
 It is generally, also admittedly, nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent preferences, especially in a fluid, multidimensional (space, time, species, multiply interacting environmental covariates) environment such as the ocean. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably at various hierarchical levels by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design. 
 
@@ -131,13 +131,13 @@ where $Y$ is the vector of observations, taking values of 0 (absent, success) or
 
 The log of the ratio of the probabilities, $\text{ln}(\theta/(1-\theta))$ is also commonly referred to as $logit(\theta)$:
 
-$$\text{logit}(\theta) = \boldsymbol{X}^{T}\boldsymbol{\beta}+\boldsymbol{\epsilon}.$$
+$$\text{logit}(\theta) = \boldsymbol{X}^{T}\boldsymbol{\beta} + O_i + \boldsymbol{\epsilon}.$$
   
-The posterior prediction of the probability $\theta_i$ associated with each sampled observation $i$ describes the likely number of successes for a given number of trials. Being a Bernoulli process, the number of trials is $\eta_i=1$. The effective number of successes expected per trial $N_i$ is, therefore:
+The posterior prediction of the probability $\theta_i$ associated with each sampled observation $i$ describes the likely number of successes for a given number of trials. Being a Bernoulli process, the number of trials is $\eta_i=1$. But associated with each such trial is the swept-area of the sampling gear and any subsampling which is accounted as the offset term ($\text{O}_i$) for each observation, assumed known without error. The effective number of successes expected per trial $N_i$ is, therefore:
 
 $$\begin{align*}
 N_i &= \theta_i \cdot \eta_i \\
-&= \theta_i \cdot 1.
+&= \theta_i \cdot (1 \cdot \text{O}_i).
 \end{align*}$$
 
 Each such trial is, in our case, is expressed per unit areal density, $1 \; m^2$.
@@ -154,7 +154,7 @@ The effective number of positive individual observations predicted can be rescal
 
 $$\begin{align*}
 \omega_i &= N_a / N_i \\
-&= (\theta_a \cdot \text{SA}_a )/ (\theta_i \cdot 1).
+&= (\theta_a \cdot \text{SA}_a )/ (\theta_i \cdot (1 \cdot \text{O}_i) ).
 \end{align*}$$
 
 
@@ -392,38 +392,10 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
 ```
 
 
-Now that we have predicted probabilities $\theta$ for each indivudal observation, we generate and store samples of these post-stratification weights $\omega_i$ from the joint posteriors to carry them forward for futher Bayesian analysis and synthesis. However, as the application of areal unit surface areas depends upon the sub-domain that it is being applied, the final computation of weights is deferred to a later stage. Instead, the intermediary quantity: the ratio of probabilities $ \theta_{a/i} = \theta_a / \theta_i$ is computed. Note the number of posteriors required (5000), is a safe number but can be reduced; reducing number of cores allocated can also help.
+Now that we have predicted probabilities $\theta$ for each individual observation, we generate and store samples of these post-stratification weights $\omega_i$ from the joint posteriors to carry them forward for futher Bayesian analysis and synthesis. First, the intermediary quantity, the ratio of probabilities $ \theta_{a/i} = \theta_a / \theta_i$ is computed. It does not include the surface area associated with the sub-domain of interest (predicted areal unit $\text{SA}_a$) which will be defined when needed after gathering all other results. 
 
 
-
-```{r post-stratification-ratios}
-#| eval: true
-#| output: false
-#| echo: false
-#| label: post-stratification-ratios
-
-
-# careful: nposteriors=5000, nc.cores=4 required about 210 GB RAM in 2025, 
-# mc.cores=1 safest still requires ~ 125 GB (default)
-
-# extract posteriors (observations and predictions)
-for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat") ) {
-  p$bioclass = bioclass
-  model_size_results( p=p, todo="observation_ratios_redo" )   
-}
-
-# bring all mats and sexes together (each row is an individual observation) 
-# with associated computed weights and correction factors
- 
-O = model_size_results(p=p, todo="post_stratified_weights_redo" )  
-
-```
-
----  
-
-The "post_stratified_ratio" created above does not include the surface area associated with the sub-domain of interest (predicted areal unit $\text{SA}_a$). Depending upon the sub-domain, these values can be fractional/partial and so the final weights are computed once known. 
-
-$$ \omega_i = \theta_{a/i} \cdot $\text{SA}_a,$$
+$$\omega_i = \theta_{a/i} \cdot (\text{SA}_a / \text{O}_i),$$
 
 
 ```{r post-stratification-weights}
@@ -432,25 +404,66 @@ $$ \omega_i = \theta_{a/i} \cdot $\text{SA}_a,$$
 #| echo: false
 #| label: post-stratification-weights
 
-# choose region of interest
- 
-# variable name containing sa estimates for the sub-domain of interest
-region = "cfaall"
-region = "cfanorth"
-region = "cfasouth"
-region = "cfa4x"
-region = "cfa23"
-region = "cfa24"
 
+# bring/glue all mats and sexes together into a single table 
+# where each row is an individual observation
+# with associated computed weights and correction factors
 
-O = model_size_results( p=p, todo="observation_weights", region=region ) 
- 
-# hist(O$post_stratified_ratio, "fd") 
-summary(O$post_stratified_ratio)
+todo = "post_stratified_weights"
+# todo = "post_stratified_weights_redo"
+
+O = model_size_results( p=p, todo=todo  ) # n=532176    
 
 plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
   
 cor( (O$individual_prob_mean), (O$auid_prob_mean), use="pairwise.complete.obs") 
+# 0.860
+
+hist(log10(O$post_stratified_ratio), "fd") 
+
+hist(log10(O$post_stratified_ratio_obs), "fd")   # without seasonal timeshift
+
+summary(O$post_stratified_ratio) # with seasonal shift
+
+#    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# 0.00209  0.99998  1.00573  1.07681  1.04370 40.52438 
+
+
+summary(O$post_stratified_ratio_obs)  # without seasonal timeshift
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0.0226  1.0000  1.0057  1.0717  1.0428 32.7205 
+
+
+# variable name containing sa estimates for the sub-domain of interest
+region = "cfaall"
+# region = "cfanorth"
+# region = "cfasouth"
+# region = "cfa4x"
+# region = "cfa23"
+# region = "cfa24"
+
+sa_vars = list(
+  cfanorth = "cfanorth_surfacearea", 
+  cfasouth = "cfasouth_surfacearea", 
+  cfa23    = "cfa23_surfacearea", 
+  cfa24    = "cfa24_surfacearea", 
+  cfa4x    = "cfa4x_surfacearea", 
+  cfaall   = "au_sa_km2"  # all 
+)
+
+O$SA_ratios = O[[sa_vars[[region]]]] / O$data_offset
+
+hist(log10(O$SA_ratios), "fd") 
+summary(O$SA_ratios)
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#  13066  125943  182096  211326  264686 3816293 
+
+O$wgt = O$post_stratified_ratio *  O$SA_ratios  # sampling environmental correction 
+   
+hist(log10(O$wgt), "fd") 
+summary(O$wgt)
+#    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+#    1468   129498   188276   227038   278055 10 247 932 
 
 
 # check some histograms
@@ -459,41 +472,171 @@ yrp = "2024"
 #yrp = "2022"
 #yrp = "2019"
 
-# note: post_stratified_weight > 0 filters out other regions 
+# note: wgt > 0 filters out other regions 
 
-k = females = O[ sex==1, post_stratified_weight>0 & year==yrp, which=TRUE]
-k = males   = O[ sex==0, post_stratified_weight>0 & year==yrp, which=TRUE]
+females = O[  sex==1 & wgt>0 & year==yrp, which=TRUE]
+males   = O[  sex==0 & wgt>0 & year==yrp, which=TRUE]
+
+
+k = females
+k = males  
 
 require(ggpubr)
 
-# this is ok for histograms .. but zeros need to be retained for some computations ...
-p1 = ggplot(O[k,], aes( log(cw), group= mat, fill=mat ) ) + 
-  geom_histogram( bins = p$span(bioclass)[3] ) +
-  scale_y_continuous(trans = "log10") + 
-  theme(axis.title.x=element_blank(),
-    axis.text.x=element_blank(),
-    axis.ticks.x=element_blank())
-  
-p2 = ggplot(O[k,], aes( log(cw), group = mat, fill=mat, weight=post_stratified_weight ) ) + 
-  geom_histogram( bins = p$span(bioclass)[3] )  +
-  scale_y_continuous(trans = "log10")
+nbins= 50
 
+p_no_labels = theme(
+  axis.title.x=element_blank(),
+  axis.text.x=element_blank(),
+  axis.ticks.x=element_blank()
+) 
+
+p_psw = ggplot( O[k,], aes( (cw), group = mat, fill=mat, weight=wgt) ) + 
+  geom_histogram( bins =nbins )  
+ 
+p_offset = ggplot( O[k,], aes( (cw), group= mat, fill=mat, weight=data_offset)  ) + 
+  geom_histogram( bins =nbins )  
+
+p_nw = ggplot( O[k,], aes( (cw), group= mat, fill=mat )  ) + 
+  geom_histogram( bins =nbins )   
+
+
+labels = paste( 
+  c( 
+    "Weighted (post-stratified):", 
+    "Density  (sampling offset; no/km^2): ", 
+    "Unweighted (no observed): "
+  ),
+  paste(  region, yrp, sep="-")
+) 
 
 dev.new()
-labels = paste( 
-  c("Unweighted:", "  Weighted:" ),
-  paste( bioclass, region, yrp, sep="-")
-) 
-ggarrange( p1, p2, nrow=2, labels=labels, align = "v", font.label=list(size=10) )
+ggarrange( 
+  p_psw + p_no_labels, 
+  p_offset + p_no_labels, 
+  p_nw, 
+  ncol=1, 
+  labels=labels, 
+  align = "v", 
+  font.label=list(size=10) 
+)
+
+# NOTE: wgt >0 is useful to remove estimates outside of a focal subregion
+
+o = O[ wgt>0, .(
+    density=sum(mass * data_offset),  # assuming completely random sampling
+    total_psw=sum(mass * wgt)    # with envir correction
+  ), 
+  by=.(year, sex, mat) ]  
+
+o$year = as.numeric(as.character(o$year) )
+
+sexid = "0" # male
+
+sexid = "1" # female
+
+# weighted total 
+ggplot( o[sex==sexid,], aes(x=year, y=total_psw, group=mat, col=mat) ) + 
+  geom_point() +
+  geom_line()
+
+# density
+ggplot( o[sex==sexid,], aes(x=year, y=density, group=mat, col=mat) ) + 
+  geom_point() +
+  geom_line()
+ 
+
+
+# --- 2019 data offsets are very small:
+
+# large corrections: might have to trim these to make more robust
+i = which(O$SA_ratios > 1e6)  
+O[i, .N , by=(sid.1)]
+ 
+ oo = O[i,] ; (oo[, .N , by=(sid)])
+          
+             sid     N
+          <char> <int>
+ 1:  S18061999.7    19
+ 2:  S08092007.3     3
+ 3: S18071999.11     2
+ 4:  S22092001.1    32
+ 5: S22082002.10    37
+ 6:  S08092002.5     2
+ 7: S26102003.11    21
+ 8:  S15112013.6    64
+ 9:  S11112014.9     5
+10:  S04102016.2     3
+11:  S06051999.9     1
+12: S18071999.10     2
+13:  S21062000.9     1
+14:  S02112004.2     1
+15:  S09092006.8     2
+16:  S01102007.2     1
+17:  S12112009.7     2
+18:  S25092010.7     2
+19: S04112010.12    25
+20:  S09092011.8     1
+21:  S14102013.4     2
+22:  S24092015.2     1
+23:  S01102017.9     1
+24:  S04012020.9     1
+25: S02092023.13     7
+26: S13092023.12     2
+
+
+ oo = O[i,] ; (oo[, .N , by=(AUID)])
+        AUID     N
+    <char> <int>
+ 1:    692    19
+ 2:     18     5
+ 3:    448     4
+ 4:    414    32
+ 5:    705    37
+ 6:    132     2
+ 7:    545    21
+ 8:    670    75
+ 9:    173     1
+10:    108     1
+11:    100     2
+12:     15     2
+13:    517     5
+14:    733    25
+15:    197     2
+16:    375     7
+ 
+
+ oo = O[i,] ; (oo[, .N , by=(year)][order(year),])
+      year     N
+    <fctr> <int>
+ 1:   1999    24
+ 2:   2000     1
+ 3:   2001    32
+ 4:   2002    39
+ 5:   2003    21
+ 6:   2004     1
+ 7:   2006     2
+ 8:   2007     4
+ 9:   2009     2
+10:   2010    27
+11:   2011     1
+12:   2013    66
+13:   2014     5
+14:   2015     1
+15:   2016     3
+16:   2017     1
+17:   2019     1
+18:   2023     9
+
 
 ```
 
-Bottom line: reasonable success in estimating individual survey/design weights.  And operationally viable (<1 day of computation).
+Bottom line: reasonable success in estimating individual survey/design weights.  And operationally viable (~ 4 days of computation).
  
 
 ### Correcting for size bias/selectivity
 
-The application of the above post-stratified weights provides a distribution that scales observations of individuals to observed environmental conditions. However, bias associated with size (sampling gear "selectivity", and even design induced bias) is still present in the distribution. In fishery applications this bias is usually estimated in a process-based dynamical model as a residual nuisance factor or estimated **a priori** via experimentation and then deterministically use to correct size-distributions. 
+The application of the above post-stratified weights provides a distribution that scales observations of individuals to observed environmental conditions. However, bias associated with size (sampling gear "selectivity") is still present in the distribution. In fishery applications this bias is usually estimated in a process-based dynamical model as a residual nuisance factor or estimated **a priori** via experimentation and then deterministically use to correct size-distributions. 
 
 An alternative is to see the size-related effects in the above model as a size-based probability of relative "observability" of individuals; that is, the marginal effect of size on the Bernoulli binomial model of presence and absence provides a parameterization of size-bias. Removing size-related effects from the probabilities associated with individuals will, therefore, provide probability estimates that adjusts for size-related sampling/design bias. We do this by removing the random effects associated with size in the posterior estimates and samples. These were actually stored in the previous step and can be accessed as follows. 
 
@@ -503,26 +646,81 @@ An alternative is to see the size-related effects in the above model as a size-b
 #| output: false
 #| echo: false
 #| label: post-stratification-size-bias
-
+ 
 # look at size selectivity (bias) curve:
-# choose region of interest
-region = "cfaall"
-region = "cfanorth"
-region = "cfasouth"
-region = "cfa4x"
-region = "cfa23"
-region = "cfa24"
 
-ss = model_size_results( p=p, todo="size_selectivity", region=region )
+sbias = size_bias_compute(p)
 
-plot( ( ss[,2]) ~ exp( ss[,1])) #  log odds ratio
+plot(  ( sbias[,mean + b0_mean]) ~  ( sbias[,log_cwd])) #  log odds ratio
 
-plot(exp( ss[,2])~ exp( ss[,1]))  # odds ratio
 
-plot(1/exp( ss[,2])~ exp( ss[,1])) # selectivity ratio
+# apply it to observation weights via spline
 
-# 11 is the number of discretizations in the model fit for cwd
-a = 776; i = a*11+(1:11); plot(exp( ss$mean[i])~exp( ss$ID[i])) 
+O = model_size_results( p=p, todo="post_stratified_weights"  ) 
+ 
+O$bias =  NA
+
+for (bc in c("f.imm", "f.mat", "m.imm", "m.mat") ) {
+  ii = which(O$bioclass== bc)
+  ss = sbias[ bioclass==bc , ]
+  oo = log(O$cw[ ii ] )
+  O$bias[ii] = spline(
+      x = ss$log_cwd , 
+      y = ss$bias, 
+      xmin=min(oo), xmax=max(oo),
+      xout=oo
+  )$y
+   
+}
+ 
+O$wgt2 = O$wgt / exp(O$bias) # correct  size bias
+ 
+hist(log10(O$wgt2), "fd")
+
+hist(log10(O$wgt), "fd") 
+
+summary(O$wgt2)
+
+
+p_psw2 = ggplot(O[k,], aes( (cw), group= mat, fill=mat, weight=wgt2 )  ) +
+  geom_histogram( bins =nbins )  
+
+labels = paste( 
+  c( 
+    "Weighted (post-stratified size unbiased):", 
+    "Weighted (post-stratified):" 
+  ),
+  paste(  region, yrp, sep="-")
+) 
+
+dev.new()
+ggarrange( 
+  p_psw, 
+  p_psw2 + p_no_labels  + ylim(0, 7e9) 
+  ncol=1, 
+  labels=labels, 
+  align = "v", 
+  font.label=list(size=10) 
+)
+
+
+
+f.imm = O[ mat==0 & sex==1 & wgt>0 & year==yrp, which=TRUE]
+m.imm = O[ mat==0 & sex==0 & wgt>0 & year==yrp, which=TRUE]
+
+f.mat = O[ mat==1 & sex==1 & wgt>0 & year==yrp, which=TRUE]
+m.mat = O[ mat==1 & sex==0 & wgt>0 & year==yrp, which=TRUE]
+
+k = m.imm
+k = f.imm
+k = m.mat
+k = f.mat
+ 
+
+ggplot(O[k,], aes( (cw), weight=wgt )  ) + 
+  geom_histogram( bins =nbins )  + 
+  scale_x_continuous(trans='log10') + 
+  scale_y_continuous(trans='log10')
 
 
 ```
@@ -548,7 +746,7 @@ region = "cfa24"
 
 -- todo 
 
-ss = post_stratified_samples( p=p, todo="size_selectivity", region=region )
+ss = model_size_results( p=p, todo="size_selectivity", region=region )
 
 plot( ( ss[,2]) ~ exp( ss[,1])) #  log odds ratio
 
@@ -1331,11 +1529,12 @@ kmm_chain( Y, mds; modeltype="deterministic", yrs=yrs, sexes=sexes, mats=mats, r
 
 For each sampling location, classify instar relative numbers.
 
-The results can be aggregated to higher levels including full domain via CAR.
+The results can be aggregated to higher levels including full domain via CAR:
 
-Here, the determind modes are starting points (rather than a fixed constraint as in the previous analysis) and the actual latent modes are estimated from the data.
+.. the probabilities can associated be used as a post-stratified "weight" to zero-values determind modes are starting points (rather than a fixed constraint as in the previous analysis) and the actual latent modes are estimated from the 
+data.
 
-This takes about 6 hours for 1 year of data ...
+This takes about 6 hours for 1 year of data...
 
 ```{julia}
 #| eval: false 
