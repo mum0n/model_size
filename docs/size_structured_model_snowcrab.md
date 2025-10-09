@@ -443,12 +443,12 @@ region = "cfaall"
 # region = "cfa24"
 
 sa_vars = list(
-  cfanorth = "cfanorth_surfacearea", 
-  cfasouth = "cfasouth_surfacearea", 
-  cfa23    = "cfa23_surfacearea", 
-  cfa24    = "cfa24_surfacearea", 
-  cfa4x    = "cfa4x_surfacearea", 
-  cfaall   = "au_sa_km2"  # all 
+  cfanorth = "cfanorth_sa", 
+  cfasouth = "cfasouth_sa", 
+  cfa23    = "cfa23_sa", 
+  cfa24    = "cfa24_sa", 
+  cfa4x    = "cfa4x_sa", 
+  cfaall   = "cfaall_sa"  # all are in km^2 
 )
 
 O$SA_ratios = O[[sa_vars[[region]]]] / O$data_offset

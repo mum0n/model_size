@@ -80,9 +80,10 @@ model_size_results = function(p, todo="post_stratified_weights",
       
       tokeep = c("AUID", sa_vars, "strata_to_keep" )
       pg = data.table(pg)[, ..tokeep]
-
       attr(pg[["au_sa_km2"]], "units") = NULL
       class(pg[["au_sa_km2"]]) = NULL
+      
+      names(pg) = c("AUID", "cfanorth_sa", "cfasouth_sa", "cfa23_sa", "cfa24_sa", "cfa4x_sa", "cfaall_sa", "strata_to_keep")
 
       for (bc in c("f.imm", "f.mat", "m.imm", "m.mat") ){
         
@@ -97,8 +98,6 @@ model_size_results = function(p, todo="post_stratified_weights",
         fn_fixed_effects_samples =  file.path( fn_loc, "fixed_effects_samples.rdz" )
 
         # operate upon "fit" first and remove from memory to reduce RAM demand 
-        
-        message("\nLoading model fit into memory: ", bc)
         fit = model_size_presence_absence( p=p, todo="load" ) 
 
         message("\nSampling and extracting for: ", bc)
@@ -129,12 +128,11 @@ model_size_results = function(p, todo="post_stratified_weights",
         ipreds = which(M$tag == "predictions")
         
         setDT(M)
-        setDT(M)
 
         # observations (individual, i)
         O = M[iobs, .(
-            kuid, AUID, sid, year, cyclic, cwd, mat, sex,
-            z, substrate.grainsize, dyear, dyri, t, pca1, pca2, sid,
+            kuid, AUID, sid, crabno, year, cyclic, cwd, mat, sex,
+            z, substrate.grainsize, dyear, dyri, t, pca1, pca2,
             cw, mass, data_offset,
             individual_prob_mean, individual_prob_sd
         )]
@@ -155,6 +153,7 @@ model_size_results = function(p, todo="post_stratified_weights",
     
         O$auid_prob_mean2 = M$individual_prob_mean[ ipo ]
         O$auid_prob_sd2 = M$individual_prob_sd[ ipo ]
+        O$bioclass = bc
         
         M = NULL; gc()
     
@@ -176,12 +175,6 @@ model_size_results = function(p, todo="post_stratified_weights",
 
         message( "\nSaving: ", fn_observation_ratios )
         read_write_fast( O, fn=fn_observation_ratios )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
-
-        # bring in input data 
-        # M = model_size_data_carstm( p=p )  
-        # M = M[tag=="observations",]
-        # M$bioclass = bc
-        # O = cbind(M, O)
 
         out = rbind( out, O )  # retain for aggregate save at the end
 
