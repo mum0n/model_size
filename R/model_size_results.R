@@ -88,12 +88,20 @@ model_size_results = function(p, todo="post_stratified_weights",
         
         p$bioclass = bc
 
+        fn_loc = file.path( p$modeldir, p$bioclass )
+        fn_observation_ratios = file.path( fn_loc, "post_stratified_ratios.rdz" ) 
+        fn_observation_samples = file.path( fn_loc, "post_stratified_weights_samples_obs.rdz" ) 
+        fn_prediction_samples = file.path( fn_loc, "post_stratified_weights_samples_pred.rdz" ) 
+        fn_prediction_samples_obs = file.path( fn_loc, "post_stratified_weights_samples_pred_obs.rdz" ) 
+        fn_size_selectivity_samples = file.path( fn_loc, "post_stratified_size_selectivity_samples.rdz" )
+        fn_fixed_effects_samples =  file.path( fn_loc, "fixed_effects_samples.rdz" )
+
         # operate upon "fit" first and remove from memory to reduce RAM demand 
         
-        message("Loading model fit into memory: ", bc)
+        message("\nLoading model fit into memory: ", bc)
         fit = model_size_presence_absence( p=p, todo="load" ) 
 
-        message("Sampling and extracting for: ", bc)
+        message("\nSampling and extracting for: ", bc)
         S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
 
         fit_summ_mean = fit$summary.fitted.values[["mean"]] 
@@ -202,6 +210,7 @@ model_size_results = function(p, todo="post_stratified_weights",
         for (i in 1:nposteriors) {
             Osamples[,i] =  S[[i]]$latent[fkk,] 
         }
+        fkk = NULL
         message( "\nSaving:  ", fn_observation_samples )
         read_write_fast( Osamples[iobs,], fn=fn_observation_samples )  # on logit scale
 
@@ -215,6 +224,10 @@ model_size_results = function(p, todo="post_stratified_weights",
         post_stratified_ratio_obs = Osamples[ ipo,] / Osamples[iobs,]   
         message( "\nSaving:  ", fn_prediction_samples_obs )
         read_write_fast( post_stratified_ratio_obs, fn=fn_prediction_samples_obs )  # on logit scale
+        
+        post_stratified_ratio_obs = NULL
+        Osamples = NULL
+        gc()
 
         fe = inla_get_indices(
             "(Intercept)", 
@@ -231,10 +244,11 @@ model_size_results = function(p, todo="post_stratified_weights",
         for (i in 1:nposteriors) {
             Osamples[,i] = S[[i]]$latent[fe,]   # log odds ratio
         }
+        fe = NULL
         
         message( "\nSaving:  ", fn_fixed_effects_samples )
         read_write_fast( Osamples, fn=fn_fixed_effects_samples )   # on logit scale
-
+        Osamples = NULL
 
         fss = inla_get_indices(
             "inla.group(cwd, method = \"quantile\", n = 11)", 
@@ -251,13 +265,15 @@ model_size_results = function(p, todo="post_stratified_weights",
             Osamples[,i] = S[[i]]$latent[fss,]   # log odds ratio
         }
         
-        # Osamples = exp(Osamples )
-        
-        S = fss = NULL ;  gc()
-    
+        fss = NULL
+        S = NULL 
+
         message( "\nSaving:  ", fn_size_selectivity_samples )
         read_write_fast( Osamples, fn=fn_size_selectivity_samples )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
-          
+        
+        Osamples = NULL
+        gc()
+      
         size_selectivity[[bc]] = sizeselect
         fixed_effects[[bc]] = fixeff
 
