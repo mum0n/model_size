@@ -1,5 +1,5 @@
 
-model_size_data_carstm = function(p, redo=c(""), zero_weight="unit" ) { 
+model_size_data_carstm = function(p, redo=c("")) { 
 
   # p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
 
@@ -20,11 +20,6 @@ model_size_data_carstm = function(p, redo=c(""), zero_weight="unit" ) {
 
       i = filter.class( Z, p$bioclass )
       if (length(i) > 0) Z = Z[i, ]
-
-      if (zero_weight=="unit") {
-        k = which(Z$tag=="observations" & Z$crabno==0 )
-        if (length(k)>0) Z$data_offset[k] = 1  # override swept area with unit of prediction (1km^2) # this increases the importance of zero-values
-      }
 
       Z$mat = as.character(Z$mat)
       Z$sex = as.character(Z$sex)

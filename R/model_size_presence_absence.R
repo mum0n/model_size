@@ -23,7 +23,12 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
     message( "Creating model fit: ", fn)
          
     M = model_size_data_carstm( p=p )  
-   
+
+    if (p$zero_flag == "unit_zeros") {
+        k = which(M$tag == "observations" & M$crabno==0)
+        if (length(k) > 0) M$data_offset[k] = 1    
+    }
+    
     # summary on link scale
     MS = summarize_observations(
         obs = M[tag=="observations", pa ],

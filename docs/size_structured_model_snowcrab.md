@@ -171,7 +171,8 @@ In the next section, we estimate these weighting factors and apply them to obtai
 #| label: setup-R-environment
 
 # homedir="C:/home/jae/"  # on MSwindows
-# .bio
+
+.bio
 
 project_name = "model_size"
 project_directory = file.path( homedir, "projects", project_name )
@@ -412,7 +413,11 @@ $$\omega_i = \theta_{a/i} \cdot (\text{SA}_a / \text{O}_i),$$
 todo = "post_stratified_weights"
 # todo = "post_stratified_weights_redo"
 
+# O = model_size_results( p=p, todo=todo, only_observations=FALSE  ) # n=1106430  including prediction even if none were found
+
 O = model_size_results( p=p, todo=todo  ) # n=532176    
+
+O$year = as.numeric(as.character(O$year) )
 
 plot( O$individual_prob_mean, O$auid_prob_mean, pch="." )  # observations tend to slightly under-represent areal units
   
@@ -434,14 +439,6 @@ summary(O$post_stratified_ratio_obs)  # without seasonal timeshift
 # 0.0226  1.0000  1.0057  1.0717  1.0428 32.7205 
 
 
-# variable name containing sa estimates for the sub-domain of interest
-region = "cfaall"
-# region = "cfanorth"
-# region = "cfasouth"
-# region = "cfa4x"
-# region = "cfa23"
-# region = "cfa24"
-
 sa_vars = list(
   cfanorth = "cfanorth_sa", 
   cfasouth = "cfasouth_sa", 
@@ -451,14 +448,25 @@ sa_vars = list(
   cfaall   = "cfaall_sa"  # all are in km^2 
 )
 
+
+# variable name containing sa estimates for the sub-domain of interest
+region = "cfaall"
+# region = "cfanorth"
+# region = "cfasouth"
+# region = "cfa4x"
+# region = "cfa23"
+# region = "cfa24"
+
 O$SA_ratios = O[[sa_vars[[region]]]] / O$data_offset
+
+O[, n_stations:=length(unique(sid)), by=.(AUID, year) ]  # need to noramlized by sampling intensity per AUID
 
 hist(log10(O$SA_ratios), "fd") 
 summary(O$SA_ratios)
 #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #  13066  125943  182096  211326  264686 3816293 
 
-O$wgt = O$post_stratified_ratio *  O$SA_ratios  # sampling environmental correction 
+O$wgt = O$post_stratified_ratio *  O$SA_ratios / O$n_stations  # sampling environmental correction 
    
 hist(log10(O$wgt), "fd") 
 summary(O$wgt)
@@ -470,6 +478,7 @@ summary(O$wgt)
 yrp = "2024"
 #yrp = "2023"
 #yrp = "2022"
+#yrp = "2021"
 #yrp = "2019"
 
 # note: wgt > 0 filters out other regions 
@@ -523,25 +532,32 @@ ggarrange(
 
 # NOTE: wgt >0 is useful to remove estimates outside of a focal subregion
 
-o = O[ wgt>0, .(
-    density=sum(mass * data_offset),  # assuming completely random sampling
-    total_psw=sum(mass * wgt)    # with envir correction
+female = "1" 
+male = "0" 
+
+f = which( O$wgt>0 & O$sex==female )
+
+m = which( O$wgt>0 & O$sex==male )
+
+m.gt.95 = which( O$wgt>0 & O$sex==male & O$cw>=95 )
+
+i = f
+i = m
+i = m.gt.95
+
+o = O[ i, .(
+    mass_density=sum(mass * data_offset),  # assuming completely random sampling
+    mass_total_psw_kt=sum(mass * wgt) / 10^6    # with envir correction
   ), 
   by=.(year, sex, mat) ]  
 
-o$year = as.numeric(as.character(o$year) )
-
-sexid = "0" # male
-
-sexid = "1" # female
-
 # weighted total 
-ggplot( o[sex==sexid,], aes(x=year, y=total_psw, group=mat, col=mat) ) + 
+ggplot( o, aes(x=year, y=mass_total_psw_kt, group=mat, col=mat) ) + 
   geom_point() +
   geom_line()
 
 # density
-ggplot( o[sex==sexid,], aes(x=year, y=density, group=mat, col=mat) ) + 
+ggplot( o, aes(x=year, y=mass_density, group=mat, col=mat) ) + 
   geom_point() +
   geom_line()
  
@@ -551,42 +567,39 @@ ggplot( o[sex==sexid,], aes(x=year, y=density, group=mat, col=mat) ) +
 
 # large corrections: might have to trim these to make more robust
 i = which(O$SA_ratios > 1e6)  
-O[i, .N , by=(sid.1)]
+O[i, .N , by=.(sid)][order(sid),]
+           sid     N
+        <char> <int>
+ 1:  S01102007.2     1
+ 2:  S01102017.9     1
+ 3: S02092023.13     7
+ 4:  S02112004.2     1
+ 5:  S04012020.9     1
+ 6:  S04102016.2     3
+ 7: S04112010.12    25
+ 8:  S06051999.9     1
+ 9:  S08092002.5     2
+10:  S08092007.3     3
+11:  S09092006.8     2
+12:  S09092011.8     1
+13:  S11112014.9     5
+14:  S12112009.7     2
+15: S13092023.12     2
+16:  S14102013.4     2
+17:  S15112013.6    64
+18:  S18061999.7    19
+19: S18071999.10     2
+20: S18071999.11     2
+21:  S21062000.9     1
+22: S22082002.10    37
+23:  S22092001.1    32
+24:  S24092015.2     1
+25:  S25092010.7     2
+26: S26102003.11    21
+
  
- oo = O[i,] ; (oo[, .N , by=(sid)])
-          
-             sid     N
-          <char> <int>
- 1:  S18061999.7    19
- 2:  S08092007.3     3
- 3: S18071999.11     2
- 4:  S22092001.1    32
- 5: S22082002.10    37
- 6:  S08092002.5     2
- 7: S26102003.11    21
- 8:  S15112013.6    64
- 9:  S11112014.9     5
-10:  S04102016.2     3
-11:  S06051999.9     1
-12: S18071999.10     2
-13:  S21062000.9     1
-14:  S02112004.2     1
-15:  S09092006.8     2
-16:  S01102007.2     1
-17:  S12112009.7     2
-18:  S25092010.7     2
-19: S04112010.12    25
-20:  S09092011.8     1
-21:  S14102013.4     2
-22:  S24092015.2     1
-23:  S01102017.9     1
-24:  S04012020.9     1
-25: S02092023.13     7
-26: S13092023.12     2
-
-
- oo = O[i,] ; (oo[, .N , by=(AUID)])
-        AUID     N
+O[i, .N , by=.(AUID)] ; 
+      AUID     N
     <char> <int>
  1:    692    19
  2:     18     5
@@ -604,30 +617,17 @@ O[i, .N , by=(sid.1)]
 14:    733    25
 15:    197     2
 16:    375     7
+
+
+
+O[i, .N , by=.(year)][order(year),]
+    year     N
+   <num> <int>
+1:  2006     2
+2:  2007     3
+3:  2015     1
+4:  2017     1
  
-
- oo = O[i,] ; (oo[, .N , by=(year)][order(year),])
-      year     N
-    <fctr> <int>
- 1:   1999    24
- 2:   2000     1
- 3:   2001    32
- 4:   2002    39
- 5:   2003    21
- 6:   2004     1
- 7:   2006     2
- 8:   2007     4
- 9:   2009     2
-10:   2010    27
-11:   2011     1
-12:   2013    66
-13:   2014     5
-14:   2015     1
-15:   2016     3
-16:   2017     1
-17:   2019     1
-18:   2023     9
-
 
 ```
 
@@ -651,12 +651,10 @@ An alternative is to see the size-related effects in the above model as a size-b
 
 sbias = size_bias_compute(p)
 
-plot(  ( sbias[,mean + b0_mean]) ~  ( sbias[,log_cwd])) #  log odds ratio
+plot(  ( sbias[,bias]) ~  ( sbias[,log_cwd])) #  log odds ratio
 
 
 # apply it to observation weights via spline
-
-O = model_size_results( p=p, todo="post_stratified_weights"  ) 
  
 O$bias =  NA
 
@@ -673,16 +671,16 @@ for (bc in c("f.imm", "f.mat", "m.imm", "m.mat") ) {
    
 }
  
-O$wgt2 = O$wgt / exp(O$bias) # correct  size bias
+O$wgt_bc = O$wgt / exp(O$bias) # correct  size bias
  
-hist(log10(O$wgt2), "fd")
+hist(log10(O$wgt_bc), "fd")
 
 hist(log10(O$wgt), "fd") 
 
-summary(O$wgt2)
+summary(O$wgt_bc)
 
 
-p_psw2 = ggplot(O[k,], aes( (cw), group= mat, fill=mat, weight=wgt2 )  ) +
+p_psw2 = ggplot(O[k,], aes( (cw), group= mat, fill=mat, weight=wgt_bc )  ) +
   geom_histogram( bins =nbins )  
 
 labels = paste( 
@@ -696,7 +694,7 @@ labels = paste(
 dev.new()
 ggarrange( 
   p_psw, 
-  p_psw2 + p_no_labels  + ylim(0, 7e9) 
+  p_psw2 + p_no_labels  + ylim(0, 1e10), 
   ncol=1, 
   labels=labels, 
   align = "v", 
