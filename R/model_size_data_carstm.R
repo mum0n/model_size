@@ -1,5 +1,5 @@
 
-model_size_data_carstm = function(p, redo=c("") ) { 
+model_size_data_carstm = function(p, redo=c(""), zero_weight="unit" ) { 
 
   # p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
 
@@ -20,6 +20,11 @@ model_size_data_carstm = function(p, redo=c("") ) {
 
       i = filter.class( Z, p$bioclass )
       if (length(i) > 0) Z = Z[i, ]
+
+      if (zero_weight=="unit") {
+        k = which(Z$tag=="observations" & Z$crabno==0 )
+        if (length(k)>0) Z0$data_offset[k] = 1  # ie. per unit of prediction (1km^2) # this increases the importance of zero-values
+      }
 
       Z$mat = as.character(Z$mat)
       Z$sex = as.character(Z$sex)
@@ -193,7 +198,7 @@ model_size_data_carstm = function(p, redo=c("") ) {
   # dim(Z0) # 1124880
 
   Z0 = setcm[,.(sid, data_offset)][ Z0, on=.(sid)] 
-  
+
   Z0$cf_det_no = 1 / Z0$data_offset  # this is actual cf_set_no ... as no is 0, assume set swept area as multiplier
   Z0$data_offset = NULL
 
