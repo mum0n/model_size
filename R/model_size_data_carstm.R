@@ -23,7 +23,7 @@ model_size_data_carstm = function(p, redo=c(""), zero_weight="unit" ) {
 
       if (zero_weight=="unit") {
         k = which(Z$tag=="observations" & Z$crabno==0 )
-        if (length(k)>0) Z0$data_offset[k] = 1  # ie. per unit of prediction (1km^2) # this increases the importance of zero-values
+        if (length(k)>0) Z$data_offset[k] = 1  # override swept area with unit of prediction (1km^2) # this increases the importance of zero-values
       }
 
       Z$mat = as.character(Z$mat)
