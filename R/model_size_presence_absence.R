@@ -48,7 +48,7 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
         num.threads=num.threads
-    ) )
+    ), silent=TRUE )
 
 
     message("Trying default compact inla mode with more robust settings: \n")
@@ -63,7 +63,7 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         num.threads=num.threads
-      ) )
+      ), silent=TRUE )
 
     }
  
@@ -80,7 +80,7 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         num.threads=num.threads
-      ) )
+      ), silent=TRUE )
 
     }
  
