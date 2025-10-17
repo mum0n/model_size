@@ -222,7 +222,7 @@ model_size_data_carstm( p=p, redo=redo )
 # each bioclass and use over 128GB RAM (esp, m.imm)
  
 
-for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
+for ( bioclass in c( "f.imm", "f.mat", "m.imm", "m.mat")) {
  
     print(bioclass)
     p$bioclass = bioclass
@@ -239,52 +239,13 @@ for ( bioclass in c("f.imm", "f.mat", "m.imm", "m.mat")) {
         9.9153, -0.3066, 1.0842, 2.1462, 0.3983, 2.3851, 1.2793, 0.0335, 1.8924, -2.1858, 1.5771, 3.9561, 4.3029, -2.5842, 4.3530, -1.4667, -0.4409, 0.9858 ),
       NULL
     )
-
-
-
-nbinomial: f.imm
-maxld= -146331.0498 fn=7479 theta= 11.1124 9.8770 -0.3553 0.6821 0.8475 1.1475 0.9847 3.2693 0.0013 2.5206 -0.2115 1.0212 4.8428 3.5350 -1.7782 3.3659 -0.4590 0.2413 1.1276 [11.80, 72.958]
-
-Deviance Information Criterion (DIC) ...............: 290479.94
-Deviance Information Criterion (DIC, saturated) ....: 92840.79
-Effective number of parameters .....................: 10654.17
-
-Watanabe-Akaike information criterion (WAIC) ...: 309205.85
-Effective number of parameters .................: 17576.57
-
-Marginal log-Likelihood:  -146337.79
- is computed
-Posterior summaries for the linear predictor and the fitted values are computed
-(Posterior marginals needs also 'control.compute=list(return.marginals.predictor=TRUE)')
-
-> bioclass
-[1] "f.imm"
-
-
-    # theta[1] = Intercept
-    # theta[2] = [Log precision for inla.group(cwd3, method = "quantile", n = 11)]
-    # theta[3] = [Group rho_intern for inla.group(cwd3, method = "quantile", n = 11)]
-    # theta[4] = [Log precision for time]
-    # theta[5] = [Rho_intern for time]
-    # theta[6] = [Log precision for cyclic]
-    # theta[7] = [Rho_intern for cyclic]
-    # theta[8] = [Log precision for inla.group(t, method = "quantile", n = 9)]
-    # theta[9] = [Log precision for inla.group(z, method = "quantile", n = 9)]
-    # theta[10] = [Log precision for inla.group(substrate.grainsize, method = "quantile", n = 9)]
-    # theta[11] = [Log precision for inla.group(pca1, method = "quantile", n = 9)]
-    # theta[12] = [Log precision for inla.group(pca2, method = "quantile", n = 9)]
-    # theta[13] = [Log precision for space]
-    # theta[14] = [Logit phi for space]
-    # theta[15] = [Log precision for space_time]
-    # theta[16] = [Logit phi for space_time]
-    # theta[17] = [Group rho_intern for space_time]
-  
+ 
     fit = model_size_presence_absence( p=p, todo="redo", theta0=theta0 )
     
     fit = NULL; gc()
 }
 
-# O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observations=FALSE  ) # n=1106430  including prediction even if none were found
+O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observations=FALSE  ) # n=1106430  including prediction even if none were found
 
 
   if (0) {
@@ -479,8 +440,6 @@ region = "cfaall"
 # region = "cfa24"
 
 O$SA_ratios = O[[sa_vars[[region]]]] / O$data_offset
-
-O[, n_stations:=length(unique(sid)), by=.(AUID, year) ]  # need to noramlized by sampling intensity per AUID
 
 hist(log10(O$SA_ratios), "fd") 
 summary(O$SA_ratios)

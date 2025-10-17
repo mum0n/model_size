@@ -21,6 +21,24 @@ model_size_data_carstm = function(p, redo=c("")) {
       i = filter.class( Z, p$bioclass )
       if (length(i) > 0) Z = Z[i, ]
 
+      # override swept area with unit of prediction (1km^2) 
+      # this increases the importance of zero-values
+      # if (zero_weight=="unit") {
+
+      #  Z = model_size_data_carstm( p=p )
+
+      #  k = which(Z$tag=="observations" & Z$crabno==0 )
+      #  if (length(k)>0) Z$data_offset[k] = 1  
+      # }
+
+      # store as it seems to get reset somehow below with Z ii merge
+      lbrks  = attr(Z, "brks") 
+      yrs = attr(Z, "yrs") 
+      sppoly =   attr(Z, "sppoly") 
+
+  
+
+  
       Z$mat = as.character(Z$mat)
       Z$sex = as.character(Z$sex)
       
@@ -47,7 +65,14 @@ model_size_data_carstm = function(p, redo=c("")) {
 
       # Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
 
-
+      Z= Z[is.finite(pca1+pca2), ]
+     
+      # return attributes
+      attr(Z, "brks") = lbrks
+      attr(Z, "yrs") = yrs
+      attr(Z, "sppoly") = sppoly 
+  
+      
       return(Z)
     } 
   }
@@ -279,6 +304,21 @@ model_size_data_carstm = function(p, redo=c("")) {
   
   Z$data_offset = 1/Z$cf_det_no
   Z$cf_det_no = NULL 
+
+      # this is an individual-level analysis meant to be used in an additive manner, 
+      # so when there are variable numbers of sets in each AUID needs, those locations need to be accounted
+      # this is done by counting the number of sets and dividing the effective wgts 
+      # this rescales the weigts to a per AUID basis.
+      # this could sort of be also done by altering the input data:: 
+      #    data_offset -> data_offset / n_stations  .. but would alter the interpretation that each 
+      # O$SA_ratios = O[[sa_vars[[region]]]] / O$data_offset
+      # O$post_stratified_ratio *  O$SA_ratios / O$n_stations  # sampling environmental correction 
+
+      ii = Z[tag=="observations", .(n_stations=length(unique(sid))), by=.(AUID, year) ]  
+      Z = ii[Z, on=.(AUID, year)]
+      Z[ is.na(n_stations), "n_stations"] = 1
+
+      Z$data_offset = Z$data_offset / Z$n_stations  # sampling environmental correction 
   
   key_vars = c("AUID", "year", "cyclic", "cwd", "mat", "sex" )
 

@@ -37,18 +37,52 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
 
     H <<- inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, MS[["median.50%"]] ) 
 
-    fit = inla( 
+    fit = try( inla( 
         data=M, 
         formula=p$formula, 
         family="binomial", 
-        verbose=TRUE, 
-        # control.inla = list( strategy="adaptive", int.strategy="eb", h=0.05 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
         num.threads=num.threads
-    )
+    ) )
 
+
+ 
+    if (inherits(fit, "try-error" )) {
+      fit = try( inla( 
+        data=M, 
+        formula=p$formula, 
+        family="binomial", 
+        control.inla = list( strategy = "gaussian", control.vb = list(enable = TRUE), h=0.05, force.diagonal=TRUE, diagonal=1e6, cmin=0.0001 ),
+        control.predictor = list(compute = TRUE,  link = 1), 
+        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+        num.threads=num.threads
+      ) )
+
+    }
+ 
+ 
+    if (inherits(fit, "try-error" )) {
+      fit = try( inla( 
+        data=M, 
+        formula=p$formula, 
+        family="binomial", 
+        inla.mode="classic",
+        control.predictor = list(compute = TRUE,  link = 1), 
+        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+        num.threads=num.threads
+      ) )
+
+    }
+ 
+ 
+
+    if (inherits(fit, "try-error" )) {
+        stop("Model fit error")
+    }
+ 
+ 
     if (improve.fit) {
         message( "Improving model fit: ", fn)
         fit = inla.hyperpar( fit, verbose=TRUE, restart=TRUE )  #  dz = 0.75, diff.logdens = 15,

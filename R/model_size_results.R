@@ -106,7 +106,7 @@ model_size_results = function(p, todo="post_stratified_weights",
         fit_summ_mean = fit$summary.fitted.values[["mean"]] 
         fit_summ_sd = fit$summary.fitted.values[["sd"]] 
         fixeff = fit$summary.fixed
-        sizeselect = fit$summary.random$'inla.group(cwd, method = "quantile", n = 11)' 
+        sizeselect = fit$summary.random$'inla.group(cwd, method = "quantile", n = 9)' 
 
         # plot( (sizeselect[,2]) ~ exp(sizeselect[,1]))   log odds ratio
         # plot(exp(sizeselect[,2])~ exp(sizeselect[,1]))  # odds ratio
@@ -244,7 +244,7 @@ model_size_results = function(p, todo="post_stratified_weights",
         Osamples = NULL
 
         fss = inla_get_indices(
-            "inla.group(cwd, method = \"quantile\", n = 11)", 
+            "inla.group(cwd, method = \"quantile\", n = 9)", 
             tag=tag, start=start, 
             len=length, 
             model="direct_match"
