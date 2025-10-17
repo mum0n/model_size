@@ -37,6 +37,8 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
 
     H <<- inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, MS[["median.50%"]] ) 
 
+    message("Trying default compact inla mode: \n")
+    
     fit = try( inla( 
         data=M, 
         formula=p$formula, 
@@ -49,6 +51,7 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
     ) )
 
 
+    message("Trying default compact inla mode with more robust settings: \n")
  
     if (inherits(fit, "try-error" )) {
       fit = try( inla( 
@@ -65,6 +68,8 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
     }
  
  
+    message("Trying the more stable 'classic' inla mode: \n")
+
     if (inherits(fit, "try-error" )) {
       fit = try( inla( 
         data=M, 
