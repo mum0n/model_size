@@ -91,6 +91,8 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
         fit = inla.hyperpar( fit, verbose=TRUE, restart=TRUE )  #  dz = 0.75, diff.logdens = 15,
     }
 
+    message( "model theta (modes):  \n", fit$mode$theta )
+    
     fit$modelinfo = list(
         bioclass = p$bioclass, 
         H = H,
