@@ -65,47 +65,49 @@ To include a common file:
 
 ## Purpose
 
-To develop a size-structured model of snow crab (*Chionoectes opilio*) using a matrix model (aka, a **Generalized Leslie** matrix model, or also, a Transition Matrix model), except that instead of the usual age as the classifying units, we use size and stage (sex and maturity). 
+To develop a size-structured model of snow crab (*Chionoectes opilio*) using a matrix model (aka, a **Generalized Leslie** matrix model (GLMM), or also known as a Stage-Based Transition Matrix model, SBTMM), except that instead of age as the classifying units, we use size and stage (sex and maturity). 
 
 ## Approach
 
 At a minimum, the following information is required for a size-structured matrix model:
 
-  (1) representative size-frequency distributions across space and time
-  (2) size-based understanding/parameterization of: growth, fecundity, survivorship 
-  (3) size-based understanding of fishery removals.
+  (1) representative size-frequency distributions across space and time. Body size is a basic element of any monitoring system. However, no matter how randomized a sampling design may be, there is an inherent bias (sometimes referred to as **selectivity**) associated with most forms of sampling. This needs to be expressed. This bias is due to the sampling device (mesh size, hook size) used for capture and also, and importantly, **sampling design** limitations. No matter how well constructed, sampling design cannot be sufficiently well-informed to ensure ensure completely random sampling, due to time and space-varying environmental and behavioural variability than cannot be know *a-priori*. The latter can, however, be partially addressed through a model-based, *a-posteriori* methods that are collectively known as **Post-Stratification** bias correction. From such analyses, a representative distribution of size by stage can then be used to inform/identify/classify size modes and associated numerical abundance in each mode.
 
-With regards to (1) size-frequency distributions, there is an inherent bias (sometimes referred to as **selectivity**) associated with most forms of sampling and this needs to be expressed. However, this bias is not only due to sampling device (mesh size, hook size) but also due to sampling design itself being insufficiently well-informed to ensure completely random sampling, due to primarily to environmental and behavioural variability. The latter can be partially addressed through a model-based, a-posteriori, **Post-Stratification** process. This best-possible representative distribution can then be used to define identify/classify size modes and associated numerical abundance in each mode.
+  (2) size-based understanding of life history: parameterization of growth, fecundity, survivorship. Life history processes such as growth and fecundity are reasonably quickly determined and improved with continued monitoring. Survivorship (the complement of natural mortality) is, however, a challenge to estimate unless a population is at steady-state and so requires experimentation or simplifying assumptions to be made.
+   
+  (3) size-based understanding of fishery removals. A sampling or monitoring program needs to be in place to estimate the usually size-selective removals or mortalities from the population.
 
-With regards to (2) size-based understanding of life history processes, growth and fecundity are reasonably quickly determined and improved with continued monitoring. Survivorship (the complement of natural mortality) is, however, a challenge to estimate unless a population is at steady-state and so requires experimentation or assumptions to be made.
 
-With regards to (3) fishery removals, a sampling or monitoring program needs to be in place to estimate the usually size-selective removals or mortalities from the population.
 
-Here we will attempt to address each of these components.
+Here we will attempt to address each of these components and then synthesize them towards a matrix-based representation of size-stage-based dynamics.
 
 
 
 ## 1. Size-frequency distributions across space and time
 
-A **size-frequency distribution** of a **system** of interest is usually obtained from the observation of body size measurements (e.g., weight, length, and in the case of snow crab, often, carapace width) at various locations ("space") and times (seasonal, inter-annual). To represent the overall size distribution, these observations must be summarized in some manner. If the samples are derived from a truly random sample of a "space-time-size" domain, then the usual approach of simply aggregating counts by size-intervals which is sufficient to obtain a reasonable picture of the size frequency distribution. This is because these samples are **representative** and each individual observation has an equal amount of information in representing the system; that is, they can be considered "exchangeable" (aka, "independently and identically distributed" or *iid*), under the context of the sampling structure/design. Or in other words, each individual observed/measured carries the same **weight** of information.
+A **size-frequency distribution** of some system or stratum of interest, $S$, is usually obtained from the observation of body size measurements (e.g., weight, length, and in the case of snow crab, often, carapace width) at various locations ("space") and times (seasonal, inter-annual). To represent the overall size distribution, these observations must be summarized in some manner. If the samples are derived from a truly random sample of $S$, then the usual approach of simply aggregating counts by size-intervals is sufficient to obtain an estimate of the size frequency distribution. This is because these samples can be considered **representative** of $S$ and each individual observation contributes an **equal** amount of information in representing the system; that is, they can be considered **exchangeable** (aka, "independently and identically distributed" or **iid**), under the context of the sampling structure/design. To re-iterate, each individual observation or measurement carries the same **weight** of information.
 
-In dealing with the abundance of organisms that are not randomly sampled across space, time and size, this "weight" is not always equal. Swept area can be variable (sampling effort), or environmentally extreme conditions might be encountered, especially if fixed sampling locations are used. To make them comparable across such factors that can bias our estimate of abundance means that we need to address **habitat** variability issues directly. By **habitat**, we mean that organisms have metabolic, physiological and behavioural preferences and limits in the environmental and ecosystem conditions they can or cannot inhabit, in the sense of Elton (19XX). Variations in habitat result in differential growth, reproduction and movement, rendering a naive random sampling assumption, potentially invalid. 
+When organisms are distributed in a nonrandom manner across space, time and size, this "weight" is not always equal. Naive sampling of such a nonrandom distribution cannot be representative, especially when the number of samples are much lower than the total population, $n_s << n_S$. Stratified random sampling is use to try to reduce such biases, however, this only work if the factors that affect the non-random distribution (e.g., quite often the depth distribution) is known *a-priori* and remain invariant in time or associated with sampling intensity (e.g., swept area in a trawl, number of traps or hooks used and usually determined before sampling). These are known as design weights, that is, information known *a-priori* to be influential to estimation.
+
+However, other factors can only be known after the sampling event. When, environmentally extreme conditions are encountered due to underlying spatio-temporal variability of influential factors. To make them comparable across such factors that can bias our estimate of abundance means that we need to address **habitat** variability issues directly. By **habitat**, we mean that organisms have metabolic, physiological and behavioural preferences and limits in the environmental and ecosystem conditions they can or cannot inhabit, in the sense of Elton (19XX). Variations in habitat result in differential growth, reproduction and movement, rendering a naive random sampling assumption, potentially invalid. 
 
 To belabour the point, animals can, due to metabolic constraints and behavioural traits (aggregation/clustering/schooling), demonstrate ontogenetic (size and age-based) shifts in such habitat preferences which ultimately results in observed/sampled data with bias due to certain environments not being observable due to sampling not accounting for this underlying structure that is not random. Further, imperfect sampling methods such as:
 
-  - nets not able to access rocky, heterogenous, or deep environments
+  - nets or sampling gear not able to access rocky, heterogenous, or deep environments
   - not able to access areas of high currents or rapid changes in bathymetry (cliffs and rocky protuberances)
   - sampling of one vertical stratum (size of sampling gear) and missing mobile organisms that can escape by swimming over or around the nets or others that can burrow into sediments or shelf beside rocky outcrops below the nets.
   - sampling speed to capture rapidly moving organisms (escapement)
   - sampling mesh too large to capture small organisms (escapement).
 
-Though all these factors can of course cause additional biases, they are usually also ignored giving rise to the current common practice of **Let's-hope-for-the-best** (LHFTB). In actual practice, especially when little is known of a system at the start of surveys, LHFTB boils down to, **depth is the best we can do stratification** as depth is usually the only reasonably well-known factor. Once established, this stratification seldom changes as any additional strata often becomes exponentially more costly (in terms of needing to justify alterations from LHFTB  to incrementally better, re-ananlysis, new survey locations, more data requirements and potential loss of face/trust from data end-users/clients/funders that invested in the initial approach). As such, one computes size frequency distributions, treating each observation as IID (that is, fully exchangeable) as no other recourse seems available. Indeed, this LHIICRS approach is the defacto standard in every setting that I have observed. Pragmatically, what this means is that each observation of an organism may **not be of exchangeable**, that is, each observed individual may not be of equal importance in describing the system or stratum $S$. If observations occur with more frequency in an area that is not representative of $S$, then it’s relative influence would be more elevated causing bias in describing $S$, and vice versa. For example, the flooding of an area with warm waters due to larger eddies entering the system for a year or more due to elevated and course grained climate variability and change can alter the location and extent of viable habitat and therefore render samples to be nonrandom due to this previously unaccounted factor in the initial sampling design. In other words, treating observations as random samples would be incorrect as they are not fully independent samples, across space, time, size (if there are ontogenetic or size-related changes in habitat preferences) and any covariates (e.g. bottom temperatures).
+Though all these factors can of course cause additional biases, they are usually also ignored giving rise to the current common practice of **Let's-hope-for-the-best** (LHFTB) sampling. In actual practice, especially when little is known of a system at the start of a monitoring program, LHFTB boils down to, **depth is the best we can do stratification** as depth is usually the only reasonably well-known *a-priori* factor. Once established, this stratification seldom changes as any additional strata often becomes exponentially more costly (in terms of needing to justify alterations from LHFTB to incrementally better, re-ananlysis, new survey locations, more data requirements and potential loss of face/trust from data end-users/clients/funders that invested in the initial approach).
 
-It is generally, also admittedly, nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent preferences, especially in a fluid, multidimensional (space, time, species, multiply interacting environmental covariates) environment such as the ocean. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably at various hierarchical levels by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design. 
+As such, when one computes size frequency distributions, almost always, each observation is treated as though they were derived from an IID sample (that is, fully exchangeable). Indeed, the LHIICRS approach is the defacto standard in every setting that I have observed. But, what if each observation of an organism is **not  exchangeable**? That is, what if each observed individual is not of equal importance in describing the system or stratum $S$? If observations occur with more frequency in an area that is not representative of $S$, then it’s relative influence would be inflated causing potential bias in describing $S$, and vice versa. For example, the flooding of an area with warm waters due to larger eddies entering the system for a year or more due to elevated and course grained climate variability and change can alter the location and extent of viable habitat and therefore render LHFTB samples to be nonrandom due to this previously unaccounted and unaccountable factor in the initial sampling design. In other words, treating observations as random samples would be incorrect as they are not fully independent samples, across space, time, size (if there are ontogenetic or size-related changes in habitat preferences) and any covariates (e.g. bottom temperatures).
 
-In simpler applications such as areal abundance indices, the current solution seems to be use the (fixed factorial) "year-effect", independent of any covariate effects, if any; that is, where all other covariates are held at the overall mean (random effects) or reference (fixed effect) levels. However, it should be emphasized that this approach is simply taking the abundance as that which would have been observed at an arbitrary reference level of covariates. It, therefore, does not equate to an actual estimate of abundance, but rather a density estimate; the latter only becomes an abundance estimate if the areal expansion is known. Implicitly it is commonly **assumed** that the domain has a fixed surface area from which then density can be suggested to be abundance to a constant of proportionality. 
+It is also nearly impossible, to correctly design or account for these dynamic, context and size/age-dependent behavioural preferences, especially in a fluid, multidimensional (space, time, species, multiply interacting environmental covariates) environment such as the ocean where the relevant bio-physical-chemical processes do not respect the boundaries of $S$. When, as is often the case, the controlling factors are associated with environmental variability that itself changes unpredictably at various hierarchical levels by its nature across both time and space, it is indeed a challenge to correctly define these strata and obtain an unbiased design. 
 
-Of course, this latter fixed-area assumption is not necessarily correct. In environmentally more heterogenous areas, these spatial and temporal bounds of the domain are variable and so requires more covariate information to provide a less biased assessment of system $S$. In epidemiological studies, this latter approach has come to be known as **Post-stratification** (PS) and carries with it a greater requirement of information/models of covariate conditions (see e.g., [Stan documentation](https://mc-stan.org/docs/stan-users-guide/poststratification.html) and [Wikipedia](https://en.wikipedia.org/wiki/Multilevel_regression_with_poststratification) for further information). That is, instead of directly changing the sampling design as new information arises (costly), a model-based (that is, after the experiment: *post-hoc*  or "post-stratified") approach to (indirectly and approximately) adjust for additional information is considered more viable. Further, in the context of individual level information (e.g., body size), one can then estimate the relative importance of each observation in representing the overall post-stratified assessment of the system $S$ with the purpose of reducing these biases, as much as the data available permits. 
+In simple applications such as areal abundance indices, the commonly encountered solution seems to be use the (fixed factorial) "year-effect", independent of any covariate effects, if any; that is, where all other covariates are held at the overall mean (random effects) or reference (fixed effect) levels. However, it should be emphasized that this approach is simply taking the abundance as that which would have been observed at an arbitrary reference level of covariates. It, therefore, does not equate to an actual estimate of abundance, but rather a density estimate; the latter only becomes an abundance estimate if the areal expansion at appropriate (observed) covariate levels is known. By assuming that the domain $S$ is represented by a "year-effect", independent of other effects is valid as an estimate of abundance, to a constant of proportionality, only if sampling is truly IID within $S$. 
+
+In environmentally structured areas, these spatial and temporal bounds of the domain are variable and so requires more covariate information to provide a less biased assessment of the system $S$. The use of additional covariates in a model-based mechanism to reduce this bias is known in epidemiological and social science studies as **Post-stratification** (PS; seee [Stan documentation](https://mc-stan.org/docs/stan-users-guide/poststratification.html) and [Wikipedia](https://en.wikipedia.org/wiki/Multilevel_regression_with_poststratification) for further information). That is, instead of adjusting the sampling design as new information arises, a model-based (*post-hoc*  or "post-stratified") approach is used to approximately adjust for unforseen or unforseeable changes in groups/strata structure such that over- or under-represented samples are adjusted. Further, in the context of individual level information (e.g., body size), one can then estimate the relative importance of each observation in representing the overall post-stratified assessment of the system $S$ with the purpose of reducing these biases, as much as the data available permits. 
 
 <!--
 add to discussion:
@@ -230,13 +232,16 @@ for ( bioclass in c( "f.imm", "f.mat", "m.imm", "m.mat")) {
     # speed up with better starting conditions
      theta0 = switch( p$bioclass,
       f.imm = c(
-        9.9565,-2.7419,-1.3184,1.0630,0.5357,0.6060,1.7591,0.0005,0.1856,-1.5798,-1.1560,2.3885,2.0125,-2.4281,3.3866,-1.8981,-0.1713,0.7615),
+9.93272943371377, -2.15467553298947, -1.13626846019529, 1.23572299878991, 0.333177911343559, 0.828415495304397, 1.86000230000164, 0.00034216583831091, 0.437360318824779, -0.635434611870838, -0.888193322735506, 2.31251799330948, 2.15803669153234, -2.44185217305923, 3.40559324268404, -1.84209612077644, -0.139148590314638, 0.771537100583711
+        ),
       f.mat = c(
         9.8945, -1.6295, 0.4833, 1.7672, -0.8409, 1.4350, -0.2497, 0.8308, 0.0407, -4.5110, -2.7574, 1.7943, 0.6418, -3.8718, 1.8201, -3.2557, -0.6923, 1.2350),
       m.imm = c(
+      
         9.9200, -3.0405, -2.3969, 1.9333, 0.6128, 1.0123, 1.5371, 0.1702, 1.2130, -3.1902, -1.2038, 3.6389, 3.3960, -2.3632, 3.9804, -1.6675, -0.7746, 0.8269),
       m.mat = c(
-        9.9153, -0.3066, 1.0842, 2.1462, 0.3983, 2.3851, 1.2793, 0.0335, 1.8924, -2.1858, 1.5771, 3.9561, 4.3029, -2.5842, 4.3530, -1.4667, -0.4409, 0.9858 ),
+        9.903, 0.354, 2.297, 1.557, 0.825, 2.174, 1.416, 0.00429, 2.074, -1.795, 2.818, 4.046, 4.5681, -2.496, 4.354, -1.251, -0.343, 1.025
+        ),
       NULL
     )
  
@@ -421,6 +426,8 @@ summary(O$post_stratified_ratio_obs)  # without seasonal timeshift
 # 0.0226  1.0000  1.0057  1.0717  1.0428 32.7205 
 
 
+
+
 sa_vars = list(
   cfanorth = "cfanorth_sa", 
   cfasouth = "cfasouth_sa", 
@@ -439,15 +446,15 @@ region = "cfaall"
 # region = "cfa23"
 # region = "cfa24"
 
-O$SA_ratios = O[[sa_vars[[region]]]] / O$data_offset
+O$SA = O[[sa_vars[[region]]]]
 
-hist(log10(O$SA_ratios), "fd") 
-summary(O$SA_ratios)
-#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#  13066  125943  182096  211326  264686 3816293 
+O$wgt = O$post_stratified_ratio / O$data_offset  # wgt per unit area
+# O$wgt = O$post_stratified_ratio / O$data_offset / O$n_stations  # wgt per unit area
 
-O$wgt = O$post_stratified_ratio *  O$SA_ratios / O$n_stations  # sampling environmental correction 
-   
+
+# sampling density correction .. to test 
+
+
 hist(log10(O$wgt), "fd") 
 summary(O$wgt)
 #    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
@@ -524,10 +531,11 @@ m.gt.95 = which( O$wgt>0 & O$sex==male & O$cw>=95 )
 i = f
 i = m
 i = m.gt.95
+ 
 
 o = O[ i, .(
     mass_density=sum(mass * data_offset),  # assuming completely random sampling
-    mass_total_psw_kt=sum(mass * wgt) / 10^6    # with envir correction
+    mass_total_psw_kt=sum(mass * wgt * SA ) / 10^6    # with envir correction
   ), 
   by=.(year, sex, mat) ]  
 
@@ -549,65 +557,15 @@ ggplot( o, aes(x=year, y=mass_density, group=mat, col=mat) ) +
 i = which(O$SA_ratios > 1e6)  
 O[i, .N , by=.(sid)][order(sid),]
            sid     N
-        <char> <int>
- 1:  S01102007.2     1
- 2:  S01102017.9     1
- 3: S02092023.13     7
- 4:  S02112004.2     1
- 5:  S04012020.9     1
- 6:  S04102016.2     3
- 7: S04112010.12    25
- 8:  S06051999.9     1
- 9:  S08092002.5     2
-10:  S08092007.3     3
-11:  S09092006.8     2
-12:  S09092011.8     1
-13:  S11112014.9     5
-14:  S12112009.7     2
-15: S13092023.12     2
-16:  S14102013.4     2
-17:  S15112013.6    64
-18:  S18061999.7    19
-19: S18071999.10     2
-20: S18071999.11     2
-21:  S21062000.9     1
-22: S22082002.10    37
-23:  S22092001.1    32
-24:  S24092015.2     1
-25:  S25092010.7     2
-26: S26102003.11    21
 
- 
+           
 O[i, .N , by=.(AUID)] ; 
       AUID     N
-    <char> <int>
- 1:    692    19
- 2:     18     5
- 3:    448     4
- 4:    414    32
- 5:    705    37
- 6:    132     2
- 7:    545    21
- 8:    670    75
- 9:    173     1
-10:    108     1
-11:    100     2
-12:     15     2
-13:    517     5
-14:    733    25
-15:    197     2
-16:    375     7
-
 
 
 O[i, .N , by=.(year)][order(year),]
     year     N
-   <num> <int>
-1:  2006     2
-2:  2007     3
-3:  2015     1
-4:  2017     1
- 
+
 
 ```
 
