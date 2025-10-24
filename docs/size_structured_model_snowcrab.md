@@ -71,12 +71,17 @@ To develop a size-structured model of snow crab (*Chionoectes opilio*) using a m
 
 At a minimum, the following information is required for a size-structured matrix model:
 
-  (1) representative size-frequency distributions across space and time. Body size is a basic element of any monitoring system. However, no matter how randomized a sampling design may be, there is an inherent bias (sometimes referred to as **selectivity**) associated with most forms of sampling. This needs to be expressed. This bias is due to the sampling device (mesh size, hook size) used for capture and also, and importantly, **sampling design** limitations. No matter how well constructed, sampling design cannot be sufficiently well-informed to ensure ensure completely random sampling, due to time and space-varying environmental and behavioural variability than cannot be know *a-priori*. The latter can, however, be partially addressed through a model-based, *a-posteriori* methods that are collectively known as **Post-Stratification** bias correction. From such analyses, a representative distribution of size by stage can then be used to inform/identify/classify size modes and associated numerical abundance in each mode.
+(1) **Representative size-frequency distributions across space and time**
 
-  (2) size-based understanding of life history: parameterization of growth, fecundity, survivorship. Life history processes such as growth and fecundity are reasonably quickly determined and improved with continued monitoring. Survivorship (the complement of natural mortality) is, however, a challenge to estimate unless a population is at steady-state and so requires experimentation or simplifying assumptions to be made.
+  Measuring body size is a basic element of any monitoring system. However, no matter how randomized a sampling design may be, there is an inherent bias associated with most forms of sampling. This bias is due to the sampling device (mesh size, hook size) used for capture **and** sampling design limitations. No matter how well constructed, sampling design cannot be sufficiently well-informed to ensure ensure completely random sampling, due to time and space-varying environmental and behavioural variability than cannot be know *a-priori*. The latter can, however, be partially addressed through a model-based, *a-posteriori* methods that are collectively known as **Post-Stratification** bias correction. From such analyses, a representative distribution of size by stage can then be used to inform/identify/classify size modes and associated numerical abundance in each mode.
+
+(2) **Size-based understanding of life history**
+
+  Parameterization of growth, fecundity, survivorship. Life history processes such as growth and fecundity are reasonably quickly determined and improved with continued monitoring. Survivorship (the complement of natural mortality) is, however, a challenge to estimate unless a population is at steady-state and so requires experimentation or simplifying assumptions to be made.
    
-  (3) size-based understanding of fishery removals. A sampling or monitoring program needs to be in place to estimate the usually size-selective removals or mortalities from the population.
+(3) **Size-based understanding of fishery removals**
 
+  A sampling or monitoring program needs to be in place to estimate the usually size-selective removals or mortalities from the population.
 
 
 Here we will attempt to address each of these components and then synthesize them towards a matrix-based representation of size-stage-based dynamics.
@@ -85,11 +90,10 @@ Here we will attempt to address each of these components and then synthesize the
 
 ## 1. Size-frequency distributions across space and time
 
-A **size-frequency distribution** of some system or stratum of interest, $S$, is usually obtained from the observation of body size measurements (e.g., weight, length, and in the case of snow crab, often, carapace width) at various locations ("space") and times (seasonal, inter-annual). To represent the overall size distribution, these observations must be summarized in some manner. If the samples are derived from a truly random sample of $S$, then the usual approach of simply aggregating counts by size-intervals is sufficient to obtain an estimate of the size frequency distribution. This is because these samples can be considered **representative** of $S$ and each individual observation contributes an **equal** amount of information in representing the system; that is, they can be considered **exchangeable** (aka, "independently and identically distributed" or **iid**), under the context of the sampling structure/design. To re-iterate, each individual observation or measurement carries the same **weight** of information.
+A size-frequency distribution of some system of interest $S$, is usually obtained from the observation of body size measurements (e.g., weight, length, and in the case of snow crab, often, carapace width) at various locations and times (seasonal, inter-annual) inside the area of interest. To represent the overall size distribution, these observations must be summarized in some manner. If the samples are derived from a truly random sample of $S$, then the usual approach of simply aggregating counts by size-intervals is sufficient to obtain an estimate of the size frequency distribution. This is because these samples can be considered **representative** of $S$ and each individual observation contributes an **equal** amount of information in representing the system; that is, they can be considered **exchangeable** (aka, "independently and identically distributed" or **iid**), under the context of the sampling structure/design. To re-iterate, each individual observation or measurement carries the same **weight** of information.
 
-When organisms are distributed in a nonrandom manner across space, time and size, this "weight" is not always equal. Naive sampling of such a nonrandom distribution cannot be representative, especially when the number of samples are much lower than the total population, $n_s << n_S$. Stratified random sampling is use to try to reduce such biases, however, this only work if the factors that affect the non-random distribution (e.g., quite often the depth distribution) is known *a-priori* and remain invariant in time or associated with sampling intensity (e.g., swept area in a trawl, number of traps or hooks used and usually determined before sampling). These are known as design weights, that is, information known *a-priori* to be influential to estimation.
-
-However, other factors can only be known after the sampling event. When, environmentally extreme conditions are encountered due to underlying spatio-temporal variability of influential factors. To make them comparable across such factors that can bias our estimate of abundance means that we need to address **habitat** variability issues directly. By **habitat**, we mean that organisms have metabolic, physiological and behavioural preferences and limits in the environmental and ecosystem conditions they can or cannot inhabit, in the sense of Elton (19XX). Variations in habitat result in differential growth, reproduction and movement, rendering a naive random sampling assumption, potentially invalid. 
+When organisms are distributed in a nonrandom manner across space and time in a size-dependent manner, this "weight" is not always equal. Naive sampling of such a nonrandom distribution cannot be representative, especially when the number of samples are much lower than the total population, $n_s << n_S$. Stratified random sampling is used to try to reduce such biases, however, this only work if the factors that affect the non-random distribution is known *a-priori* and remains invariant in time or associated with sampling intensity (e.g., swept area in a trawl, number of traps or hooks used and usually determined before sampling). These are known as design weights, that is, information known *a-priori* to be influential to estimation.
+However, factors can be influential and not determinable before sampling. When, environmentally extreme conditions are encountered due to underlying spatio-temporal variability of these influential factors, that are not representative of the overall system, bias can occur. To make them comparable across such factors means that we need to address **habitat** variability issues directly. By **habitat**, we mean that organisms have metabolic, physiological and behavioural preferences and limits in the environmental and ecosystem conditions they can or cannot inhabit, in the sense of Elton (19XX). Variations in habitat result in differential growth, reproduction, movement and ontogenetic behaviour in general, rendering a naive random sampling assumption potentially problematic. 
 
 To belabour the point, animals can, due to metabolic constraints and behavioural traits (aggregation/clustering/schooling), demonstrate ontogenetic (size and age-based) shifts in such habitat preferences which ultimately results in observed/sampled data with bias due to certain environments not being observable due to sampling not accounting for this underlying structure that is not random. Further, imperfect sampling methods such as:
 
@@ -212,10 +216,8 @@ where each random spatial component follows a Conditional AutoRegressive (CAR) s
  
 
 # prepare the data (if updating)
-redo = NULL
-# redo=c("carstm_inputs", "size_data")  
-# redo=c( "size_data")  
-model_size_data_carstm( p=p, redo=redo )  
+
+model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data") )  
 
 
 # separate models by sex and maturity 
@@ -225,28 +227,9 @@ model_size_data_carstm( p=p, redo=redo )
  
 
 for ( bioclass in c( "f.imm", "f.mat", "m.imm", "m.mat")) {
- 
-    print(bioclass)
+    message("\nStarting: ", bioclass, "\n")
     p$bioclass = bioclass
-
-    # speed up with better starting conditions
-     theta0 = switch( p$bioclass,
-      f.imm = c(
-9.93272943371377, -2.15467553298947, -1.13626846019529, 1.23572299878991, 0.333177911343559, 0.828415495304397, 1.86000230000164, 0.00034216583831091, 0.437360318824779, -0.635434611870838, -0.888193322735506, 2.31251799330948, 2.15803669153234, -2.44185217305923, 3.40559324268404, -1.84209612077644, -0.139148590314638, 0.771537100583711
-        ),
-      f.mat = c(
-        9.8945, -1.6295, 0.4833, 1.7672, -0.8409, 1.4350, -0.2497, 0.8308, 0.0407, -4.5110, -2.7574, 1.7943, 0.6418, -3.8718, 1.8201, -3.2557, -0.6923, 1.2350),
-      m.imm = c(
-      
-        9.9200, -3.0405, -2.3969, 1.9333, 0.6128, 1.0123, 1.5371, 0.1702, 1.2130, -3.1902, -1.2038, 3.6389, 3.3960, -2.3632, 3.9804, -1.6675, -0.7746, 0.8269),
-      m.mat = c(
-        9.903, 0.354, 2.297, 1.557, 0.825, 2.174, 1.416, 0.00429, 2.074, -1.795, 2.818, 4.046, 4.5681, -2.496, 4.354, -1.251, -0.343, 1.025
-        ),
-      NULL
-    )
- 
-    fit = model_size_presence_absence( p=p, todo="redo", theta0=theta0 )
-    
+    fit = model_size_presence_absence( p=p, todo="redo", num.threads="4:1" )
     fit = NULL; gc()
 }
 
@@ -261,7 +244,6 @@ O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observat
     p$bioclass = bioclasses[2]
     p$bioclass = bioclasses[3]
     p$bioclass = bioclasses[4]
-
     p$bioclass = bioclasses[5]
 
     M = model_size_data_carstm( p=p )  
@@ -285,8 +267,6 @@ O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observat
   
     rm(M); gc()
 
-
-      
     fit = model_size_presence_absence( p=p )
 
     summary(fit) 
@@ -301,7 +281,6 @@ O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observat
 
     # EXAMINE POSTERIORS AND PRIORS
     res = carstm_model(  p=p, DS="carstm_summary" )  # parameters in p and summary
-
 
     # posteriors and effects plots
 
@@ -318,8 +297,6 @@ O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observat
     # p$cyclic_name = as.character(p$cyclic_levels)
     # p$cyclic_id = 1:p$nw
 
-    
-
     outputdir = file.path(p$modeldir, bioclass)
 
     res_vars = c( names( res$hypers), names(res$fixed) )
@@ -328,11 +305,10 @@ O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observat
       dev.new(); print(o)
     }     
 
-
     plot( jitter(M$pa), fit$summary.fitted.values$mean, pch="." ) 
     cor( jitter(M$pa), fit$summary.fitted.values$mean ) # 0.5441
 
-    vn = 'inla.group(cw, method = "quantile", n = 15)'
+    vn = 'inla.group(cw, method = "quantile", n = 9)'
     o = fit$summary.random[[vn]]
     plot( o$ID, (o$mean) )
 

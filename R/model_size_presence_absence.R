@@ -1,6 +1,6 @@
 
 
-model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads="2:2", improve.fit=FALSE) {
+model_size_presence_absence = function( p, todo="load", num.threads="2:1", improve.fit=FALSE) {
      
     p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
    
@@ -38,6 +38,8 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
     H <<- inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, MS[["median.50%"]] ) 
 
     message("\nTrying default compact inla mode: \n")
+
+    theta0 = p$theta( p$bioclass )
     
     fit = try( inla( 
         data=M, 
@@ -59,9 +61,10 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
         formula=p$formula, 
         family="binomial", 
         safe = FALSE,
-        control.inla = list( reordering="metis", strategy = "gaussian", control.vb = list(enable = TRUE), h=0.05, force.diagonal=TRUE, diagonal=1e6, cmin=0.0001 ),
+        control.inla = list( reordering="metis", strategy = "gaussian", control.vb = list(enable = TRUE), diagonal=1e6, cmin=0.0001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+        control.mode= list(theta= theta0),
         num.threads=num.threads
       ), silent=TRUE )
 
@@ -80,13 +83,13 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
         inla.mode="classic",
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+        control.inla = list( reordering="metis", control.vb = list(enable = TRUE), diagonal=1e5, cmin=0.0 ),
+        control.mode= list(theta= theta0),
         num.threads=num.threads
       ), silent=TRUE )
 
     }
  
- 
-
     if (inherits(fit, "try-error" )) {
         stop("\n\nModel fit error! \n\n")
     }
@@ -97,7 +100,7 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
         fit = inla.hyperpar( fit, verbose=TRUE, restart=TRUE )  #  dz = 0.75, diff.logdens = 15,
     }
 
-    message( "Model theta (modes) estimate:  \n", paste0( round(fit$mode$theta, 4), collapse=", "), "\m" )
+    message( "Model theta (modes) estimate:  \n", paste0( round(fit$mode$theta, 4), collapse=", "), "\n" )
     
     fit$modelinfo = list(
         bioclass = p$bioclass, 
@@ -111,6 +114,5 @@ model_size_presence_absence = function( p, theta0=NULL, todo="load", num.threads
     read_write_fast( data=fit, fn=fn )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
     return(fit)
-
 }
 

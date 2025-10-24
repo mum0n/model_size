@@ -8,8 +8,6 @@ model_size_data_carstm = function(p, redo=c("")) {
     paste( "size_distributions_tabulated_data_zeros.rdz", sep="" )  
   )
   
-
-
   Z = NULL 
   if ( ! "size_data" %in% redo ) {
     if (file.exists(fn)) {
@@ -126,6 +124,8 @@ model_size_data_carstm = function(p, redo=c("")) {
   detcm = detcm[ isc, ]
   isc = NULL
 
+
+   
   # dim(detcm)  # [1] 543396     19
 
   if (exists("selection", p)) {
@@ -144,7 +144,7 @@ model_size_data_carstm = function(p, redo=c("")) {
       det_sc$individual = paste( det_sc$trip, det_sc$set, det_sc$spec_bio, det_sc$crabno, sep=".")
       det_sc$filter.class = p$selection$biologicals_using_snowcrab_filter_class
       isc = bio.snowcrab::filter.class( x=det_sc, type=p$selection$biologicals_using_snowcrab_filter_class )
-      if (length(isc) > 0) det_sc = det_sc[isc, c("individual", "crabno",  "filter.class") ]
+      if (length(isc) > 0) det_sc = det_sc[isc, c("individual", "crabno", "filter.class") ]
       isc = NULL
       setDT( det_sc )
       detcm$individual = paste( detcm$did, detcm$individual, sep=".")
@@ -185,6 +185,11 @@ model_size_data_carstm = function(p, redo=c("")) {
 
   # additional QA/QC 
 
+  # drop strange data (extremely short tows with high numbers of immature crab 1861):
+  cflim = 600
+  ilim = which( detcm$cf_det_no > cflim )
+  if (length(ilim) > 0 ) detcm$cf_det_no[ilim] = cflim
+
   detcm$cwd = discretize_data( detcm$logcw, span=lspan  )  # this will truncate sizes
 
   detcm = detcm[ is.finite(cwd) ,]
@@ -193,6 +198,7 @@ model_size_data_carstm = function(p, redo=c("")) {
   # length(unique(detcm$sid)) # 7861
 
   Z = setcm[ detcm, on=.(sid)] # 541533
+ 
   Z$zid = paste( Z$sid, Z$sex, Z$mat, Z$cwd, sep="_" )
 
   # recover zero counts at sampling locations with no observations: 
@@ -212,7 +218,15 @@ model_size_data_carstm = function(p, redo=c("")) {
 	
   # dim(Z0) # 1124880
 
-  Z0 = setcm[,.(sid, data_offset)][ Z0, on=.(sid)] 
+  oo = detcm[, .(data_offset = max(1/cf_det_no)), by=.(sid) ]  # take largest effective SA as offset for zero's
+
+  Z0 = oo[Z0, on=.(sid)]
+
+  # any remaining are set to max effective SA observed 
+  i = which(!is.finite(Z0$data_offset))
+  doff = max( Z0$data_offset, na.rm=TRUE )
+    
+  Z0$data_offset[i] = doff
 
   Z0$cf_det_no = 1 / Z0$data_offset  # this is actual cf_set_no ... as no is 0, assume set swept area as multiplier
   Z0$data_offset = NULL
