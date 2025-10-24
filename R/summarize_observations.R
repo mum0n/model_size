@@ -6,10 +6,9 @@ summarize_observations = function(obs=NULL, offsets=NULL, family="binomial", twe
     obs[ obs==1 ] = 1 - tweak
     obs[ obs==0 ] = tweak
 
+    obs = inla.link.logit( obs )
     if (!is.null(offsets)) {
-      obs = inla.link.logit( obs / offsets )
-    } else {
-      obs = inla.link.logit( obs )
+      obs = obs - log( offsets )
     }
 
   } else if (family=="gaussian") {
