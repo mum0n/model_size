@@ -20,7 +20,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
         }
     }
     
-    message( "\nCreating model fit: ", fn, "\n")
+    message( "\n\n\n---\n---\nCreating model fit: ", fn, "\n---\n---\n\n\n")
          
     M = model_size_data_carstm( p=p )  
     
@@ -37,10 +37,10 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
 
     H <<- inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, MS[["median.50%"]] ) 
 
-    message("\nTrying default compact inla mode: \n")
 
     theta0 = p$theta( p$bioclass )
     
+    message("\n---\n---\nTrying default compact inla mode: \n---\n---\n")
     fit = try( inla( 
         data=M, 
         formula=p$formula, 
@@ -55,7 +55,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
 
 
     if (inherits(fit, "try-error" )) {
-      message("\nTrying default compact inla mode with more robust settings: \n")
+      message("\n---\n---\nTrying default compact inla mode with more robust settings: \n---\n---\n")
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
@@ -71,7 +71,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
    }
 
    if (inherits(fit, "try-error" )) {
-      message("\nTrying default compact inla mode with generic starting modes: \n")
+      message("\n---\n---\nTrying default compact inla mode with generic starting modes: \n---\n---\n")
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
@@ -87,7 +87,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
 
 
     if (inherits(fit, "try-error" )) {
-      message("\nTrying the more stable 'classic' inla mode: \n")
+      message("\n---\n---\nTrying the more stable 'classic' inla mode: \n---\n---\n")
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
@@ -105,16 +105,16 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
     }
  
     if (inherits(fit, "try-error" )) {
-        stop("\n\nModel fit error! \n\n")
+        message("\n---\n---\n\nModel fit error! \n\n---\n---\n")
     }
  
  
     if (improve.fit) {
-        message( "\nImproving model fit: ", fn, "\n")
+        message( "\n---\n---\nImproving model fit: ", fn, "\n---\n---\n")
         fit = inla.hyperpar( fit, verbose=TRUE, restart=TRUE )  #  dz = 0.75, diff.logdens = 15,
     }
 
-    message( "Model theta (modes) estimate:  \n", paste0( round(fit$mode$theta, 4), collapse=", "), "\n" )
+    message( "Model theta (modes) estimate:  \n---\n---\n", paste0( round(fit$mode$theta, 4), collapse=", "), "\n---\n---\n" )
     
     fit$modelinfo = list(
         bioclass = p$bioclass, 
@@ -124,7 +124,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
         fn = fn
     )
     
-    message( "\nSaving model fit: ", fn, "\n", "---\n" )
+    message( "\n\n\n---\n---\nSaving model fit: ", fn, "\n", "\n---\n---\n\n\n" )
     read_write_fast( data=fit, fn=fn )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
     return(fit)
