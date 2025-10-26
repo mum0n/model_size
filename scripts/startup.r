@@ -92,9 +92,9 @@ p$size_bandwidth = 30  # no of size bins (for modelling size-bias only) .. on a 
 p$formula = as.formula( paste(
 ' pa ~ 1 ',
     ' + offset( data_offset ) ', 
-    ' + f( inla.group( cwd, method="quantile", n=9 ), model="rw2", scale.model=TRUE) ', 
-    ' + f( inla.group( cwd2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, group=space2, control.group=list(model="besag", hyper=H$besag, graph=slot(sppoly, "nb") ) ) ',    
-    ' + f( inla.group( cwd3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, group=time3, control.group=list(model="ar1", hyper=H$ar1_group) ) ',   
+    ' + f( inla.group( cwd, method="quantile", n=11 ), model="rw2", scale.model=TRUE) ', 
+    ' + f( inla.group( cwd2, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=space2, control.group=list(model="besag", hyper=H$besag, graph=slot(sppoly, "nb") ) ) ',    
+    ' + f( inla.group( cwd3, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=time3, control.group=list(model="ar1", hyper=H$ar1_group) ) ',   
     ' + f( time, model="ar1",  hyper=H$ar1 ) ',
     ' + f( cyclic, model="ar1", hyper=H$ar1 )',
     ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
@@ -115,17 +115,21 @@ p$theta = function(bioclass) {
   # modes of paramaters closer to final solution
   
   out = switch( bioclass,
-     f.imm = c(
-          9.932, -2.154, -1.136, 1.235, 0.333, 0.828, 1.860, 0.000342, 0.4373, -0.635, -0.888, 2.312, 2.158, -2.441, 3.405, -1.842, -0.139, 0.771
-     ),
-     f.mat = c(
-        9.8945, -1.6295, 0.4833, 1.7672, -0.8409, 1.4350, -0.2497, 0.8308, 0.0407, -4.5110, -2.7574, 1.7943, 0.6418, -3.8718, 1.8201, -3.2557, -0.6923, 1.2350),
-     m.imm = c(
+    f.imm = c(
+      9.3291, 10.1394, -0.7173, 1.4523, 0.3921, 0.8456, 1.8795, -0.0039, 0.4538, -0.6189, -0.8713, 2.3288, 2.1746, -0.6796, 5.1048, 43.8626, 21.1540, 33.1340
+    ),
+    f.mat = c(
+      6.0993, 14.3600, 9.3252, 8.8198, 1.9373, 3.0580, 0.6737, 0.9012, 0.7223, -3.4820, -1.9508, 2.4880, 1.3039, 7.4967, 12.6800, 14.5784, 6.0851, 23.0806
+    ),
+    m.imm = c(
           9.9200, -3.0405, -2.3969, 1.9333, 0.6128, 1.0123, 1.5371, 0.1702, 1.2130, -3.1902, -1.2038, 3.6389, 3.3960, -2.3632, 3.9804, -1.6675, -0.7746, 0.8269),
-     m.mat = c(
-        9.903, 0.354, 2.297, 1.557, 0.825, 2.174, 1.416, 0.00429, 2.074, -1.795, 2.818, 4.046, 4.5681, -2.496, 4.354, -1.251, -0.343, 1.025
+    m.mat = c(
+      9.903, 0.354, 2.297, 1.557, 0.825, 2.174, 1.416, 0.00429, 2.074, -1.795, 2.818, 4.046, 4.5681, -2.496, 4.354, -1.251, -0.343, 1.025
     ),
     NULL
   )
   return(out) 
 }
+
+
+  

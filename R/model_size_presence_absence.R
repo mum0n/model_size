@@ -46,6 +46,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
         formula=p$formula, 
         family="binomial", 
         safe = FALSE,
+        verbose=TRUE,
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
@@ -53,27 +54,40 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
     ), silent=TRUE )
 
 
-    message("\nTrying default compact inla mode with more robust settings: \n")
- 
     if (inherits(fit, "try-error" )) {
+      message("\nTrying default compact inla mode with more robust settings: \n")
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
         family="binomial", 
         safe = FALSE,
-        control.inla = list( reordering="metis", strategy = "gaussian", control.vb = list(enable = TRUE), diagonal=1e6, cmin=0.0001 ),
+        verbose=TRUE,
+        control.inla = list( strategy = "gaussian", control.vb = list(enable = TRUE), reordering="metis", diagonal=1e6, cmin=0.0001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
         num.threads=num.threads
       ), silent=TRUE )
+   }
 
-    }
- 
- 
-    message("\nTrying the more stable 'classic' inla mode: \n")
+   if (inherits(fit, "try-error" )) {
+      message("\nTrying default compact inla mode with generic starting modes: \n")
+      fit = try( inla( 
+        data=M, 
+        formula=p$formula, 
+        family="binomial", 
+        safe = FALSE,
+        verbose=TRUE,
+        control.predictor = list(compute = TRUE,  link = 1), 
+        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+        num.threads=num.threads
+      ), silent=TRUE )
+   }
+
+
 
     if (inherits(fit, "try-error" )) {
+      message("\nTrying the more stable 'classic' inla mode: \n")
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
@@ -83,7 +97,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
         inla.mode="classic",
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
-        control.inla = list( reordering="metis", control.vb = list(enable = TRUE), diagonal=1e5, cmin=0.0 ),
+        control.inla = list( strategy="simplified.laplace", control.vb = list(enable = TRUE), reordering="metis", diagonal=1e5, cmin=0.0 ),
         control.mode= list(theta= theta0),
         num.threads=num.threads
       ), silent=TRUE )
