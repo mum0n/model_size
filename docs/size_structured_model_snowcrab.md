@@ -226,7 +226,7 @@ model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data") )
 # each bioclass and use over 128GB RAM (esp, m.imm)
  
 
-for ( bioclass in c( "f.imm", "f.mat", "m.imm", "m.mat")) {
+for ( bioclass in c(  "m.mat", "m.imm", "f.imm", "f.mat" )) {
     message("\nStarting: ", bioclass, "\n")
     p$bioclass = bioclass
     fit = model_size_presence_absence( p=p, todo="redo", num.threads="4:1" )
