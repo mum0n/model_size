@@ -316,7 +316,7 @@ model_size_data_carstm = function(p, redo=c("")) {
 
   Z[ , kuid := do.call(paste, .SD), .SDcols = key_vars ]  
 
-  # final checks and clean up of long tails
+  # final checks and clean up of long tails 
 
   tmax = quantile(Z$t, 0.999)
   Z$t[ Z$t > tmax ] = tmax     # limit temperature to a smaller range
