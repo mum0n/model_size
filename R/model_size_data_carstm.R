@@ -58,9 +58,7 @@ model_size_data_carstm = function(p, redo=c("")) {
       # Z$time_cw = Z$time
 
       # Z$cyclic_space = Z$cyclic # copy cyclic for space - cyclic component .. for groups, must be numeric index
-
-      Z= Z[is.finite(pca1+pca2), ]
-     
+      
       # return attributes
       attr(Z, "brks") = lbrks
       attr(Z, "yrs") = yrs
@@ -193,7 +191,7 @@ model_size_data_carstm = function(p, redo=c("")) {
   detcm$cwd = discretize_data( detcm$logcw, span=lspan  )  # this will truncate sizes
 
   detcm = detcm[ is.finite(cwd) ,]
-  detcm$pa = 1
+  detcm$pa = 1L
   
   # length(unique(detcm$sid)) # 7861
 
@@ -214,7 +212,7 @@ model_size_data_carstm = function(p, redo=c("")) {
   Z0$mass = NA
   Z0$logcw = Z0$cwd  # fill with midpoints 
   Z0$cw = exp(Z0$logcw)  #  midpoint on original scale ... and a dummy to allow merges with observations
-  Z0$pa = 0
+  Z0$pa = 0L
 	
   # dim(Z0) # 1124880
 
@@ -258,7 +256,7 @@ model_size_data_carstm = function(p, redo=c("")) {
     cwd=lbrks, 
     pid=pred$pid, 
     mass=NA,
-    pa =NA,
+    pa = NA,
     cf_det_no = 1,
     unique=TRUE 
   )
@@ -318,6 +316,17 @@ model_size_data_carstm = function(p, redo=c("")) {
 
   Z[ , kuid := do.call(paste, .SD), .SDcols = key_vars ]  
 
+  # final checks and clean up of long tails
+
+  tmax = quantile(Z$t, 0.999)
+  Z$t[ Z$t > tmax ] = tmax     # limit temperature to a smaller range
+
+  Z = Z[ is.finite(pca1+pca2), ] # covariates must be finite
+  pca1max = quantile(Z$pca1, 0.999)
+  Z$pca1[ Z$pca1 > pca1max ] = pca1max     # limit temperature to a smaller range
+
+  Z$pa = as.integer(Z$pa)  # needs to be integer for INLA
+
   # match prediction range to observation range for season (cyclic)
   # data_dyears = range(Z[tag=="observations", "cyclic"] ) 
   # todrop = which(Z$cyclic < data_dyears[1] | Z$cyclic > data_dyears[2] )
@@ -345,7 +354,7 @@ model_size_data_carstm = function(p, redo=c("")) {
   # mat 1  98691  97800
 
   message("Saving data file: ", fn )
-  
+
   read_write_fast( data=Z, fn=fn )  # save full prediction surface .. subset on return (above)
 
   return("complete")

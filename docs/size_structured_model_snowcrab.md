@@ -223,13 +223,14 @@ model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data") )
 # separate models by sex and maturity 
 # even if started close to good parameterizations, 
 # the fitting/estimation process can take 12 hrs for 
-# each bioclass and use over 128GB RAM (esp, m.imm)
- 
+# each bioclass and use over 128GB RAM (esp, m.imm) .. watch RAM usage 
 
-for ( bioclass in c(  "m.mat", "m.imm", "f.imm", "f.mat" )) {
+num.threads = "3:-1"  # for parallel processing (see INLA options)
+
+for ( bioclass in c(   "m.imm", "f.imm", "f.mat", "m.mat" )) {
     message("\nStarting: ", bioclass, "\n")
     p$bioclass = bioclass
-    fit = model_size_presence_absence( p=p, todo="redo", num.threads="4:1" )
+    fit = model_size_presence_absence( p=p, todo="redo", num.threads=num.threads )
     fit = NULL; gc()
 }
 

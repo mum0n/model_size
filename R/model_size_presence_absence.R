@@ -1,6 +1,6 @@
 
 
-model_size_presence_absence = function( p, todo="load", num.threads="2:1", improve.fit=FALSE) {
+model_size_presence_absence = function( p, todo="load", num.threads="1:1:1", improve.fit=FALSE) {
      
     p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
    
@@ -9,7 +9,6 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
         p$bioclass,
         paste("fit_", p$bioclass, ".rdz", sep="") 
     )
-    
 
     fit = NULL
     if ( "load" %in% todo ) {
@@ -20,7 +19,9 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
         }
     }
     
-    message( "\n\n\n---\n---\nCreating model fit: ", fn, "\n---\n---\n\n\n")
+    message( "\n---\n---\n---\n---\n")
+    
+    message("Creating model fit: ", fn, "\n")
          
     M = model_size_data_carstm( p=p )  
     
@@ -40,29 +41,35 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
 
     theta0 = p$theta( p$bioclass )
     
-    message("\n---\n---\nTrying default compact inla mode: \n---\n---\n")
+    message("Trying default 'compact' inla mode: ")
+    message( "\n---\n---\n" )
+
     fit = try( inla( 
         data=M, 
         formula=p$formula, 
         family="binomial", 
-        safe = FALSE,
         verbose=TRUE,
+        inla.mode="compact",
         control.predictor = list(compute = TRUE,  link = 1), 
-        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+        control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
         num.threads=num.threads
     ), silent=TRUE )
 
 
     if (inherits(fit, "try-error" )) {
-      message("\n---\n---\nTrying default compact inla mode with more robust settings: \n---\n---\n")
+      message( "\n---\n---\n" )
+      message("Trying default 'compact' inla mode with more robust settings: ")
+      message( "\n---\n---\n" )
+  
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
         family="binomial", 
         safe = FALSE,
         verbose=TRUE,
-        control.inla = list( strategy = "gaussian", control.vb = list(enable = TRUE), reordering="metis", diagonal=1e6, cmin=0.0001 ),
+        inla.mode="compact",
+        control.inla = list( strategy = "gaussian", fast=TRUE, h=0.01, int.strategy="eb", force.diagonal=TRUE, diagonal=1000, tolerance = 0.01, cmin=0.0001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
@@ -71,15 +78,18 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
    }
 
    if (inherits(fit, "try-error" )) {
-      message("\n---\n---\nTrying default compact inla mode with generic starting modes: \n---\n---\n")
+      message( "\n---\n---\n" )
+      message( "Trying default 'compact' inla mode with using starting modes: ")
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
         family="binomial", 
         safe = FALSE,
         verbose=TRUE,
+        inla.mode="compact",
+        control.inla = list( strategy = "auto", fast=FALSE, int.strategy="auto" ),
         control.predictor = list(compute = TRUE,  link = 1), 
-        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, smtp="band" ),
         num.threads=num.threads
       ), silent=TRUE )
    }
@@ -87,17 +97,21 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
 
 
     if (inherits(fit, "try-error" )) {
-      message("\n---\n---\nTrying the more stable 'classic' inla mode: \n---\n---\n")
+      message( "\n---\n---\n" )
+      message( "Trying the 'classic' inla mode, more stable and robust: ")
+      message( "\n---\n---\n" )
+
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
         family="binomial", 
-        safe = FALSE,
+        safe = TRUE,
         verbose=TRUE,
+        debug = TRUE,
         inla.mode="classic",
+        control.inla = list( strategy="laplace", h=0.01, diagonal=1000, force.diagonal=TRUE, cmin=0.01 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
-        control.inla = list( strategy="simplified.laplace", control.vb = list(enable = TRUE), reordering="metis", diagonal=1e5, cmin=0.0 ),
         control.mode= list(theta= theta0),
         num.threads=num.threads
       ), silent=TRUE )
@@ -105,16 +119,25 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
     }
  
     if (inherits(fit, "try-error" )) {
-        message("\n---\n---\n\nModel fit error! \n\n---\n---\n")
+      message( "\n---\n---\n" )
+      message( "Model fit error! Adjust options or check data. Giving up ...")
+      message( "\n---\n---\n" )
+      return(fit)
     }
  
  
     if (improve.fit) {
-        message( "\n---\n---\nImproving model fit: ", fn, "\n---\n---\n")
+        message( "\n---\n---\n" )
+        message( "Improving model fit: ", fn,)
+        message( "\n---\n---\n" )
+
         fit = inla.hyperpar( fit, verbose=TRUE, restart=TRUE )  #  dz = 0.75, diff.logdens = 15,
     }
 
-    message( "Model theta (modes) estimate:  \n---\n---\n", paste0( round(fit$mode$theta, 4), collapse=", "), "\n---\n---\n" )
+    message( "\n---\n---\n" )
+    message( "Model theta estimate (use as modes for restarting):")
+    message( paste0( round(fit$mode$theta, 4), collapse=", ") )
+    message( "\n---\n---\n" )
     
     fit$modelinfo = list(
         bioclass = p$bioclass, 
@@ -124,7 +147,10 @@ model_size_presence_absence = function( p, todo="load", num.threads="2:1", impro
         fn = fn
     )
     
-    message( "\n\n\n---\n---\nSaving model fit: ", fn, "\n", "\n---\n---\n\n\n" )
+    message( "\n---\n---\n" )
+    message( "Saving model fit: ", fn, "\n")
+    message( "\n---\n---\n" )
+
     read_write_fast( data=fit, fn=fn )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
     return(fit)
