@@ -273,20 +273,14 @@ model_size_results = function(p, todo="post_stratified_weights",
       }
 
       out = pg[out, on="AUID"] # merge SA's
-      # this is an individual-level analysis meant to be used in an additive manner, 
-      # so when there are variable numbers of sets in each AUID needs, those locations need to be accounted
-      # this is done by counting the number of sets and dividing the effective wgts 
-      # this rescales the weigts to a per AUID basis.
-      # this could sort of be also done by altering the input data:: 
-      #    data_offset -> data_offset / n_stations  .. but would alter the interpretation that each 
-      # O$SA_ratios = O[[sa_vars[[region]]]] / O$data_offset
-      # O$post_stratified_ratio *  O$SA_ratios / O$n_stations  # sampling environmental correction 
-
+      
+      # variable numbers of sets in each AUID needs to be accounted
+      # counting the number of sets and dividing the effective wgts 
+      # rescales the weigts to a per AUID basis ... done at the script level
       ii = out[ tag=="observations", .(n_stations=length(unique(sid))), by=.(AUID, year) ]  
       out = ii[ out, on=.(AUID, year) ]
       out[ is.na(n_stations), "n_stations"] = 1
-
- 
+`` 
       out$post_stratified_ratio_obs  = out$auid_prob_mean  / out$individual_prob_mean    # observation time
       out$post_stratified_ratio = out$auid_prob_mean2 / out$individual_prob_mean    # time shifted 
 

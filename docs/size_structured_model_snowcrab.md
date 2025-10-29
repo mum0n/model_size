@@ -203,7 +203,7 @@ and a structured random component $F(\cdot)$:
 $$\boldsymbol{\epsilon} = F( \text{size}, \text{temperature}, \text{depth}, \text{substrate gain size}\\ 
 \text{space}, \text{year}, \text{season}, \text{space x year} ).$$
   
-where each random spatial component follows a Conditional AutoRegressive (CAR) structure, random time components follow an AutoRegressive with lag 1 (AR1) structure, and all other covariates follow a Random Walk (RW2) structure. Simpler or more complex forms can be used and ultimately represents a balance between computational resources, complexity, interpretability, time;  information availability; and model stability. The caveat being that there is no definitive truth, but rather a constant and iterative struggle to bring to bear additional relevant information and model structure to improve our understanding of the system. The above random effects are extremely simplistic (few constraints and assumptions) and therefore considered more robust.
+where each random spatial component follows a Conditional AutoRegressive (CAR) structure, random time components follow an AutoRegressive structure with lag of 1 year (AR1), and all other covariates follow a Random Walk (RW2) structure. Simpler or more complex forms can be used and ultimately represents a balance between computational resources, complexity, interpretability, time;  information availability; and model stability. The caveat being that there is no definitive truth, but rather a constant and iterative struggle to bring to bear additional relevant information and model structure to improve our understanding of the system. The above random effects are extremely simplistic (few constraints and assumptions) and therefore considered more robust.
 
 
 
@@ -425,7 +425,7 @@ region = "cfaall"
 
 O$SA = O[[sa_vars[[region]]]]
 
-O$wgt = O$post_stratified_ratio / O$data_offset  # wgt per unit area
+O$wgt = O$post_stratified_ratio / O$data_offset  # PS wgt per unit area
 # O$wgt = O$post_stratified_ratio / O$data_offset / O$n_stations  # wgt per unit area
 
 
