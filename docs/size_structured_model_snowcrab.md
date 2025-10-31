@@ -158,21 +158,18 @@ $$
 N_a = \theta_a \cdot \eta \cdot O_a  
 $$
 
-Importantly, the ratio of the effective number of successes predicted in the embedding stratum ($N_a$) to the individual observation ($N_i$) represents the proportionality factor ($\omega_i$) that can be used to rescale each individual observation (of e.g., length or weight) to that of the scale of the average of the model-based prediction for the stratum: 
+Importantly, the ratio of the effective number of successes predicted in the embedding stratum ($N_a$) to the individual observation ($N_i$) represents the proportionality factor ($\omega_i$) that can be used to rescale each individual observation (of e.g., length or weight) to that of the scale of the average of the model-based prediction for the stratum, for each sex, maturity and size class: 
 
 $$
-\begin{align*}
-\omega_i &= N_a / N_i \\
-&= \frac{\theta_a \cdot O_a }{\theta_i \cdot O_i} \\
-&= \nu_{ai} \cdot O_a
-\end{align*}
+\omega_i = N_a / N_i \mid \text{sex}_i, \text{maturity}_i, \text{size}_i
 $$
 
 To re-iterate, this quantity ($\omega_i$, which we will refer to as a **Post-stratified weight**) provides a means of re-scaling observations to an expected number that respects the model-derived estimates of each individual's sampling environment as well as those of the larger, embedding areal unit/stratum, while simultaneously, carrying forward the joint error distributions of all factors being considered. As such, this weight ($\omega_i$) can be used to construct a size frequency distribution that respects the joint distribution of all modeled parameters. 
 
-If we focus upon $\nu_{ai} = \frac{\theta_a }{\theta_i \cdot O_i}$, we see that are just ignoring the offset for the stratum, so $\nu_{ia}$ represents the proportionality factor to rescale an observation $i$ to the average density per unit area for a stratum $a$. The effective offset for each substratum $O_a$ is not simply surface area of the stratum but rather the effective area associated with a given size, sex and maturity class, as we shall see below.  
 
-In the next section, we estimate these weighting factors and apply them to obtain such "model-based" estimates of size structure. The caveat that needs to be emphasized being that a model is never perfect and can always be iteratively improved with the addition of more samples, informative covariates and better functional model forms.
+### Computation of post-stratified weights 
+
+In this section, we estimate these weighting factors and apply them to obtain such "model-based" estimates of size structure. The caveat that needs to be emphasized being that a model is never perfect and can always be improved with the addition of more samples, informative covariates and better functional model forms.
 
 First we load the necessary environment:
 
@@ -209,13 +206,13 @@ model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data") )
 
 ```
 
-The statistical model utilized is as mentioned above, a Generalized "mixed" effects binomial GLM for each sex and maturity class to speed up computations as memory requirements and computational time are a limiting with larger data series. In the model, there is only a single fixed component, the global intercept (overall mean):
+The statistical model utilized is as mentioned above, a Generalized Linear "mixed" effects binomial model for each sex and maturity class to speed up computations as memory requirements and computational time are limiting when data series are large. In the model, there is only a single fixed component, the global intercept (overall mean):
 
 $$
 \boldsymbol{X}^{T}\boldsymbol{\beta} = \text{constant intercept},
 $$
 
-and a multiplicative, structured random component $F(\cdot)$ each scaled to mean of 0 on the logarithmic scale:
+and a multiplicative, structured random component $F(\cdot)$ each scaled to mean of 0 on the  logarithmic scale:
 
 $$
 \boldsymbol{\epsilon} = F( \text{size}, \text{size x year}, \text{size x space}, \\   
@@ -223,7 +220,7 @@ $$
 \text{space}, \text{year}, \text{season}, \text{space x year} ).
 $$
   
-Each random spatial component follows a Conditional AutoRegressive (CAR) structure, random time components follow an AutoRegressive structure with lag of 1 year (AR1), and all other covariates follow a Random Walk (RW2) structure. Simpler or more complex forms can be used and ultimately represents a balance between computational resources, complexity, interpretability, time;  information availability; and model stability. The caveat being that there is no definitive truth, but rather a constant and iterative struggle to bring to bear additional relevant information and model structure to improve our understanding of the system. The above random effects are extremely simplistic (few constraints and assumptions) and therefore considered more robust.
+Each random spatial component follows a Conditional AutoRegressive (CAR) structure, random time components follow an AutoRegressive structure with lag of 1 year (AR1), and all other covariates follow a Random Walk (RW2) structure. Simpler or more complex forms can be used and ultimately represents a balance between computational resources, complexity, interpretability, time;  information availability; and model stability. The caveat being that there is no definitive truth, but rather a constant and iterative struggle to bring to bear additional relevant information and model structure to improve our understanding of the system. The above random effects are extremely simplistic (there are few constraints and assumptions) and therefore considered more robust.
 
 
 
@@ -321,15 +318,17 @@ O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observat
     plot( jitter(M$pa), fit$summary.fitted.values$mean, pch="." ) 
     cor( jitter(M$pa), fit$summary.fitted.values$mean ) # 0.5441
 
-    vn = 'inla.group(cw, method = "quantile", n = 11)'
+    vns = names(fit$summary.random)
+
+    vn = vns[ grep( ".*cwd,", vns) ]
     o = fit$summary.random[[vn]]
     plot( o$ID, (o$mean) )
 
-    vn = 'inla.group(z, method = "quantile", n = 9)'
+    vn = vns[ grep( ".*z,", vns) ]
     o = fit$summary.random[[vn]]
     plot( o$ID, (o$mean) )
 
-    vn = 'inla.group(t, method = "quantile", n = 9)'
+    vn = vns[ grep( ".*t,", vns) ]
     o = fit$summary.random[[vn]]
     plot( o$ID, (o$mean) )
 
@@ -370,7 +369,7 @@ O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observat
 ```
 
 
-Now that we have predicted probabilities $\theta_i$ for each individual observation, and each stratum, we generate and store samples of these post-stratification weights $\omega_i$ from the joint posteriors to carry them forward for further Bayesian analysis and synthesis. First, the intermediary quantity, the post-stratified weighting factor for density $\nu_{ai}$ is computed. We note that we must account for irregular numbers of sampling events (tows) within a given stratum, including missing samples due to incomplete surveys.  
+Now that we have predicted probabilities $\theta_i$ for each individual observation, and each stratum, we generate and store samples of these post-stratification weights $\omega_i$ from the joint posteriors to carry them forward for further Bayesian analysis and synthesis. 
   
 
 ```{r post-stratification-weights}
@@ -432,13 +431,20 @@ region = "cfaall"
 
 O$SA = O[[sa_vars[[region]]]]
 
-O$wgt = O$post_stratified_ratio / O$data_offset  # PS wgt per unit area
-# O$wgt = O$post_stratified_ratio / O$data_offset / O$n_stations  # wgt per unit area
+```
 
+We note that we must account for irregular numbers of sampling events (tows) within a given stratum, including missing samples due to incomplete surveys. This is to ensure that contributions of individual observations where an areal unit $a$ is over-sampled does not create bias in the predicted distribution. **Similarly when an areal unit is not sampled, the expected counts are used instead. TODO/TEST** 
 
-# sampling density correction .. to test 
+```{r normalize-weights}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: normalize-weights
 
+# normalization by sampling station intensity
+O$wgt = O$post_stratified_ratio / O$data_offset / O$n_stations  
 
+ 
 hist(log10(O$wgt), "fd") 
 summary(O$wgt)
 #    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
@@ -553,12 +559,13 @@ O[i, .N , by=.(year)][order(year),]
 
 ```
 
+
 Bottom line: reasonable success in estimating individual survey/design weights.  And operationally viable (~ 4 days of computation).
  
 
-### Correcting for size bias/selectivity
+### Computation of size bias/selectivity
 
-The application of the above post-stratified weights provides a distribution that scales observations of individuals to observed environmental conditions. However, bias associated with size (sampling gear "selectivity") is still present in the distribution. In fishery applications this bias is usually estimated in a process-based dynamical model as a residual nuisance factor or estimated **a priori** via experimentation and then deterministically use to correct size-distributions. 
+The application of the above post-stratified weights provides a distribution that scales observations of individuals to observed environmental conditions. However, bias associated with size (sampling gear "selectivity") is still present in the distribution. In fishery applications this bias is usually estimated in a process-based dynamical model as a residual nuisance factor or estimated **apriori** via experimentation and then deterministically use to correct size-distributions. 
 
 An alternative is to see the size-related effects in the above model as a size-based probability of relative "observability" of individuals; that is, the marginal effect of size on the Bernoulli binomial model of presence and absence provides a parameterization of size-bias. Removing size-related effects from the probabilities associated with individuals will, therefore, provide probability estimates that adjusts for size-related sampling/design bias. We do this by removing the random effects associated with size in the posterior estimates and samples. These were actually stored in the previous step and can be accessed as follows. 
 

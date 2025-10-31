@@ -17,6 +17,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="1:1:1", imp
             fit = read_write_fast(fn)
             if (!is.null(fit)) return(fit)
         }
+        message("\n\nModel fit not found ... regenerating")
     }
     
     message( "\n---\n---\n---\n---\n")
@@ -50,6 +51,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="1:1:1", imp
         family="binomial", 
         verbose=TRUE,
         inla.mode="compact",
+        control.inla = list( strategy = "gaussian", int.strategy="eb" ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
@@ -69,7 +71,7 @@ model_size_presence_absence = function( p, todo="load", num.threads="1:1:1", imp
         safe = FALSE,
         verbose=TRUE,
         inla.mode="compact",
-        control.inla = list( strategy = "gaussian", fast=TRUE, h=0.01, int.strategy="eb", force.diagonal=TRUE, diagonal=1000, tolerance = 0.01, cmin=0.0001 ),
+        control.inla = list( strategy = "gaussian", fast=TRUE, h=0.01, int.strategy="eb", force.diagonal=TRUE, diagonal=100, tolerance = 0.01, cmin=0.0001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),

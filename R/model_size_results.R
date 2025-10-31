@@ -106,15 +106,24 @@ model_size_results = function(p, todo="post_stratified_weights",
         fit_summ_mean = fit$summary.fitted.values[["mean"]] 
         fit_summ_sd = fit$summary.fitted.values[["sd"]] 
         fixeff = fit$summary.fixed
-        sizeselect = fit$summary.random$'inla.group(cwd, method = "quantile", n = 11)' 
 
-        # plot( (sizeselect[,2]) ~ exp(sizeselect[,1]))   log odds ratio
+        vn_rnd = names(fit$summary.random)
+        vn_cwd = vn_rnd[ grep(".*cwd,", vn_rnd) ]
+        if (length(vn_cwd) !=1 ) {
+          message("There is a problem with variable name expectations")
+          browser()
+        }
+        
+        sizeselect = fit$summary.random[[vn_cwd]]
+
+        # plot( (sizeselect[,2]) ~ exp(sizeselect[,1]))  # log odds ratio
         # plot(exp(sizeselect[,2])~ exp(sizeselect[,1]))  # odds ratio
         # plot(1/exp(sizeselect[,2])~ exp(sizeselect[,1])) # selectivity ratio
         fit = NULL; gc() # no longer needed
 
         # input data 
-        M = model_size_data_carstm( p=p )  
+        M = fit$.args$data
+        # M = model_size_data_carstm( p=p )  
         
         M$year = factor2number( M$year )
 
@@ -144,8 +153,8 @@ model_size_results = function(p, todo="post_stratified_weights",
         O$cyclic_pred = NULL
 
         # get correct row order of areal units to match observations
-        ip  = ipreds[ match( O$kuid,      M$kuid[ipreds] ) ]    # predictions (at areal units, a) on M
-        ipo = ipreds[ match( O$kuid_pred, M$kuid[ipreds] )]  # prediction time-slice on M
+        ip  = ipreds[ match( O$kuid,      M$kuid[ipreds] )] # predictions (at areal units, a) on M
+        ipo = ipreds[ match( O$kuid_pred, M$kuid[ipreds] )] # prediction time-slice on M
     
         # add associated areal unit level predictions (a)
         O$auid_prob_mean = M$individual_prob_mean[ ip ]
@@ -244,7 +253,7 @@ model_size_results = function(p, todo="post_stratified_weights",
         Osamples = NULL
 
         fss = inla_get_indices(
-            "inla.group(cwd, method = \"quantile\", n = 11)", 
+            vn_cwd, 
             tag=tag, start=start, 
             len=length, 
             model="direct_match"
@@ -280,7 +289,7 @@ model_size_results = function(p, todo="post_stratified_weights",
       ii = out[ tag=="observations", .(n_stations=length(unique(sid))), by=.(AUID, year) ]  
       out = ii[ out, on=.(AUID, year) ]
       out[ is.na(n_stations), "n_stations"] = 1
-`` 
+
       out$post_stratified_ratio_obs  = out$auid_prob_mean  / out$individual_prob_mean    # observation time
       out$post_stratified_ratio = out$auid_prob_mean2 / out$individual_prob_mean    # time shifted 
 
