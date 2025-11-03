@@ -119,7 +119,6 @@ model_size_results = function(p, todo="post_stratified_weights",
         # plot( (sizeselect[,2]) ~ exp(sizeselect[,1]))  # log odds ratio
         # plot(exp(sizeselect[,2])~ exp(sizeselect[,1]))  # odds ratio
         # plot(1/exp(sizeselect[,2])~ exp(sizeselect[,1])) # selectivity ratio
-        fit = NULL; gc() # no longer needed
 
         # input data 
         M = fit$.args$data
@@ -131,6 +130,7 @@ model_size_results = function(p, todo="post_stratified_weights",
         M$individual_prob_mean = fit_summ_mean
         M$individual_prob_sd   = fit_summ_sd 
 
+        fit = NULL; gc() # no longer needed
         fit_summ_sd = fit_summ_mean = NULL 
 
         iobs = which(M$tag == "observations")

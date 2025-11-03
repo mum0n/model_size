@@ -192,7 +192,7 @@ source( file.path( project_directory, "scripts", "startup.r") )
  
 ```
 
-Next we obtain the individual level data of size measurements from snow crab surveys ("size_data") and create the prediction surface ("carstm_inputs") for every combination of discretized size, location and time. We use a logarithmic scale for size to describe the overall shape of the distribution. This requires use of the **aegis**()[] data system for covariate handling and prediction. 
+Next we obtain the individual level data of size measurements from snow crab surveys ("size_data") and create the prediction surface ("carstm_inputs") for every combination of discretized size, location and time. We use a logarithmic scale for size to describe the overall shape of the distribution. We use the [**aegis**](https://github.com/jae0/aegis.survey) data system for covariate handling and prediction or one can create the prediction fields directly depending upon available data (see the function: [model_size_data_carstm.R](R/model_size_data_carstm.R)). 
 
 
 ```{r size-data}
@@ -206,7 +206,9 @@ model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data") )
 
 ```
 
-The statistical model utilized is as mentioned above, a Generalized Linear "mixed" effects binomial model for each sex and maturity class to speed up computations as memory requirements and computational time are limiting when data series are large. In the model, there is only a single fixed component, the global intercept (overall mean):
+The statistical model utilized is as mentioned above, a Generalized Linear "mixed" effects binomial model for each sex and maturity class to speed up computations as memory requirements and computational time are limiting when data series are large. We use [INLA](https://www.r-inla.org/home) ans the underlying computational engine due to its power and flexibility. Other modeling approaches and engines can be used but performance can vary as problem size increases.
+
+In our model, there is only a single fixed component, the global intercept (overall mean):
 
 $$
 \boldsymbol{X}^{T}\boldsymbol{\beta} = \text{constant intercept},
