@@ -1,6 +1,7 @@
 
 
-model_size_presence_absence = function( p, todo="load", num.threads="1:1:1", improve.fit=FALSE) {
+model_size_presence_absence = function( p, todo="load", 
+  num.threads="1:1:1", improve.fit=FALSE, theta0 = NULL) {
      
     p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
    
@@ -39,9 +40,10 @@ model_size_presence_absence = function( p, todo="load", num.threads="1:1:1", imp
 
     H <<- inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, MS[["median.50%"]] ) 
 
+    if (is.null(theta0)) {
+      if (exists( "theta", p )) theta0 = p[["theta"]][[ p$bioclass ]]
+    }
 
-    theta0 = p$theta( p$bioclass )
-    
     message("Trying default 'compact' inla mode: ")
     message( "\n---\n---\n" )
 

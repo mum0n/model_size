@@ -110,11 +110,8 @@ p$formula = as.formula( paste(
 #    ' + f( space2, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, 
 #    group=inla.group( cwd2, method="quantile", n=9 ), hyper=H$besag, control.group=list(model="rw2", hyper=H$rw2)) ', 
 
-p$theta = function(bioclass) {
-
-  # start modes of paramaters closer to known solutions
-  
-  out = switch( bioclass,
+# start modes of paramaters closer to known solutions
+p$theta = list(
     f.imm = c(
       9.3314, -2.4485, -1.4928, 1.9046, 0.6669, 0.9341, 1.8232, 0.0479,  0.4444, -0.5604,
       -0.7370, 2.3936, 2.2303, -3.2630, 5.0067, 43.8375, -1.2134, 33.0888
@@ -130,9 +127,7 @@ p$theta = function(bioclass) {
     m.mat = c(
       9.8791, 0.1994, 1.5117, 2.1416, 0.5552, 2.5428, 1.7774, 0.015, 1.9001, -1.9128, 0.2067, 
       3.7526, 4.9292, -2.4348, 4.4517, -1.1324, -0.3161, 1.0651
-    ),
-    NULL
-  )
-  return(out) 
-}
+    ) 
+)
+
 
