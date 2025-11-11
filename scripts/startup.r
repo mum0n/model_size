@@ -92,9 +92,9 @@ p$size_bandwidth = 30  # no of size bins (for modelling size-bias only) .. on a 
 p$formula = as.formula( paste(
 ' pa ~ 1 ',
     ' + offset( data_offset ) ', 
-    ' + f( inla.group( cwd, method="quantile", n=11 ), model="rw2", scale.model=TRUE) ', 
-    ' + f( inla.group( cwd2, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=space2, control.group=list(model="besag", hyper=H$besag, graph=slot(sppoly, "nb") ) ) ',    
-    ' + f( inla.group( cwd3, method="quantile", n=11 ), model="rw2", scale.model=TRUE, group=time3, control.group=list(model="ar1", hyper=H$ar1_group) ) ',   
+    ' + f( inla.group( cwd, method="quantile", n=9 ), model="rw2", scale.model=TRUE) ', 
+    ' + f( inla.group( cwd2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, group=space2, control.group=list(model="besag", hyper=H$besag, graph=slot(sppoly, "nb") ) ) ',    
+    ' + f( inla.group( cwd3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, group=time3, control.group=list(model="ar1", hyper=H$ar1_group) ) ',   
     ' + f( time, model="ar1",  hyper=H$ar1 ) ',
     ' + f( cyclic, model="ar1", hyper=H$ar1 )',
     ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
@@ -113,12 +113,10 @@ p$formula = as.formula( paste(
 # start modes of paramaters closer to known solutions
 p$theta = list(
     f.imm = c(
-      9.3314, -2.4485, -1.4928, 1.9046, 0.6669, 0.9341, 1.8232, 0.0479,  0.4444, -0.5604,
-      -0.7370, 2.3936, 2.2303, -3.2630, 5.0067, 43.8375, -1.2134, 33.0888
+7.4482, 10.6061, -0.7082, 1.4251, -1.7150, 0.4886, 1.8137, -1.2525, 0.3925, -0.8978, 1.6754, 2.7010, 3.0855, 0.7833, 5.1942, 43.9709, 11.3202, 31.1978 
     ),
     f.mat = c(
-      6.4364, 14.0605, 11.3605, 7.8415, 4.7670, 4.2591, 4.6586, 2.0921, 4.3206, 1.8505, 
-      2.2031, 6.1731, 4.9362, 9.0836, 12.1969, 15.9643, 6.4769, 25.2386
+6.8932, -0.7261, 3.6038, 3.8281, 1.4353, 2.3064, -0.0312, 0.5378, -2.3143, -0.7471, -3.1339, 3.1221, 1.2310, -4.6544, 12.0345, -5.4555, 2.3053, -2.4121
     ),
     m.imm = c(
       9.9191, -2.4676, -1.8416, 1.7711, 1.1651, 0.9926, 1.7656, 0.0257, 0.5771, -0.1422, 
@@ -130,4 +128,5 @@ p$theta = list(
     ) 
 )
 
+ 
 

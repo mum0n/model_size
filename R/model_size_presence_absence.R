@@ -53,7 +53,6 @@ model_size_presence_absence = function( p, todo="load",
         family="binomial", 
         verbose=TRUE,
         inla.mode="compact",
-        control.inla = list( strategy = "gaussian", int.strategy="eb" ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
@@ -102,7 +101,7 @@ model_size_presence_absence = function( p, todo="load",
 
     if (inherits(fit, "try-error" )) {
       message( "\n---\n---\n" )
-      message( "Trying the 'classic' inla mode, more stable and robust: ")
+      message( "Trying the 'classic' inla mode, more stable and robust but RAM intensive: ")
       message( "\n---\n---\n" )
 
       fit = try( inla( 
@@ -113,7 +112,7 @@ model_size_presence_absence = function( p, todo="load",
         verbose=TRUE,
         debug = TRUE,
         inla.mode="classic",
-        control.inla = list( strategy="laplace", h=0.01, diagonal=1000, force.diagonal=TRUE, cmin=0.01 ),
+        control.inla = list( strategy="laplace", h=0.01, diagonal=1000, force.diagonal=TRUE, cmin=0.001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
