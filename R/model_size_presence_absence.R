@@ -44,7 +44,7 @@ model_size_presence_absence = function( p, todo="load",
       if (exists( "theta", p )) theta0 = p[["theta"]][[ p$bioclass ]]
     }
 
-    message("Trying default inla mode: ")
+    message("Trying defaults with inla mode: ",  inla.mode )
     message( "\n---\n---\n" )
 
     fit = try( inla( 
@@ -64,7 +64,7 @@ model_size_presence_absence = function( p, todo="load",
     if (inherits(fit, "try-error" )) {
     if (inla.mode != "classic" ) {
       message( "\n---\n---\n" )
-      message("Trying default 'classic' inla mode with more robust settings: ")
+      message("Trying more robust settings with inla mode: classic ")
       message( "\n---\n---\n" )
   
       fit = try( inla( 
@@ -85,7 +85,7 @@ model_size_presence_absence = function( p, todo="load",
 
    if (inherits(fit, "try-error" )) {
       message( "\n---\n---\n" )
-      message( "Trying defaults with random starting modes: ")
+      message( "Trying with random start and inla mode: ", inla.mode )
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
@@ -103,8 +103,9 @@ model_size_presence_absence = function( p, todo="load",
 
 
     if (inherits(fit, "try-error" )) {
+    if (inla.mode != "classic" ) {
       message( "\n---\n---\n" )
-      message( "Trying the 'classic' inla mode, more stable and robust but RAM intensive: ")
+      message( "Trying more stable and robust settings and debugging mode ... with inla mode: classic ")
       message( "\n---\n---\n" )
 
       fit = try( inla( 
@@ -120,12 +121,12 @@ model_size_presence_absence = function( p, todo="load",
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         num.threads=num.threads
       ), silent=TRUE )
-
+    }
     }
  
     if (inherits(fit, "try-error" )) {
       message( "\n---\n---\n" )
-      message( "Model fit error! Adjust options or check data. Giving up ...")
+      message( "Model fit not converging! Adjust control.inla() options or check data. Giving up ...")
       message( "\n---\n---\n" )
       return(fit)
     }
