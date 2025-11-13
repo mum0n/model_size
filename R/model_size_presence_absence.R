@@ -44,7 +44,7 @@ model_size_presence_absence = function( p, todo="load",
       if (exists( "theta", p )) theta0 = p[["theta"]][[ p$bioclass ]]
     }
 
-    message("Trying default 'compact' inla mode: ")
+    message("Trying default 'compact_tauc' inla mode: ")
     message( "\n---\n---\n" )
 
     fit = try( inla( 
@@ -53,8 +53,26 @@ model_size_presence_absence = function( p, todo="load",
         family="binomial", 
         verbose=TRUE,
         inla.mode="compact",
+        control.inla = list( strategy = "gaussian", int.strategy="eb" ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE ),
+        control.mode= list(theta= theta0),
+        num.threads=num.threads
+    ), silent=TRUE )
+
+    message("Trying default 'classic' inla mode: ")
+    message( "\n---\n---\n" )
+
+    fit = try( inla( 
+        data=M, 
+        formula=p$formula, 
+        family="binomial", 
+        safe = FALSE,
+        verbose=TRUE,
+        inla.mode="classic",
+        control.inla = list( strategy = "gaussian", int.strategy="eb" ),
+        control.predictor = list(compute = TRUE,  link = 1), 
+        control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE  ),
         control.mode= list(theta= theta0),
         num.threads=num.threads
     ), silent=TRUE )
@@ -72,9 +90,9 @@ model_size_presence_absence = function( p, todo="load",
         safe = FALSE,
         verbose=TRUE,
         inla.mode="compact",
-        control.inla = list( strategy = "gaussian", fast=TRUE, h=0.01, int.strategy="eb", force.diagonal=TRUE, diagonal=100, tolerance = 0.01, cmin=0.0001 ),
+        control.inla = list( strategy = "gaussian", fast=TRUE, h=0.01, int.strategy="eb", force.diagonal=TRUE,  cmin=0.0001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
-        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, save.memory=TRUE ),
         control.mode= list(theta= theta0),
         num.threads=num.threads
       ), silent=TRUE )
@@ -92,7 +110,7 @@ model_size_presence_absence = function( p, todo="load",
         inla.mode="compact",
         control.inla = list( strategy = "auto", fast=FALSE, int.strategy="auto" ),
         control.predictor = list(compute = TRUE,  link = 1), 
-        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, smtp="band" ),
+        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, smtp="tauc" ),
         num.threads=num.threads
       ), silent=TRUE )
    }
@@ -108,11 +126,11 @@ model_size_presence_absence = function( p, todo="load",
         data=M, 
         formula=p$formula, 
         family="binomial", 
-        safe = TRUE,
+        safe = FALSE,
         verbose=TRUE,
         debug = TRUE,
         inla.mode="classic",
-        control.inla = list( strategy="laplace", h=0.01, diagonal=1000, force.diagonal=TRUE, cmin=0.001 ),
+        control.inla = list( strategy="laplace", h=0.01, force.diagonal=TRUE, cmin=0.001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),

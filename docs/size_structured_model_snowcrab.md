@@ -189,16 +189,6 @@ yrs = year_start:year_end
 
 source( file.path( project_directory, "scripts", "startup.r") )
 
-figures_dir = file.path( project_directory, "outputs", "figures" )
-
-p$xrange = c(8, 170)  # size range (CW)
-
-dx = 2 #  width of carapace with discretization to produce "cwd"
-
-ss_outdir = file.path(p$project.outputdir, "size_structure")
-
-sizedatadir = file.path( homedir, "bio.data", "bio.snowcrab", "output", "size_structure" )
-
 ```
 
 #### Naive IID representations
@@ -618,9 +608,7 @@ summary(O$post_stratified_ratio) # with seasonal shift
 summary(O$post_stratified_ratio_obs)  # without seasonal timeshift
 #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 # 0.0226  1.0000  1.0057  1.0717  1.0428 32.7205 
-
-
-
+ 
 
 sa_vars = list(
   cfanorth = "cfanorth_sa", 
@@ -862,7 +850,7 @@ ggplot(O[k,], aes( (cw), weight=wgt )  ) +
 
 ```
 
-The above are mean estimates. The posterior predictions with these effects removed is computed by returning to the internal representation of these values (log odds ratios and *logit* probabilities) in INLA. These samples are extracted and saved in the next step.
+The above are posterior mean estimates. The samples of posterior predictions with these effects removed is computed by returning to the internal representation of these values (log odds ratios and *logit* probabilities) in INLA. These samples are extracted and saved in the next step.
 
 
 ```{r post-stratification-size-bias-samples}
@@ -910,6 +898,7 @@ In order to develop a stage-based (sex, instar, maturity group) representation o
 As such, here, we focus upon the third approach, inference from measurements derived from population surveys. This inference can be accomplished with the selectivity-corrected or selectivity-uncorrected size distributions from *Section 1* as a basis. Or, though it is not recommended, one can use the naive size-frequency distributions, if exchangeable *iid* assumptions can be asserted to be valid. 
     
 From simple kernel density representations of size frequency at small area unit scale, determine the magnitudes of modes. This is done as there may be regional and time-dependent changes in modal sizes (year-classes). Sex and maturity status are determined from observation and inferred from size-shape changes (carapace width to chela height males or abdominal flap width for females). Inference of modal sizes for each sex-maturity group are determined in order to develop a growth model.
+
 
 ### Computation
 
@@ -976,9 +965,14 @@ M = size_distributions(p=p, toget="kernel_density_weighted",
 
 Using these local smoothed distributions, weighted geometric mean densities (with a small positive offset to approximate density detection limit of 100 individuals / km^2) are determined for each stratum (year, areal unit, sex, maturity and discretized carapace width) and stratum-specific local modes are identified. 
 
-![Figure 2-1a. Example of kernel density smooths of male immature size distributions and locations of local modes identified as vertical lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_imm_allsolutions.png) ![Figure 2-1b. Example of kernel density smooths of male mature size distributions and locations of local modes identified as vertical lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_mat_allsolutions.png) 
+![Figure 2-1a. Example of kernel density smooths of male immature size distributions and locations of local modes identified as vertical lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_imm_allsolutions.png) 
 
-![Figure 2-1c. Example of kernel density smooths of female immature size distributions and locations of local modes identified as vertical lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_imm_all_solutions.png) ![Figure 2-1d. Example of kernel density smooths of female mature size distributions and locations of local modes identified as vertical lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_mat_all_solutions.png)  
+![Figure 2-1b. Example of kernel density smooths of male mature size distributions and locations of local modes identified as vertical lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_mat_allsolutions.png) 
+
+![Figure 2-1c. Example of kernel density smooths of female immature size distributions and locations of local modes identified as vertical lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_imm_all_solutions.png) 
+
+![Figure 2-1d. Example of kernel density smooths of female mature size distributions and locations of local modes identified as vertical lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_mat_all_solutions.png)  
+
 
 ```{r}
 #| eval: true
@@ -1002,19 +996,21 @@ M = size_distributions(p=p, toget="kernel_density_modes",
 
 ```
 
-
+<!--
 *NOTE: Consider moving this to Julia*
+-->
 
-In a subsequent global evaluation at the domain level, kernel density smoothing of these modes are used to find the main clusters of modes and classified as candidate domain-level modal sizes of instars for each sex-maturity group.
+
+At the domain level, kernel density smoothing of these modes help to identify the main clusters of modes associated with instars for each sex-maturity group.
 
 ![Figure 2-2a, Example of kernel density smooths of male immature size modes; domain level modes identified as vertical blue lines and toughs as red lines. At sizes greater than the yellow line (~55 mm CW), modes are mixed and less clear, attributable to the start of terminal moulting to maturity.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_imm.png)
 
 
-![](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_mat.png)
+![Figure 2-2b, Example of kernel density smooths of male mature size modes; domain level modes identified as vertical blue lines and toughs as red lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_mat.png)
 
-![](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_imm.png)
+![Figure 2-2c, Example of kernel density smooths of female immature size modes; domain level modes identified as vertical blue lines and toughs as red lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_imm.png)
 
-![](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_mat.png)
+![Figure 2-2d, Example of kernel density smooths of female mature size modes; domain level modes identified as vertical blue lines and toughs as red lines.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_mat.png)
 
 The latter classification step is based upon prior information on instar growth curves from observations and published information in the literature.
 
@@ -1024,16 +1020,17 @@ For males:
 ![Figure 2-3a. Growth trajectory inferred from modes for males.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_growth_trajectory_empirical.png)
 
 and then tweaked a bit as carapace width cannot shrink:
-![Figure 2-3a. Growth trajectory inferred from modes and tweaked for males.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_growth_trajectory_empirical_tweaked.png)
+
+![Figure 2-3b. Growth trajectory inferred from modes and tweaked for males.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_male_growth_trajectory_empirical_tweaked.png)
 
 
 For females:
 
-![Figure 2-3a. Growth trajectory inferred from modes for females.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_growth_trajectory_empirical.png)
+![Figure 2-3c. Growth trajectory inferred from modes for females.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_growth_trajectory_empirical.png)
 
 and then tweaked a bit as carapace width cannot shrink:
 
-![Figure 2-3a. Growth trajectory inferred from modes and tweaked for females.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_growth_trajectory_empirical_tweaked.png)
+![Figure 2-3d. Growth trajectory inferred from modes and tweaked for females.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_growth_trajectory_empirical_tweaked.png)
 
 
 ```{r}
@@ -1049,20 +1046,29 @@ bw3 =list(
   "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
 )
 
-mds = size_distributions(p=p, toget="modal_groups", bw=bw3, np=np, ldx=ldx, 
+M = size_distributions(p=p, toget="kernel_density_modes", 
+  bw=bw2, np=np, 
+  Y=years, pg=pg, sigdigits=sigdigits, n_min=nmin,
+  lowpassfilter=lowpassfilter, lowpassfilter2=lowpassfilter2,  outdir=ss_outdir,
+  redo=FALSE )
+
+mds = size_distributions(
+  p=p, 
+  toget="modal_groups", 
+  bw=bw3, 
+  np=np, ldx=ldx, 
   M=M, 
-  sigdigits=sigdigits, lowpassfilter2=lowpassfilter2, outdir=ss_outdir, redo=redo )
-```
-
-
+  sigdigits=sigdigits, lowpassfilter2=lowpassfilter2, outdir=ss_outdir, redo=TRUE 
+)
 
 ```
+ 
 
 These are the results:
 
 Female growth of modes (t vs t-1)
 
-```output
+```{output}
 
 summary( lm(formula = logcw ~ logcw0 * mat, data = mds[sex == "f", ], 
     na.action = "na.omit") )
@@ -1087,7 +1093,7 @@ F-statistic:  779 on 3 and 6 DF,  p-value: 3.67e-08
 
 Male growth of modes  (t vs t-1)
 
-```output
+```{output}
 
 summary( lm(formula = logcw ~ logcw0 * mat, data = mds[sex == "m", ], 
     na.action = "na.omit") )
@@ -1118,8 +1124,7 @@ There also seems to exist inter-individual and regional-variability in growth pa
 
 Observations in more natural settings are also possible by scuba or remote operated vehicle/camera systems. However, such information is quite costly and resource intensive and also susceptible to selection bias in that recaptured or surviving animals tend to be those in better physiological condition than average and so can result in expectations of overly optimistic growth patterns. When routine sampling occurs, a more cost-effective way to establish or corroborate these growth patterns is to decompose observed size frequency distributions. Though there is also inherent size-selection biases in such data due to size-related behavior (habitat preferences) and capture efficiency (net size, speed, depth) that changes with different size and stages, it is still possible to extract some meaningful information of size modes from such data and infer growth patterns.
 
-Given some set of observations of size frequency, subjective "best guesses" (classification by "eye") and implicit reasoning can be used to establish and classify these growth modes. When groups are distinct, this is reasonable. However, observations of size frequencies often demonstrate a mixture of distributions that are heavily overlapping. Even the most state-of-the-art computational
-algorithms cannot fit such distributions easily. One of the leading more objective approaches to estimate classification using point estimates of latent parameters became available with the development of the Expectation-Maximization (EM) algorithm operating in an Maximum Likelihood framework (Dempster et al 1977; see also the closely related Kalman Filter (Roweis and Ghahramani 1999) and for distributions in Bayesian frameworks with Variational Inference (Nguyen 2023) and general latent Bayesian Inference. Here we use the latter method, more specifically, *Latent Bayesian Kernel Mixture Model (LBKMM)*, using population census-based data to identify growth stanzas using snow crab data derived from the Maritimes Region of Atlantic Canada.  
+Given some set of observations of size frequency, subjective "best guesses" (classification by "eye") and implicit reasoning can be used to establish and classify these growth modes. When groups are distinct, this is reasonable. However, observations of size frequencies often demonstrate a mixture of distributions that are heavily overlapping. Even the most state-of-the-art computational algorithms cannot fit such distributions easily. One of the leading more objective approaches to estimate classification using point estimates of latent parameters became available with the development of the Expectation-Maximization (EM) algorithm operating in an Maximum Likelihood framework (Dempster et al 1977; see also the closely related Kalman Filter (Roweis and Ghahramani 1999) and for distributions in Bayesian frameworks with Variational Inference (Nguyen 2023) and general latent Bayesian Inference. Here we use the latter method, more specifically, *Latent Bayesian Kernel Mixture Model (LBKMM)*, using population census-based data to identify growth stanzas using snow crab data derived from the Maritimes Region of Atlantic Canada.  
 
 
 ### Mixture of distributions
@@ -1174,6 +1179,7 @@ label="observation (i)", ylabel="cluster (k)", legend=false, ) end
 
 https://turing.ml/dev/tutorials/01-gaussian-mixture-model/
 
+
 #### Finite mixtures model
 
 <https://turinglang.org/stable/tutorials/01-gaussian-mixture-model/>
@@ -1194,7 +1200,6 @@ z_i & \sim \operatorname{Categorical}(w) \qquad (i = 1,\ldots,N), \\
 x_i & \sim \mathcal{N}([\mu_{z_i}, \mu_{z_i}]^\mathsf{T}, I) \qquad
 (i=1,\ldots,N).
 \end{aligned}
-
 $$
 
  
@@ -1537,13 +1542,10 @@ Once identified, we can proceed by either:
 ### Computation
 
 
-#### Size structure from factorial (Poisson) model
+#### Size structure from factorial (Poisson) model with knife edged cuts
 
 Use of *apriori* information to classify individuals is a common technique. These bounds in size classes as well as any other stratifying factors can be used in a naive manner as a factorial approach. Though conceptually simple, the number of combinations quickly increases (exponentially), especially when the number of covariates increase and renders the approach impossible to utilize except as a simple didactic exercise. Here are a few such examples, below. Note, they are non-functional in real-world application.
-
-#### Estimation of abundance at modes: knife edged cuts
-
-Density and variability estimation via Modal Kernel Mixture Models (KMM) is done in Julia: See projects/model_size/kmm_snowcrab.md for more info. NOTE: this approach is still too slow to use operationally at each set level -- but is viable annually. But that would prevent further covariate modelling.
+  
 
 Here instead, to estimate areal density, we use a knife-edged cut at midpoints between modal groups. This is imperfect as large groups can bleed into adjacent smaller groups. But it is consistent and simple.  We will use this for modelling: either via
 
@@ -1629,9 +1631,6 @@ p$cyclic_id = 1:p$nw
 p$stages = names(SS$sk)
 p$stages = p$stages[ -grep("04", p$stages)] # data density of instar 4 seems to be too sparse  and results in unstable solutions
 
-p$varsnames = c( "imodes", "sigmasq_mean",  "alpha_mean",  "Nkmm" )
-
-p$nposteriors = 2000
 
 # try an individual-based model first:
 outdir = file.path(p$project.outputdir, "size_structure")
@@ -1705,15 +1704,20 @@ o = size_distributions(p=p, toget="tabulated_data", outdir=outdir, add_zeros=TRU
 
 So the "Alternative: estimate numerical abundance ..." (above) modelling attempts *do not work* (operationally). The trick is to find an approach that will.
 
+
 Giving up for now to create a size-space-time model ...  but try Julia-GLM if time permits
 
 
 #### Size structure from Post-Stratifed weights of a spatiotemporal (binomial) model
 
-Sum from directly size frequencies
+Sum from directly size frequencies .. to fill in
 
 
-#### Kernel mixture models 
+#### Kernel mixture models  (via Julia)
+
+
+Density and variability estimation via Modal Kernel Mixture Models (KMM) is done in Julia: See projects/model_size/kmm_snowcrab.md for more info. NOTE: this approach is still too slow to use operationally at each set level -- but is viable annually. But that would prevent further covariate modelling.
+
 
 ```{r}
 #| eval: true
@@ -2123,7 +2127,7 @@ function kmm_spatial_models( Y, yrs=yrs, sexes=sexes, mats=mats )
 end
 ```
 
-#### Spatiotemporal modelling of KMM parameters
+#### Spatiotemporal modelling of KMM parameters (CARSTM)
 
 Temporal and spatial modelling for each growth group of the latent modes, alpha, and sigma_mean using spatial and spatiotemporal CAR models with depth, bottom temperatures as covariates.
 
