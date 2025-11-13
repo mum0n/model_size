@@ -1,7 +1,10 @@
 
 
 model_size_presence_absence = function( p, todo="load", 
-  num.threads="1:1:1", improve.fit=FALSE, theta0 = NULL, inla.mode="compact", verbose=FALSE) {
+  num.threads="1:1:1", improve.fit=FALSE, theta0 = NULL, 
+  inla.mode="compact", verbose=TRUE,
+  control.inla = list( strategy="gaussian", int.strategy="eb" )  
+  ) {
      
     p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
    
@@ -53,7 +56,7 @@ model_size_presence_absence = function( p, todo="load",
         family="binomial", 
         verbose=verbose,
         inla.mode=inla.mode,
-        control.inla = list( strategy = "gaussian", int.strategy="eb" ),
+        control.inla = control.inla,
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE ),
         control.mode= list(theta= theta0),
