@@ -1,7 +1,7 @@
 
 
 model_size_presence_absence = function( p, todo="load", 
-  num.threads="1:1:1", improve.fit=FALSE, theta0 = NULL) {
+  num.threads="1:1:1", improve.fit=FALSE, theta0 = NULL, inla.mode="compact", verbose=FALSE) {
      
     p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
    
@@ -44,15 +44,15 @@ model_size_presence_absence = function( p, todo="load",
       if (exists( "theta", p )) theta0 = p[["theta"]][[ p$bioclass ]]
     }
 
-    message("Trying default 'compact_tauc' inla mode: ")
+    message("Trying default inla mode: ")
     message( "\n---\n---\n" )
 
     fit = try( inla( 
         data=M, 
         formula=p$formula, 
         family="binomial", 
-        verbose=TRUE,
-        inla.mode="compact",
+        verbose=verbose,
+        inla.mode=inla.mode,
         control.inla = list( strategy = "gaussian", int.strategy="eb" ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE ),
@@ -60,36 +60,20 @@ model_size_presence_absence = function( p, todo="load",
         num.threads=num.threads
     ), silent=TRUE )
 
-    message("Trying default 'classic' inla mode: ")
-    message( "\n---\n---\n" )
-
-    fit = try( inla( 
-        data=M, 
-        formula=p$formula, 
-        family="binomial", 
-        safe = FALSE,
-        verbose=TRUE,
-        inla.mode="classic",
-        control.inla = list( strategy = "gaussian", int.strategy="eb" ),
-        control.predictor = list(compute = TRUE,  link = 1), 
-        control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE  ),
-        control.mode= list(theta= theta0),
-        num.threads=num.threads
-    ), silent=TRUE )
-
-
+ 
     if (inherits(fit, "try-error" )) {
+    if (inla.mode != "classic" ) {
       message( "\n---\n---\n" )
-      message("Trying default 'compact' inla mode with more robust settings: ")
+      message("Trying default 'classic' inla mode with more robust settings: ")
       message( "\n---\n---\n" )
   
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
         family="binomial", 
-        safe = FALSE,
-        verbose=TRUE,
-        inla.mode="compact",
+        safe = TRUE,
+        verbose=verbose,
+        inla.mode="classic",
         control.inla = list( strategy = "gaussian", fast=TRUE, h=0.01, int.strategy="eb", force.diagonal=TRUE,  cmin=0.0001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, save.memory=TRUE ),
@@ -97,23 +81,24 @@ model_size_presence_absence = function( p, todo="load",
         num.threads=num.threads
       ), silent=TRUE )
    }
+   }
 
    if (inherits(fit, "try-error" )) {
       message( "\n---\n---\n" )
-      message( "Trying default 'compact' inla mode with using starting modes: ")
+      message( "Trying defaults with random starting modes: ")
       fit = try( inla( 
         data=M, 
         formula=p$formula, 
         family="binomial", 
         safe = FALSE,
-        verbose=TRUE,
-        inla.mode="compact",
+        verbose=verbose,
+        inla.mode=inla.mode,
         control.inla = list( strategy = "auto", fast=FALSE, int.strategy="auto" ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, smtp="tauc" ),
         num.threads=num.threads
       ), silent=TRUE )
-   }
+    }
 
 
 
@@ -127,13 +112,12 @@ model_size_presence_absence = function( p, todo="load",
         formula=p$formula, 
         family="binomial", 
         safe = FALSE,
-        verbose=TRUE,
+        verbose=verbose,
         debug = TRUE,
         inla.mode="classic",
         control.inla = list( strategy="laplace", h=0.01, force.diagonal=TRUE, cmin=0.001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
-        control.mode= list(theta= theta0),
         num.threads=num.threads
       ), silent=TRUE )
 
