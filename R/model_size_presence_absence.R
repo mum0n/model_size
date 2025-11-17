@@ -1,7 +1,7 @@
 
 
 model_size_presence_absence = function( p, todo="load", 
-  num.threads="1:1:1", improve.fit=FALSE, theta0 = NULL, 
+  num.threads="1:1:1", improve.fit=FALSE, theta0 = NULL, restart=TRUE,
   inla.mode="compact", verbose=TRUE,
   control.inla = list( strategy="gaussian", int.strategy="eb" )  
   ) {
@@ -59,7 +59,7 @@ model_size_presence_absence = function( p, todo="load",
         control.inla = control.inla,
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE ),
-        control.mode= list(theta= theta0),
+        control.mode= list( theta= theta0, restart=restart ),
         num.threads=num.threads
     ), silent=TRUE )
 
@@ -80,7 +80,7 @@ model_size_presence_absence = function( p, todo="load",
         control.inla = list( strategy = "gaussian", fast=TRUE, h=0.01, int.strategy="eb", force.diagonal=TRUE,  cmin=0.0001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
         control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, save.memory=TRUE ),
-        control.mode= list(theta= theta0),
+        control.mode= list( theta= theta0, restart=restart ),
         num.threads=num.threads
       ), silent=TRUE )
    }

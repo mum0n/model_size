@@ -286,7 +286,7 @@ model_size_results = function(p, todo="post_stratified_weights",
       # variable numbers of sets in each AUID needs to be accounted
       # counting the number of sets and dividing the effective wgts 
       # rescales the weigts to a per AUID basis ... done at the script level
-      ii = out[ tag=="observations", .(n_stations=length(unique(sid))), by=.(AUID, year) ]  
+      ii = out[ , .(n_stations=length(unique(sid))), by=.(AUID, year) ]  
       out = ii[ out, on=.(AUID, year) ]
       out[ is.na(n_stations), "n_stations"] = 1
 
