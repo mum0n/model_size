@@ -183,7 +183,7 @@ First we load the necessary environment:
 project_name = "model_size"
 project_directory = file.path( homedir, "projects", project_name )
 
-year_start = 1999
+year_start = 2004
 year_end = 2024
 yrs = year_start:year_end
 
@@ -196,7 +196,7 @@ source( file.path( project_directory, "scripts", "startup.r") )
 Tabulations, that is, simple sums, along size bins ("cw"; carapace width) produce the usual size-frequency distributions. They can also be represented as arithmetic mean density or geometric mean densities. These all these naive representations assume exchangeability between individuals (*iid*), which is a big assumption.
 
 
-![Figure 1-1. A basic distribution of snow crab. The example is for S-ENS in 2024. The distribution would only be comparable to other years if sampling intensity is constant or if re-normalized to a constant scale (e.g., percentage).](../outputs/figures/size_freq_naive_sum.png)
+![Figure 1-1. A basic distribution of snow crab. The example is for S-ENS in 2024. The distribution would only be comparable to other years if sampling intensity is constant or if re-normalized to a constant scale (e.g., percentage).](../outputs/figures/size_freq_naive_sum/size_freq_naive_sum_cfasouth_2024.png)
 
   
 
@@ -225,25 +225,36 @@ labels = paste(
 nbins= 40
 
 #  plot naive (sum) size frequency
-pmm = ggplot( Mraw[ region=="cfasouth" & year==YR & sex==0 & mat==1, ], aes(cw) ) +  geom_histogram(bins=nbins) + xlim(c(0, 145))
-pfm = ggplot( Mraw[ region=="cfasouth" & year==YR & sex==1 & mat==1, ], aes(cw) ) +  geom_histogram(bins=nbins) + xlim(c(0, 85))
-pmi = ggplot( Mraw[ region=="cfasouth" & year==YR & sex==0 & mat==0, ], aes(cw) ) +  geom_histogram(bins=nbins) + xlim(c(0, 145))
-pfi = ggplot( Mraw[ region=="cfasouth" & year==YR & sex==1 & mat==0, ], aes(cw) ) +  geom_histogram(bins=nbins) + xlim(c(0, 85))
+plotsavedir = file.path( figures_dir, "size_freq_naive_sum" )
+dir.create( plotsavedir, showWarnings=FALSE, recursive=TRUE )
 
+regions = list( cfanorth="cfanorth", cfasouth="cfasouth", cfa4x="cfa4x", cfaall=c("cfanorth", "cfasouth","cfa4x") )
 
-plt = ggpubr::ggarrange( pmm, pfm, pmi, pfi, 
-  ncol=2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
-)
+for (ir in 1:length(regions) ) {
+  REG = regions[[ir]]
+  rnm = names(regions)[ir]
+for (YR in p$yrs) {
+  pmm = ggplot( Mraw[ region %in% REG & year==YR & sex==0 & mat==1, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 145))
+  pfm = ggplot( Mraw[ region %in% REG & year==YR & sex==1 & mat==1, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 85))
+  pmi = ggplot( Mraw[ region %in% REG & year==YR & sex==0 & mat==0, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 145))
+  pfi = ggplot( Mraw[ region %in% REG & year==YR & sex==1 & mat==0, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 85))
 
-fn_plt = file.path( figures_dir, "size_freq_naive_sum.png" )
-ggsave(filename=fn_plt, plot=plt, dpi=288 )
+  plt = ggpubr::ggarrange( pmm, pfm, pmi, pfi, 
+    ncol=2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
+  )
+
+  fn_plt = file.path( plotsavedir, paste( "size_freq_naive_sum_", rnm, "_", YR, ".png", sep="") )
+  ggsave(filename=fn_plt, plot=plt, dpi=288 )
+
+}}
+
 
 ```
 
 The arithmetic mean areal densities are similar, though normalization by sampled surface area creates slight differences.
 
 
-![Figure 1-2. Arithmetic mean density (no / km^2) for the same time and area as Figure 1.](../outputs/figures/size_freq_naive_arithmetic_mean_density.png)
+![Figure 1-2. Arithmetic mean density (no / km^2) for the same time and area as Figure 1.](../outputs/figures/size_freq_naive_arithmetic_mean_density/size_freq_naive_arithmetic_mean_density_cfasouth_2024.png)
 
 
 ```{r}
@@ -252,8 +263,6 @@ The arithmetic mean areal densities are similar, though normalization by sampled
 #| echo: false
 #| label: naive-size-freq-arithmetic
  
-YR = 2024
-
 labels = paste( 
   c( 
     "Male mature:", 
@@ -263,37 +272,50 @@ labels = paste(
   ),
   paste( YR, sep="-")
 ) 
- 
-# load estimates of areal densities 
-M = size_distributions( p=p, toget="crude", Y=YR, outdir=sizedatadir )
-M$cwd = as.numeric(as.character(M$cwd))
-
+  
 #  plot size frequency as naive arithmetic areal density
-pmm = ggplot( M[ region=="cfasouth" & year==YR & sex==0 & mat==1, ], aes(cwd, den) ) +  
-	geom_line() + 
-	geom_ribbon(aes(ymin=den_lb, max=den_ub), alpha=0.2, colour=NA) +
-	labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
-pfm = ggplot( M[ region=="cfasouth" & year==YR & sex==1 & mat==1, ], aes(cwd, den) ) +  	geom_line() + 
-	geom_ribbon(aes(ymin=den_lb, max=den_ub), alpha=0.2, colour=NA) +
-	labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
-pmi = ggplot( M[ region=="cfasouth" & year==YR & sex==0 & mat==0, ], aes(cwd, den) ) +  	geom_line() + 
-	geom_ribbon(aes(ymin=den_lb, max=den_ub), alpha=0.2, colour=NA) +
-	labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
-pfi = ggplot( M[ region=="cfasouth" & year==YR & sex==1 & mat==0, ], aes(cwd, den) ) +  	geom_line() + 
-	geom_ribbon(aes(ymin=den_lb, max=denl_ub), alpha=0.2, colour=NA) +
-	labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
 
-plt = ggpubr::ggarrange( pmm, pfm, pmi, pfi, 
-  ncol=2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
-)
-fn_plt = file.path( figures_dir, "size_freq_naive_arithmetic_mean_density.png" )
-ggsave(filename=fn_plt, plot=plt, dpi=288 )
+plotsavedir = file.path( figures_dir, "size_freq_naive_arithmetic_mean_density" )
+dir.create( plotsavedir, showWarnings=FALSE, recursive=TRUE )
+
+regions = list( cfanorth="cfanorth", cfasouth="cfasouth", cfa4x="cfa4x", cfaall=c("cfanorth", "cfasouth","cfa4x") )
+
+for (ir in 1:length(regions) ) {
+  REG = regions[[ir]]
+  rnm = names(regions)[ir]
+for (YR in p$yrs) {
+
+  # load estimates of areal densities 
+  M = size_distributions( p=p, toget="crude", Y=YR, outdir=sizedatadir )
+  M$cwd = as.numeric(as.character(M$cwd))
+  
+  pmm = ggplot( M[ region %in% REG & sex==0 & mat==1, ], aes(cwd, den) ) + geom_col(position="dodge2", fill="lightgreen", col="grey") + 
+    # geom_ribbon(aes(ymin=den_lb, max=den_ub), alpha=0.2, colour=NA) +
+    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
+  pfm = ggplot( M[ region %in% REG & sex==1 & mat==1, ], aes(cwd, den) ) + geom_col(position="dodge2", fill="lightgreen", col="grey") + 
+    # geom_ribbon(aes(ymin=den_lb, max=den_ub), alpha=0.2, colour=NA) +
+    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
+  pmi = ggplot( M[ region %in% REG & sex==0 & mat==0, ], aes(cwd, den) ) + geom_col(position="dodge2", fill="lightgreen", col="grey") + 
+    # geom_ribbon(aes(ymin=den_lb, max=den_ub), alpha=0.2, colour=NA) +
+    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
+  pfi = ggplot( M[ region %in% REG & sex==1 & mat==0, ], aes(cwd, den) ) + geom_col(position="dodge2", fill="lightgreen", col="grey") + 
+    # geom_ribbon(aes(ymin=den_lb, max=denl_ub), alpha=0.2, colour=NA) +
+    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
+
+  plt = ggpubr::ggarrange( pmm, pfm, pmi, pfi, 
+    ncol=2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
+  )
+
+  fn_plt = file.path( plotsavedir, paste( "size_freq_naive_arithmetic_mean_density_", rnm, "_", YR, ".png", sep="")  )
+  ggsave(filename=fn_plt, plot=plt, dpi=288 )
+
+}}
 
 ```
 
 The geometric mean areal density representation is more robust as the distributional form of abundance looks to be lognormal. 
 
-![Figure 1-3. Naive geometric mean density of the same time and region as Figure 1. Note the very large 95% CI in the mean density estimates.](../outputs/figures/size_freq_naive_geometric_mean_density.png)
+![Figure 1-3. Naive geometric mean density of the same time and region as Figure 1. Note the very large 95% CI in the mean density estimates.](../outputs/figures/size_freq_naive_geometric_mean_density/size_freq_naive_geometric_mean_density_cfasouth_2024.png)
 
  
 ```{r}
@@ -301,9 +323,7 @@ The geometric mean areal density representation is more robust as the distributi
 #| output: false
 #| echo: false
 #| label: naive-size-freq-geometric
-
-YR = 2024
-
+ 
 labels = paste( 
   c( 
     "Male mature:", 
@@ -313,33 +333,45 @@ labels = paste(
   ),
   paste( YR, sep="-")
 ) 
+ 
+plotsavedir = file.path( figures_dir, "size_freq_naive_geometric_mean_density" )
+dir.create( plotsavedir, showWarnings=FALSE, recursive=TRUE )
 
-# load estimates of areal densities 
-M = size_distributions( p=p, toget="crude", Y=YR, outdir=sizedatadir )
-M$cwd = as.numeric(as.character(M$cwd))
+regions = list( cfanorth="cfanorth", cfasouth="cfasouth", cfa4x="cfa4x", cfaall=c("cfanorth", "cfasouth","cfa4x") )
 
 #  plot size frequency as naive geometric mean areal density
-pmm = ggplot( M[ region=="cfasouth" & year==YR & sex==0 & mat==1, ], aes(cwd, denl) ) +  
-	geom_line() + 
-	geom_ribbon(aes(ymin=denl_lb, max=denl_ub), alpha=0.2, colour=NA) +
-	labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
-pfm = ggplot( M[ region=="cfasouth" & year==YR & sex==1 & mat==1, ], aes(cwd, denl) ) +  	geom_line() + 
-	geom_ribbon(aes(ymin=denl_lb, max=denl_ub), alpha=0.2, colour=NA) +
-	labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
-pmi = ggplot( M[ region=="cfasouth" & year==YR & sex==0 & mat==0, ], aes(cwd, denl) ) +  	geom_line() + 
-	geom_ribbon(aes(ymin=denl_lb, max=denl_ub), alpha=0.2, colour=NA) +
-	labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
-pfi = ggplot( M[ region=="cfasouth" & year==YR & sex==1 & mat==0, ], aes(cwd, denl) ) +  	geom_line() + 
-	geom_ribbon(aes(ymin=denl_lb, max=denl_ub), alpha=0.2, colour=NA) +
-	labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
 
-plt = ggpubr::ggarrange( pmm, pfm, pmi, pfi, 
-  ncol=2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
-)
+for (ir in 1:length(regions) ) {
+  REG = regions[[ir]]
+  rnm = names(regions)[ir]
+for (YR in p$yrs) {
 
-fn_plt = file.path( figures_dir, "size_freq_naive_geometric_mean_density.png" )
-ggsave(filename=fn_plt, plot=plt, dpi=288 )
- 
+  # load estimates of areal densities 
+  M = size_distributions( p=p, toget="crude", Y=YR, outdir=sizedatadir )
+  M$cwd = as.numeric(as.character(M$cwd))
+
+  pmm = ggplot( M[ region=="cfasouth" & year==YR & sex==0 & mat==1, ], aes(cwd, denl) ) + geom_line() + 
+    geom_ribbon(aes(ymin=denl_lb, max=denl_ub), alpha=0.2, colour=NA) +
+    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
+  pfm = ggplot( M[ region=="cfasouth" & year==YR & sex==1 & mat==1, ], aes(cwd, denl) ) +	geom_line() + 
+    geom_ribbon(aes(ymin=denl_lb, max=denl_ub), alpha=0.2, colour=NA) +
+    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
+  pmi = ggplot( M[ region=="cfasouth" & year==YR & sex==0 & mat==0, ], aes(cwd, denl) ) +	geom_line() + 
+    geom_ribbon(aes(ymin=denl_lb, max=denl_ub), alpha=0.2, colour=NA) +
+    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
+  pfi = ggplot( M[ region=="cfasouth" & year==YR & sex==1 & mat==0, ], aes(cwd, denl) ) +	geom_line() + 
+    geom_ribbon(aes(ymin=denl_lb, max=denl_ub), alpha=0.2, colour=NA) +
+    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
+
+  plt = ggpubr::ggarrange( pmm, pfm, pmi, pfi, 
+    ncol=2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
+  )
+
+  fn_plt = file.path( plotsavedir, paste( "size_freq_naive_geometric_mean_density_", rnm, "_", YR, ".png", sep="")  )
+  
+  ggsave(filename=fn_plt, plot=plt, dpi=288 )
+}}
+
 ```
 
 
@@ -405,10 +437,48 @@ We obtain the individual level data of size measurements from snow crab surveys 
 #| label: size-data
   
 # prepare the data 
+
 model_size_data_carstm( p=p, redo=c("carstm_inputs", "size_data") )  
+
+  degugging = FALSE
+  if (degugging) {
+   
+    p$bioclass = "f.imm"
+    p$bioclass = "m.imm"
+    p$bioclass = "f.mat"
+    p$bioclass = "m.mat"
+    
+    p$bioclass = "all"  # all data
+    p$bioclass = NULL   # all data
+
+    M = model_size_data_carstm( p=p )  
+    
+    hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
+    
+    # pa is presence or absence .. (absence is based upon if a station was sampled and no crab of a given size, stage was found ..)
+
+    plot(jitter(pa) ~ cwd, M[ tag=="observations",], pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
+    
+        # males -- variance compression: 2002  
+        # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
+
+    plot(jitter(pa) ~ dyear, M[ tag=="observations",], pch="." ) # no season-bias (male, female)
+  
+    plot(dyear ~ year, M[ tag=="observations",], pch="." )  # time-bias up to 1999:2004 (male, female) .. dropped .. using 2024 to present .. 2020 no survey
+
+    plot(t ~ dyear, M[ tag=="observations",], pch="." )  # seasonal temperature bias (male, female)
+    plot(z ~ dyear, M[ tag=="observations",], pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
+
+    # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
+    plot(jitter(pa) ~ t, M[ tag=="observations",], pch=".")
+    plot(jitter(pa) ~ z, M[ tag=="observations",], pch=".")  # shallow areas sampled in winter (weather)
+  
+    rm(M); gc()
+  }
+
 ```
 
-The statistical model utilized is a Generalized Linear "mixed" effects binomial model. This is completed separately for each sex and maturity class as memory requirements and computational time are limiting, especially when data series are large as we have for snow crab. We use [INLA](https://www.r-inla.org/home) as the underlying computational engine due to its power, flexibility and ability to represent numerous forms of random effects under a Bayesian framework. Other modeling approaches and engines can be used but performance can vary.
+The statistical model utilized is usually referred to as a Generalized Linear "mixed" (i.e., random and fixed) effects binomial model. This is completed separately for each sex and maturity class as memory requirements and computational time are limiting, especially when data series are large as we do for snow crab. We use [INLA](https://www.r-inla.org/home) as the underlying computational engine due to its power, flexibility and ability to represent numerous forms of random effects in a Bayesian framework. Other modeling approaches and engines can be used but performance will vary. This analysis would not be possible for most current MCMC frameworks. 
 
 In our model, there is only a single fixed component, the global intercept (overall mean):
 
@@ -438,48 +508,23 @@ Each random spatial component follows a Conditional AutoRegressive (CAR) structu
 # even if started close to good parameterizations, it can take 12 hrs for 
 # each bioclass
 
-num.threads = "3:-1" # for parallel processing INLA options, -1 means try to be clever
+num.threads = "4:-1" # for parallel processing INLA options, -1 means try to be clever
 
-for ( bioclass in c(   "m.imm", "f.imm", "f.mat", "m.mat" )) {
+p$theta$fmat = c(9.5156,-0.3112,1.3255,1.8762,-0.6007,1.5386,0.0214,0.1815,0.2188,-3.1314,-2.3284,2.0518,1.0906,-3.6701,12.1442,0.4486,-0.0798,3.0784)
+
+
+
+for ( bioclass in c(  "f.mat", "m.mat",  "m.imm", "f.imm" )) {
     p$bioclass = bioclass
     fit = model_size_presence_absence( p=p, todo="redo", num.threads=num.threads )
     fit = NULL; gc()
 }
 
-# extract relavent data and compute post-stratified weights
+# extract relevant data and compute post-stratified weights
 O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observations=FALSE  ) 
 
-
-  if (0) {
-	# degugging:      
-    bioclasses = c("f.imm", "f.mat", "m.imm", "m.mat", "all")
-
-    p$bioclass = bioclasses[1]
-    p$bioclass = bioclasses[2]
-    p$bioclass = bioclasses[3]
-    p$bioclass = bioclasses[4]
-    p$bioclass = bioclasses[5]
-
-    M = model_size_data_carstm( p=p )  
-    
-    hist((as.numeric(as.character(M$cwd[M$pa==1]))), "fd")  
-    
-    plot(jitter(pa) ~ cwd, M, pch=".") # zeros extend beyond to give "prior" info to upper size ranges  (male, female)
-    
-        # males -- variance compression: 2002  
-        # females -- variance compression: 2000:2003, 2012, 2013, 2018 (low abundance periods)
-
-    plot(jitter(pa) ~ dyear, M, pch="." ) # no season-bias (male, female)
-  
-    plot(dyear ~ year, M, pch="." )  # time-bias up to 1999:2004 (male, female)
-    plot(t ~ dyear, M, pch="." )  # seasonal temperature bias (male, female)
-    plot(z ~ dyear, M, pch="." )  # seasonal depth bias (male, female) --shallows in winter Dec-Jan
-
-    # observed presence is spanned by observed absence (ie. safely goes beyond distribution ) (male, female)
-    plot(jitter(pa) ~ t, M, pch=".")
-    plot(jitter(pa) ~ z, M, pch=".")  # shallow areas sampled in winter (weather)
-  
-    rm(M); gc()
+debugging = FALSE
+if (debugging) {
 
     fit = model_size_presence_absence( p=p )
 
@@ -904,7 +949,7 @@ From simple kernel density representations of size frequency at small area unit 
 
 #### Kernel density modes
 
-The algorithm for mode detection is simple: a local smooth kernel density representation of size frequency distributions are estimated for each small area and time unit boosted by data from adjacent neighbours and time slices. This is done as there may be regional and longer time-dependent changes in growth rates due to strong variations in environmental structure (temperature, depth, substrate, predator and prey fields, etc.). Some minor tuning of bandwidth size is required to resolve stages as they have divergent size ranges and exponential growth increments.
+The algorithm for mode detection is simple: a *local* smooth kernel density representation of size frequency distributions are estimated for each small area and time unit, boosted by data from adjacent neighbours and time slices. This is *local* approach is used as there may be regional and longer time-dependent changes in growth rates due to strong variations in environmental structure (temperature, depth, substrate, predator and prey fields, etc.). Some minor tuning of bandwidth size is required to resolve stages as they have divergent size ranges and exponential growth increments.
 
 
 ```{r}
@@ -912,6 +957,117 @@ The algorithm for mode detection is simple: a local smooth kernel density repres
 #| output: false
 #| echo: false
 #| label: size-normalization
+
+# homedir="C:/home/jae/"  # on MSwindows
+
+project_name = "model_size"
+project_directory = file.path( homedir, "projects", project_name )
+
+year_start = 1999
+year_end = 2024
+yrs = year_start:year_end
+ 
+source( file.path( project_directory, "scripts", "startup.r") )
+
+
+# recreate_polygons = TRUE 
+recreate_polygons = FALSE 
+
+pg = sizestructure_db(p=p, "arealunits", redo=recreate_polygons)
+nb = attributes(pg)$nb$nbs
+au =pg$AUID
+  
+# merge set and individual level data for further processing
+
+# (using bio.snowcrab)
+# M = size_distributions(p=p, toget="base_data", pg=pg, redo=TRUE)
+M = size_distributions(p=p, toget="base_data", pg=pg )
+
+# save useful data to file for use in Julia
+out = list( Y=M, nb=nb, au=au )  # saving areal units in case we do carstm in julia .. for now not used
+fn = file.path( p$project_directory, "outputs", "size_structure", "base_data_julia.rdz" )  
+read_write_fast( data=out, fn=fn )
+ 
+
+
+
+
+
+carstm_model_label =  paste( "default", "fb", sep="_" )  # default for fb (fishable biomass)
+
+selection = list()
+
+
+rawdatadir = file.path(p$project_directory, "outputs", "size_structure", "modes_kernel_mixture_models_set")
+
+ss_outdir=file.path(p$project.outputdir, "size_structure")
+
+
+# dimensionality and labels set up for carstm
+p$dimensionality="space-time"
+
+# stage labels
+stages = list(
+  mi = c("m|i|05", "m|i|06", "m|i|07", "m|i|08", "m|i|09", "m|i|10",  "m|i|11",  "m|i|12" ),
+  mm = c( "m|m|10",  "m|m|11",  "m|m|12" ),
+  fi = c("f|i|05", "f|i|06", "f|i|07", "f|i|08","f|i|09", "f|i|10" ), 
+  fm = c( "m|m|9",  "m|m|10",  "m|m|11" )
+)
+
+# sex codes
+# male = 0
+# female = 1
+# sex.unknown = 2
+
+# # maturity codes
+# immature = 0
+# mature = 1
+# mat.unknown = 2
+
+# mapping background
+additional_features = features_to_add( 
+    p=p, 
+    isobaths=c( 100, 200, 300, 400, 500  ), 
+    xlim=c(-80,-40), 
+    ylim=c(38, 60) 
+)
+
+# Get data and format based upon parameters:
+
+survey_size_freq_dir = file.path( p$annual.results, "figures", "size.freq", "survey")
+
+years = as.character(yrs)
+regions=c("cfanorth", "cfasouth", "cfa4x")
+ 
+# recreate_polygon = TRUE  # only if you want to redo all analyses and recreate all categories
+recreate_polygon = FALSE
+SS = sizestructure_db( p=p, DS="carstm_inputs", datasource="snowcrab", rawdatadir=rawdatadir, redo=recreate_polygon  )  
+
+
+p$space_name = pg$AUID 
+p$space_id = 1:nrow(pg)
+
+p$time_name = as.character(p$yrs)
+p$time_id =  1:p$ny
+
+p$cyclic_name = as.character(p$cyclic_levels)
+p$cyclic_id = 1:p$nw
+
+p$stages = names(SS$sk)
+p$stages = p$stages[ -grep("04", p$stages)] # data density of instar 4 seems to be too sparse  and results in unstable solutions 
+
+p$varsnames = c( "imodes", "sigmasq_mean",  "alpha_mean",  "Nkmm" ) 
+
+p$nposteriors = 2000
+
+p$xrange = c(8, 170)  # size range (CW)
+
+dx = 2 #  width of carapace with discretization to produce "cwd"
+
+
+
+# moving average in space and time .. sa-weighted kernel density by sid, sex, mat (with au and quarter)
+
 
 # Normalization via weighted kernel density data from "base-data"
  
@@ -950,11 +1106,13 @@ sigdigits = 3
 lowpassfilter=0.001
 lowpassfilter2=0.001
 
-# moving average in space and time .. sa-weighted kernel density by sid, sex, mat (with au and quarter)
-  
+pg = areal_units( p=p )
+
+ 
+
 redo =TRUE
 # redo = FALSE
- 
+
 # compute kernel density estimates
 M = size_distributions(p=p, toget="kernel_density_weighted", 
   bw=bw, np=np, ldx=ldx,  
@@ -1718,113 +1876,6 @@ Sum from directly size frequencies .. to fill in
 
 Density and variability estimation via Modal Kernel Mixture Models (KMM) is done in Julia: See projects/model_size/kmm_snowcrab.md for more info. NOTE: this approach is still too slow to use operationally at each set level -- but is viable annually. But that would prevent further covariate modelling.
 
-
-```{r}
-#| eval: true
-#| output: false
-#| echo: false
-#| label: setup-R-environment
- 
-# homedir="C:/home/jae/"  # on MSwindows
-
-project_name = "model_size"
-project_directory = file.path( homedir, "projects", project_name )
-
-year_start = 1999
-year_end = 2024
-yrs = year_start:year_end
- 
-carstm_model_label =  paste( "default", "fb", sep="_" )  # default for fb (fishable biomass)
-
-selection = list()
-
-source( file.path( project_directory, "scripts", "startup.r") )
-
-rawdatadir = file.path(p$project_directory, "outputs", "size_structure", "modes_kernel_mixture_models_set")
-
-ss_outdir=file.path(p$project.outputdir, "size_structure")
-
-
-# dimensionality and labels set up for carstm
-p$dimensionality="space-time"
-
-# stage labels
-stages = list(
-  mi = c("m|i|05", "m|i|06", "m|i|07", "m|i|08", "m|i|09", "m|i|10",  "m|i|11",  "m|i|12" ),
-  mm = c( "m|m|10",  "m|m|11",  "m|m|12" ),
-  fi = c("f|i|05", "f|i|06", "f|i|07", "f|i|08","f|i|09", "f|i|10" ), 
-  fm = c( "m|m|9",  "m|m|10",  "m|m|11" )
-)
-
-# sex codes
-# male = 0
-# female = 1
-# sex.unknown = 2
-
-# # maturity codes
-# immature = 0
-# mature = 1
-# mat.unknown = 2
-
-# mapping background
-additional_features = features_to_add( 
-    p=p, 
-    isobaths=c( 100, 200, 300, 400, 500  ), 
-    xlim=c(-80,-40), 
-    ylim=c(38, 60) 
-)
-
-# Get data and format based upon parameters:
-
-survey_size_freq_dir = file.path( p$annual.results, "figures", "size.freq", "survey")
-
-years = as.character(yrs)
-regions=c("cfanorth", "cfasouth", "cfa4x")
- 
-# recreate_polygons = TRUE 
-recreate_polygons = FALSE 
-pg = sizestructure_db(p=p, "arealunits", redo=recreate_polygons)
-dim(pg)
-  
-nb = attributes(pg)$nb$nbs
-au =pg$AUID
-
-# recreate_polygon = TRUE  # only if you want to redo all analyses and recreate all categories
-recreate_polygon = FALSE
-SS = sizestructure_db( p=p, DS="carstm_inputs", datasource="snowcrab", rawdatadir=rawdatadir, redo=recreate_polygon  )  
-
-
-p$space_name = pg$AUID 
-p$space_id = 1:nrow(pg)
-
-p$time_name = as.character(p$yrs)
-p$time_id =  1:p$ny
-
-p$cyclic_name = as.character(p$cyclic_levels)
-p$cyclic_id = 1:p$nw
-
-p$stages = names(SS$sk)
-p$stages = p$stages[ -grep("04", p$stages)] # data density of instar 4 seems to be too sparse  and results in unstable solutions 
-
-p$varsnames = c( "imodes", "sigmasq_mean",  "alpha_mean",  "Nkmm" ) 
-
-p$nposteriors = 2000
-
-p$xrange = c(8, 170)  # size range (CW)
-
-dx = 2 #  width of carapace with discretization to produce "cwd"
-
- 
-# merge set and individual level data for further processing
-M = size_distributions(p=p, toget="base_data", pg=pg, dx=dx, outdir=ss_outdir, redo=TRUE)
-
-# save useful data to file for use in Julia
-out = list( Y=M, nb=nb, au=au )  # saving areal units in case we do carstm in julia .. for now not used
-fn = file.path( p$project_directory, "outputs", "size_structure", "base_data_julia.rdz" )  
-read_write_fast( data=out, fn=fn )
- 
-
-```
 
 
 #### Estimation of abundance at modes: Classify data using KMMs

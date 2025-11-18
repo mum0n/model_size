@@ -3,7 +3,8 @@
 model_size_presence_absence = function( p, todo="load", 
   num.threads="1:1:1", improve.fit=FALSE, theta0 = NULL, restart=TRUE,
   inla.mode="compact", verbose=TRUE,
-  control.inla = list( strategy="gaussian", int.strategy="eb" )  
+  control.inla = list( strategy="gaussian", int.strategy="eb",  fast=TRUE, h=0.01, force.diagonal=TRUE,  cmin=0.0001 ),
+  control.compute = list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, save.memory=TRUE )
   ) {
      
     p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
@@ -58,7 +59,7 @@ model_size_presence_absence = function( p, todo="load",
         inla.mode=inla.mode,
         control.inla = control.inla,
         control.predictor = list(compute = TRUE,  link = 1), 
-        control.compute=list( dic=TRUE, config=TRUE, return.marginals.predictor=TRUE ),
+        control.compute=control.compute,
         control.mode= list( theta= theta0, restart=restart ),
         num.threads=num.threads
     ), silent=TRUE )
@@ -79,7 +80,7 @@ model_size_presence_absence = function( p, todo="load",
         inla.mode="classic",
         control.inla = list( strategy = "gaussian", fast=TRUE, h=0.01, int.strategy="eb", force.diagonal=TRUE,  cmin=0.0001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
-        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, save.memory=TRUE ),
+        control.compute = control.compute,
         control.mode= list( theta= theta0, restart=restart ),
         num.threads=num.threads
       ), silent=TRUE )
@@ -98,7 +99,7 @@ model_size_presence_absence = function( p, todo="load",
         inla.mode=inla.mode,
         control.inla = list( strategy = "auto", fast=FALSE, int.strategy="auto" ),
         control.predictor = list(compute = TRUE,  link = 1), 
-        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, smtp="tauc" ),
+        control.compute = control.compute,
         num.threads=num.threads
       ), silent=TRUE )
     }
@@ -121,7 +122,7 @@ model_size_presence_absence = function( p, todo="load",
         inla.mode="classic",
         control.inla = list( strategy="laplace", h=0.01, force.diagonal=TRUE, cmin=0.001 ),
         control.predictor = list(compute = TRUE,  link = 1), 
-        control.compute=list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE ),
+        control.compute= control.compute,
         num.threads=num.threads
       ), silent=TRUE )
     }

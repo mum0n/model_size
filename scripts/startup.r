@@ -140,7 +140,7 @@ p$xrange = c(8, 170)  # size range (CW)
 
 figures_dir = file.path( project_directory, "outputs", "figures" )
 dx = 2 #  width of carapace with discretization to produce "cwd"
-ss_outdir = file.path(p$project.outputdir, "size_structure")
-sizedatadir = file.path( homedir, "bio.data", "bio.snowcrab", "output", "size_structure" )
+ss_outdir = file.path(p$project.outputdir, "size_structure")  # model_size/outputs/size_structure
+sizedatadir = file.path( homedir, "bio.data", "bio.snowcrab", "output", "size_structure" ) # bio.data/bio.snowcrab/output/size_structure
 
 
