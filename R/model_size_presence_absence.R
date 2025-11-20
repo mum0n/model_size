@@ -198,20 +198,27 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
 
     if ( "fit_preds" %in% todo ) {
         message( "\n---\n---\n---\n---\n")
-        message("Creating model fit: ", fn, "\n")
-            
+
+        if (is.null(fit_theta)) {
+          message("Loading info from model fit: ", fn, "\n")
+          fit = read_write_fast( fn=fn )
+          fit_theta = fit$mode$theta
+          fit_control_compute = fit$control.compute 
+          modelinfo = attributes(fit)$modelinfo
+          MS = modelinfo$MS
+          fit = NULL
+          gc()
+        }
+
+        if (is.null(fit_theta)) {
+            message("Model fit needs to be created" )
+            stop()
+        }
+
         M = model_size_data_carstm( p=p )  
         sppoly <<- attributes(M)$sppoly
 
         H <<- inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, MS[["median.50%"]] ) 
-
-        if (is.null(fit_theta)) {
-          fit = read_write_fast( fn=fn )
-          fit_theta = fit$mode$theta
-          fit_control_compute = fit$control.compute 
-          fit = NULL
-          gc()
-        }
 
         # here we work on the prediction surface
         M = M[ tag=="predictions", ]
@@ -226,7 +233,7 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
             inla.mode="compact",
             control.predictor = list(compute = TRUE,  link = 1), 
             control.compute= fit_control_compute,
-            control.mode = list( theta= fit_theta, restart=FALSE )
+            control.mode = list( theta= fit_theta, restart=FALSE ),  # force prediction without optimization
             num.threads=num.threads
         )
 
@@ -234,7 +241,7 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
             bioclass = p$bioclass, 
             H = H,
             MS = MS,
-            theta0 = theta0,
+            theta0 = fit_theta,
             fn = fn_preds
         )
 

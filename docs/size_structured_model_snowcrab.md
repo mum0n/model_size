@@ -206,9 +206,7 @@ Tabulations, that is, simple sums, along size bins ("cw"; carapace width) produc
 #| echo: false
 #| label: naive-size-freq
 
-# NOTE: Mraw is data created in snow crab assessment process ...
-
-Mraw = sizestructure_db( p=p, toget="rawdata", outdir=sizedatadir )
+M = sizestructure_db( p=p, toget="rawdata", outdir=sizedatadir )
 
 nbins= 40
 
@@ -223,10 +221,18 @@ for (ir in 1:length(regions) ) {
   rnm = names(regions)[ir]
 for (YR in p$yrs) {
  
-  pmm = ggplot( Mraw[ region %in% REG & year==YR & sex==0 & mat==1, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 145))
-  pfm = ggplot( Mraw[ region %in% REG & year==YR & sex==1 & mat==1, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 85))
-  pmi = ggplot( Mraw[ region %in% REG & year==YR & sex==0 & mat==0, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 145))
-  pfi = ggplot( Mraw[ region %in% REG & year==YR & sex==1 & mat==0, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 85))
+  pmm = ggplot( M[ region %in% REG & year==YR & sex==0 & mat==1, ], aes(cw) ) +  
+    geom_histogram(bins=nbins, fill="lightgreen", col="grey") + 
+    xlim(c(0, 145))
+  pfm = ggplot( M[ region %in% REG & year==YR & sex==1 & mat==1, ], aes(cw) ) +  
+    geom_histogram(bins=nbins, fill="lightgreen", col="grey") + 
+    xlim(c(0, 85))
+  pmi = ggplot( M[ region %in% REG & year==YR & sex==0 & mat==0, ], aes(cw) ) +  
+    geom_histogram(bins=nbins, fill="lightgreen", col="grey") + 
+    xlim(c(0, 145))
+  pfi = ggplot( M[ region %in% REG & year==YR & sex==1 & mat==0, ], aes(cw) ) +  
+    geom_histogram(bins=nbins, fill="lightgreen", col="grey") + 
+    xlim(c(0, 85))
 
   labels = paste( 
     c( 
@@ -279,18 +285,26 @@ for (YR in p$yrs) {
   M = size_distributions( p=p, toget="crude", Y=YR, outdir=sizedatadir )
   M$cwd = as.numeric(as.character(M$cwd))
   
-  pmm = ggplot( M[ region %in% REG & sex==0 & mat==1, ], aes(cwd, den) ) + geom_col(position="dodge2", fill="lightgreen", col="grey") + 
+  pmm = ggplot( M[ region %in% REG & sex==0 & mat==1, ], aes(cwd, den) ) + 
+    geom_col(position="dodge2", fill="lightgreen", col="grey") + 
     # geom_ribbon(aes(ymin=den_lb, max=den_ub), alpha=0.2, colour=NA) +
-    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
-  pfm = ggplot( M[ region %in% REG & sex==1 & mat==1, ], aes(cwd, den) ) + geom_col(position="dodge2", fill="lightgreen", col="grey") + 
+    labs(x="cwd", y="density; n/km^2") + 
+    xlim(c(0, 145))
+  pfm = ggplot( M[ region %in% REG & sex==1 & mat==1, ], aes(cwd, den) ) + 
+    geom_col(position="dodge2", fill="lightgreen", col="grey") + 
     # geom_ribbon(aes(ymin=den_lb, max=den_ub), alpha=0.2, colour=NA) +
-    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
-  pmi = ggplot( M[ region %in% REG & sex==0 & mat==0, ], aes(cwd, den) ) + geom_col(position="dodge2", fill="lightgreen", col="grey") + 
+    labs(x="cwd", y="density; n/km^2") + 
+    xlim(c(0, 145))
+  pmi = ggplot( M[ region %in% REG & sex==0 & mat==0, ], aes(cwd, den) ) + 
+    geom_col(position="dodge2", fill="lightgreen", col="grey") + 
     # geom_ribbon(aes(ymin=den_lb, max=den_ub), alpha=0.2, colour=NA) +
-    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
-  pfi = ggplot( M[ region %in% REG & sex==1 & mat==0, ], aes(cwd, den) ) + geom_col(position="dodge2", fill="lightgreen", col="grey") + 
+    labs(x="cwd", y="density; n/km^2") + 
+    xlim(c(0, 145))
+  pfi = ggplot( M[ region %in% REG & sex==1 & mat==0, ], aes(cwd, den) ) + 
+    geom_col(position="dodge2", fill="lightgreen", col="grey") + 
     # geom_ribbon(aes(ymin=den_lb, max=denl_ub), alpha=0.2, colour=NA) +
-    labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
+    labs(x="cwd", y="density; n/km^2") + 
+    xlim(c(0, 145))
 
   labels = paste( 
     c( 
@@ -510,23 +524,13 @@ Each random spatial component follows a Conditional AutoRegressive (CAR) structu
 # even if started close to good parameterizations, it can take 12 hrs for 
 # each bioclass
 
-num.threads = "4:-1" # for parallel processing INLA options, -1 means try to be clever
-
-p$theta$fmat = c(9.5156,-0.3112,1.3255,1.8762,-0.6007,1.5386,0.0214,0.1815,0.2188,-3.1314,-2.3284,2.0518,1.0906,-3.6701,12.1442,0.4486,-0.0798,3.0784)
-
-maxld= -71581.3958 fn=241 theta= 8.6196 3.2767 2.0983 2.3860 -0.3893 1.6460 0.0669 0.1564 0.2847 -3.0477 -2.2546 2.1115 1.1539 1.9042 12.1117 2.5665 0.2108 2.7902 [2.15, 1264.765]
-
-maxld= -71543.1153 fn=288 theta= 8.5391 3.1081 2.1913 2.4507 -0.3613 1.6607 0.0728 0.1530 0.2933 -3.0367 -2.2448 2.1194 1.1622 2.0041 12.1005 2.3154 0.0829 2.6935 [1.93, 1266.560]
-
-
+num.threads = "2:-1" # for parallel processing INLA options, -1 means try to be clever
+ 
 for ( bioclass in c(  "f.mat", "m.mat",  "m.imm", "f.imm" )) {
     p$bioclass = bioclass
     fit = model_size_presence_absence( p=p, num.threads=num.threads )
     fit = NULL; gc()
 }
-
-# extract relevant data and compute post-stratified weights
-O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observations=FALSE  ) 
 
 debugging = FALSE
 if (debugging) {
@@ -630,6 +634,7 @@ Now that we have predicted probabilities $\theta_i$ for each individual observat
 #| echo: false
 #| label: post-stratification-weights
 
+# extract relevant data and compute post-stratified weights
 # bring/glue all mats and sexes together into a single table 
 # where each row is an individual observation
 # with associated computed weights and correction factors
