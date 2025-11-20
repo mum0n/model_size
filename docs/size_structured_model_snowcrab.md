@@ -208,19 +208,7 @@ Tabulations, that is, simple sums, along size bins ("cw"; carapace width) produc
 
 # NOTE: Mraw is data created in snow crab assessment process ...
 
-Mraw = bio.snowcrab::size_distributions( p=p, toget="rawdata", outdir=sizedatadir )
-
-YR = 2024
-
-labels = paste( 
-  c( 
-    "Male mature:", 
-    "Female mature: ", 
-    "Male immature:", 
-    "Female immature: "
-  ),
-  paste( YR, sep="-")
-) 
+Mraw = sizestructure_db( p=p, toget="rawdata", outdir=sizedatadir )
 
 nbins= 40
 
@@ -234,10 +222,21 @@ for (ir in 1:length(regions) ) {
   REG = regions[[ir]]
   rnm = names(regions)[ir]
 for (YR in p$yrs) {
+ 
   pmm = ggplot( Mraw[ region %in% REG & year==YR & sex==0 & mat==1, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 145))
   pfm = ggplot( Mraw[ region %in% REG & year==YR & sex==1 & mat==1, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 85))
   pmi = ggplot( Mraw[ region %in% REG & year==YR & sex==0 & mat==0, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 145))
   pfi = ggplot( Mraw[ region %in% REG & year==YR & sex==1 & mat==0, ], aes(cw) ) +  geom_histogram(bins=nbins, fill="lightgreen", col="grey") + xlim(c(0, 85))
+
+  labels = paste( 
+    c( 
+      "Male mature:", 
+      "Female mature: ", 
+      "Male immature:", 
+      "Female immature: "
+    ),
+    paste( YR, sep="-")
+  ) 
 
   plt = ggpubr::ggarrange( pmm, pfm, pmi, pfi, 
     ncol=2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
@@ -263,15 +262,6 @@ The arithmetic mean areal densities are similar, though normalization by sampled
 #| echo: false
 #| label: naive-size-freq-arithmetic
  
-labels = paste( 
-  c( 
-    "Male mature:", 
-    "Female mature: ", 
-    "Male immature:", 
-    "Female immature: "
-  ),
-  paste( YR, sep="-")
-) 
   
 #  plot size frequency as naive arithmetic areal density
 
@@ -302,6 +292,16 @@ for (YR in p$yrs) {
     # geom_ribbon(aes(ymin=den_lb, max=denl_ub), alpha=0.2, colour=NA) +
     labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
 
+  labels = paste( 
+    c( 
+      "Male mature:", 
+      "Female mature: ", 
+      "Male immature:", 
+      "Female immature: "
+    ),
+    paste( YR, sep="-")
+  ) 
+
   plt = ggpubr::ggarrange( pmm, pfm, pmi, pfi, 
     ncol=2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
   )
@@ -324,16 +324,7 @@ The geometric mean areal density representation is more robust as the distributi
 #| echo: false
 #| label: naive-size-freq-geometric
  
-labels = paste( 
-  c( 
-    "Male mature:", 
-    "Female mature: ", 
-    "Male immature:", 
-    "Female immature: "
-  ),
-  paste( YR, sep="-")
-) 
- 
+
 plotsavedir = file.path( figures_dir, "size_freq_naive_geometric_mean_density" )
 dir.create( plotsavedir, showWarnings=FALSE, recursive=TRUE )
 
@@ -363,6 +354,17 @@ for (YR in p$yrs) {
     geom_ribbon(aes(ymin=denl_lb, max=denl_ub), alpha=0.2, colour=NA) +
     labs(x="cwd", y="density; n/km^2") + xlim(c(0, 145))
 
+
+  labels = paste( 
+    c( 
+      "Male mature:", 
+      "Female mature: ", 
+      "Male immature:", 
+      "Female immature: "
+    ),
+    paste( YR, sep="-")
+  ) 
+  
   plt = ggpubr::ggarrange( pmm, pfm, pmi, pfi, 
     ncol=2, nrow=2, labels=labels, align = "v", font.label=list(size=10) 
   )
@@ -512,11 +514,14 @@ num.threads = "4:-1" # for parallel processing INLA options, -1 means try to be 
 
 p$theta$fmat = c(9.5156,-0.3112,1.3255,1.8762,-0.6007,1.5386,0.0214,0.1815,0.2188,-3.1314,-2.3284,2.0518,1.0906,-3.6701,12.1442,0.4486,-0.0798,3.0784)
 
+maxld= -71581.3958 fn=241 theta= 8.6196 3.2767 2.0983 2.3860 -0.3893 1.6460 0.0669 0.1564 0.2847 -3.0477 -2.2546 2.1115 1.1539 1.9042 12.1117 2.5665 0.2108 2.7902 [2.15, 1264.765]
+
+maxld= -71543.1153 fn=288 theta= 8.5391 3.1081 2.1913 2.4507 -0.3613 1.6607 0.0728 0.1530 0.2933 -3.0367 -2.2448 2.1194 1.1622 2.0041 12.1005 2.3154 0.0829 2.6935 [1.93, 1266.560]
 
 
 for ( bioclass in c(  "f.mat", "m.mat",  "m.imm", "f.imm" )) {
     p$bioclass = bioclass
-    fit = model_size_presence_absence( p=p, todo="redo", num.threads=num.threads )
+    fit = model_size_presence_absence( p=p, num.threads=num.threads )
     fit = NULL; gc()
 }
 
@@ -526,7 +531,7 @@ O = model_size_results( p=p, todo= "post_stratified_weights_redo", only_observat
 debugging = FALSE
 if (debugging) {
 
-    fit = model_size_presence_absence( p=p )
+    fit = model_size_presence_absence( p=p, todo="load" )
 
     summary(fit) 
 
@@ -954,7 +959,7 @@ The algorithm for mode detection is simple: a *local* smooth kernel density repr
 
 ```{r}
 #| eval: true
-#| output: false
+#| output: false 
 #| echo: false
 #| label: size-normalization
 
@@ -970,26 +975,23 @@ yrs = year_start:year_end
 source( file.path( project_directory, "scripts", "startup.r") )
 
 
-# recreate_polygons = TRUE 
-recreate_polygons = FALSE 
+# pg = sizestructure_db( p=p, "arealunits", redo=TRUE)
+pg = sizestructure_db( p=p, "arealunits", redo=FALSE)
 
-pg = sizestructure_db(p=p, "arealunits", redo=recreate_polygons)
 nb = attributes(pg)$nb$nbs
 au =pg$AUID
   
-# merge set and individual level data for further processing
+# individual level data for further processing
+p$bioclass = "all"  # all data
+M = model_size_data_carstm( p=p )  
+M = M[tag=="observations", ]
 
-# (using bio.snowcrab)
-# M = size_distributions(p=p, toget="base_data", pg=pg, redo=TRUE)
-M = size_distributions(p=p, toget="base_data", pg=pg )
 
 # save useful data to file for use in Julia
 out = list( Y=M, nb=nb, au=au )  # saving areal units in case we do carstm in julia .. for now not used
 fn = file.path( p$project_directory, "outputs", "size_structure", "base_data_julia.rdz" )  
 read_write_fast( data=out, fn=fn )
  
-
-
 
 
 
@@ -1041,7 +1043,7 @@ regions=c("cfanorth", "cfasouth", "cfa4x")
  
 # recreate_polygon = TRUE  # only if you want to redo all analyses and recreate all categories
 recreate_polygon = FALSE
-SS = sizestructure_db( p=p, DS="carstm_inputs", datasource="snowcrab", rawdatadir=rawdatadir, redo=recreate_polygon  )  
+SS = sizestructure_db( p=p, toget="carstm_inputs", datasource="snowcrab", rawdatadir=rawdatadir, redo=recreate_polygon  )  
 
 
 p$space_name = pg$AUID 
@@ -1107,14 +1109,12 @@ lowpassfilter=0.001
 lowpassfilter2=0.001
 
 pg = areal_units( p=p )
-
  
-
 redo =TRUE
 # redo = FALSE
 
 # compute kernel density estimates
-M = size_distributions(p=p, toget="kernel_density_weighted", 
+M = sizestructure_db(p=p, toget="kernel_density_weighted", 
   bw=bw, np=np, ldx=ldx,  
   Y=years, pg=pg, sigdigits=sigdigits, ti_window=ti_window,  
   outdir=ss_outdir, redo=redo ) 
@@ -1146,7 +1146,7 @@ bw2 =list(
   "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
 )
 
-M = size_distributions(p=p, toget="kernel_density_modes", 
+M = sizestructure_db(p=p, toget="kernel_density_modes", 
   bw=bw2, np=np, 
   Y=years, pg=pg, sigdigits=sigdigits, n_min=nmin,
   lowpassfilter=lowpassfilter, lowpassfilter2=lowpassfilter2,  outdir=ss_outdir,
@@ -1204,13 +1204,13 @@ bw3 =list(
   "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
 )
 
-M = size_distributions(p=p, toget="kernel_density_modes", 
+M = sizestructure_db(p=p, toget="kernel_density_modes", 
   bw=bw2, np=np, 
   Y=years, pg=pg, sigdigits=sigdigits, n_min=nmin,
   lowpassfilter=lowpassfilter, lowpassfilter2=lowpassfilter2,  outdir=ss_outdir,
   redo=FALSE )
 
-mds = size_distributions(
+mds = sizestructure_db(
   p=p, 
   toget="modal_groups", 
   bw=bw3, 
@@ -1219,8 +1219,7 @@ mds = size_distributions(
   sigdigits=sigdigits, lowpassfilter2=lowpassfilter2, outdir=ss_outdir, redo=TRUE 
 )
 
-```
- 
+``` 
 
 These are the results:
 
@@ -1700,16 +1699,9 @@ Once identified, we can proceed by either:
 ### Computation
 
 
-#### Size structure from factorial (Poisson) model with knife edged cuts
+#### 1. Size structure from *knife edged cuts*
 
-Use of *apriori* information to classify individuals is a common technique. These bounds in size classes as well as any other stratifying factors can be used in a naive manner as a factorial approach. Though conceptually simple, the number of combinations quickly increases (exponentially), especially when the number of covariates increase and renders the approach impossible to utilize except as a simple didactic exercise. Here are a few such examples, below. Note, they are non-functional in real-world application.
-  
-
-Here instead, to estimate areal density, we use a knife-edged cut at midpoints between modal groups. This is imperfect as large groups can bleed into adjacent smaller groups. But it is consistent and simple.  We will use this for modelling: either via
-
-- carstm (TODO -- that is to update data source as modelling approach is already complete )
-- stmv (TODO -- that is to update data source as modelling approach is already complete )
-- abm (see: projects/model_agent/julia/ )
+Use of *apriori* information to classify individuals is a common technique. These bounds in size classes are used to directly compute areal density. This is imperfect as large groups can bleed into adjacent smaller groups. It is consistent and simple. Further, one normally uses an arithmetic average. If the distributional model is non-normal, a model-based approach is more elegent and can account for other (fixed) stratifying factors and even radom factors. Though conceptually simple, the number of combinations quickly increases (exponentially), especially when the number of covariates increase and renders the approach a challenge 
 
 
 ```{r}
@@ -1773,9 +1765,7 @@ au =pg$AUID
 recreate_polygon = FALSE
 
 SS = sizestructure_db( p=p, DS="carstm_inputs", datasource="snowcrab", rawdatadir=rawdatadir, redo=recreate_polygon  )
-
-
-# required
+ 
 
 p$space_name = pg$AUID
 p$space_id = 1:nrow(pg)
@@ -1788,94 +1778,20 @@ p$cyclic_id = 1:p$nw
 
 p$stages = names(SS$sk)
 p$stages = p$stages[ -grep("04", p$stages)] # data density of instar 4 seems to be too sparse  and results in unstable solutions
-
-
-# try an individual-based model first:
-outdir = file.path(p$project.outputdir, "size_structure")
-
-o = size_distributions(p=p, toget="tabulated_data_by_stage", outdir=outdir, add_zeros=TRUE )
-o = o[-.(region, year)]
-
-o = size_distributions(p=p, toget="tabulated_data_by_stage", outdir=outdir )
-o = size_distributions(p=p, toget="tabulated_data", outdir=outdir, add_zeros=TRUE )
  
-# ---------------------
-# method 2: simple linear (gaussian) model via biglm .. too slow to use
-
-    O = size_distributions(p=p, toget="linear_model" , outdir=ss_outdir)
- 
-    ss = O[ region=="cfanorth" & year== 2017, which=TRUE]
- 
-    ggplot( O[ ss, ], aes(cwd, den, fill=mat, colour=mat) ) +
-        # geom_ribbon(aes(ymin=density_lb, max=density_ub), alpha=0.2, colour=NA) +
-        # geom_line() +
-        geom_bar(stat = "identity") +
-        labs(x="cw", y="density", size = rel(1.5)) +
-        # scale_y_continuous( limits=c(0, 300) )  
-        theme_light( base_size = 22 ) 
- 
-
-# ---------------------
-# method 3: poisson model  via biglm .. problem is too large to compute
-  
-    # too slow to complete
-    O = size_distributions(p=p, toget="poisson_glm" ,  outdir=ss_outdir)
- 
-    outdir=file.path( survey_size_freq_dir, "poisson_glm")
-  
-    regions = "cfanorth"
-    plot_histogram_carapace_width( M=O$P, years=years, regions=regions, 
-        plot_sex="male", 
-        yvar="N",  # den=arithmetic mean density, denl = geometric mean density  
-        outdir=outdir 
-    )
- 
-
-# ---------------------
-# method 4: poisson via inla .. problem is too large to compute
-   
-    # adjust based upon RAM requirements and ncores
-    require(INLA)
-    inla.setOption(num.threads= floor( parallel::detectCores() / 2) )
-  
-    O = size_distributions(p=p, toget="poisson_inla",  outdir=ss_outdir )
- 
-    outdir=file.path( survey_size_freq_dir, "poisson_inla")
-  
-    regions = "cfanorth"
-    plot_histogram_carapace_width( M=O$P, years=years, regions=regions, 
-        plot_sex="male", 
-        yvar="N",  # den=arithmetic mean density, denl = geometric mean density  
-        outdir=outdir 
-    )
-
-# --- 
-# method 5: model using CARSTM ?  lots of tedious computations ...
-
-
-# --- 
-# method 6: model using JuliaGLM ? might be faster...
-
-
 
 ```
-
-So the "Alternative: estimate numerical abundance ..." (above) modelling attempts *do not work* (operationally). The trick is to find an approach that will.
-
-
-Giving up for now to create a size-space-time model ...  but try Julia-GLM if time permits
-
+ 
 
 #### Size structure from Post-Stratifed weights of a spatiotemporal (binomial) model
 
 Sum from directly size frequencies .. to fill in
 
 
+
 #### Kernel mixture models  (via Julia)
 
-
 Density and variability estimation via Modal Kernel Mixture Models (KMM) is done in Julia: See projects/model_size/kmm_snowcrab.md for more info. NOTE: this approach is still too slow to use operationally at each set level -- but is viable annually. But that would prevent further covariate modelling.
-
 
 
 #### Estimation of abundance at modes: Classify data using KMMs
@@ -1884,11 +1800,10 @@ From the above approximate modal growth model, define a latent kernel mixture mo
 
 For more details, see: https://journal.r-project.org/articles/RJ-2023-043/
 
-First save a data dump for all size data to be read into Julia: initial estimate of main modes via kernel density estimation at a fine space-time resolution from R (*size_distributions(p=p, toget="base_data", ...)*), and "mds" naive modal estimates.
+First save a data dump for all size data to be read into Julia: initial estimate of main modes via kernel density estimation at a fine space-time resolution from R and "mds" naive modal estimates.
 
 
-#### Kernel mixture modelling via Julia
-
+ 
 First bring in the base data.
 
 

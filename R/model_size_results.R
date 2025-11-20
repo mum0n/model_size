@@ -11,6 +11,7 @@ model_size_results = function(p, todo="post_stratified_weights",
       fn_loc = file.path( p$modeldir, p$bioclass )
       fn_observation_ratios = file.path( fn_loc, "post_stratified_ratios.rdz" ) 
       fn_observation_samples = file.path( fn_loc, "post_stratified_weights_samples_obs.rdz" ) 
+      fn_psratio_samples = file.path( fn_loc, "post_stratified_ratio_samples.rdz" ) 
       fn_prediction_samples = file.path( fn_loc, "post_stratified_weights_samples_pred.rdz" ) 
       fn_prediction_samples_obs = file.path( fn_loc, "post_stratified_weights_samples_pred_obs.rdz" ) 
       fn_size_selectivity_samples = file.path( fn_loc, "post_stratified_size_selectivity_samples.rdz" )
@@ -85,7 +86,7 @@ model_size_results = function(p, todo="post_stratified_weights",
       
       names(pg) = c("AUID", "cfanorth_sa", "cfasouth_sa", "cfa23_sa", "cfa24_sa", "cfa4x_sa", "cfaall_sa", "strata_to_keep")
 
-      for (bc in c("f.imm", "f.mat", "m.imm", "m.mat") ){
+      for (bc in c("f.imm", "f.mat", "m.imm", "m.mat") ) {
         
         p$bioclass = bc
 
@@ -98,11 +99,9 @@ model_size_results = function(p, todo="post_stratified_weights",
         fn_fixed_effects_samples =  file.path( fn_loc, "fixed_effects_samples.rdz" )
 
         # operate upon "fit" first and remove from memory to reduce RAM demand 
-        fit = model_size_presence_absence( p=p, todo="load" ) 
-
         message("\nSampling and extracting for: ", bc)
+        fit = model_size_presence_absence( p=p, todo="load" ) 
         S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
-
         fit_summ_mean = fit$summary.fitted.values[["mean"]] 
         fit_summ_sd = fit$summary.fitted.values[["sd"]] 
         fixeff = fit$summary.fixed
@@ -115,31 +114,46 @@ model_size_results = function(p, todo="post_stratified_weights",
         }
         
         sizeselect = fit$summary.random[[vn_cwd]]
-
         # plot( (sizeselect[,2]) ~ exp(sizeselect[,1]))  # log odds ratio
         # plot(exp(sizeselect[,2])~ exp(sizeselect[,1]))  # odds ratio
         # plot(1/exp(sizeselect[,2])~ exp(sizeselect[,1])) # selectivity ratio
 
+        fit = NULL; gc() # no longer needed
+
+
+        message("\nSampling and extracting from prediction surface: ", bc)
+
+        fit_preds = model_size_presence_absence( p=p, todo="load_preds" ) 
+        S_preds = inla.posterior.sample( nposteriors, fit_preds, add.names=FALSE, num.threads=mc.cores )
+        fit_summ_mean_preds = fit_preds$summary.fitted.values[["mean"]] 
+        fit_summ_sd_preds = fit_preds$summary.fitted.values[["sd"]] 
+        fit_preds = NULL; gc() # no longer needed
+
+
         # input data 
-        M = fit$.args$data
-        # M = model_size_data_carstm( p=p )  
-        
+        M = model_size_data_carstm( p=p )  
+        setDT(M)
+         
         M$year = factor2number( M$year )
+        O = M[tag == "observations",]
+        P = M[tag == "predictions" ,]
+        M = NULL
+        gc()
 
         # fetch direct predictions of mean, sd
-        M$individual_prob_mean = fit_summ_mean
-        M$individual_prob_sd   = fit_summ_sd 
+        O$individual_prob_mean = fit_summ_mean
+        O$individual_prob_sd   = fit_summ_sd 
 
-        fit = NULL; gc() # no longer needed
         fit_summ_sd = fit_summ_mean = NULL 
 
-        iobs = which(M$tag == "observations")
-        ipreds = which(M$tag == "predictions")
-        
-        setDT(M)
+        P$individual_prob_mean = fit_summ_mean_preds
+        P$individual_prob_sd   = fit_summ_sd_preds
+ 
+        fit_summ_sd_preds = fit_summ_mean_preds = NULL 
+
 
         # observations (individual, i)
-        O = M[iobs, .(
+        O = O[, .(
             kuid, AUID, sid, crabno, year, cyclic, cwd, mat, sex,
             z, substrate.grainsize, dyear, dyri, t, pca1, pca2,
             cw, mass, data_offset,
@@ -153,19 +167,17 @@ model_size_results = function(p, todo="post_stratified_weights",
         O$cyclic_pred = NULL
 
         # get correct row order of areal units to match observations
-        ip  = ipreds[ match( O$kuid,      M$kuid[ipreds] )] # predictions (at areal units, a) on M
-        ipo = ipreds[ match( O$kuid_pred, M$kuid[ipreds] )] # prediction time-slice on M
+        ip  = match( O$kuid,      P$kuid ) # predictions (at areal units, a) on M
+        ipo = match( O$kuid_pred, P$kuid ) # prediction time-slice on M
     
         # add associated areal unit level predictions (a)
-        O$auid_prob_mean = M$individual_prob_mean[ ip ]
-        O$auid_prob_sd = M$individual_prob_sd[ ip ]
+        O$auid_prob_mean = P$individual_prob_mean[ ip ]
+        O$auid_prob_sd = P$individual_prob_sd[ ip ]
     
-        O$auid_prob_mean2 = M$individual_prob_mean[ ipo ]
-        O$auid_prob_sd2 = M$individual_prob_sd[ ipo ]
+        O$auid_prob_mean2 = P$individual_prob_mean[ ipo ]
+        O$auid_prob_sd2 = P$individual_prob_sd[ ipo ]
         O$bioclass = bc
         
-        M = NULL; gc()
-    
         gc()
 
         # note: 
@@ -194,6 +206,33 @@ model_size_results = function(p, todo="post_stratified_weights",
 
         message( "\nSaving samples of joint posteriors")
 
+
+        for (z in c("tag", "start", "length") ) {
+            assign(z, attributes(S_preds)[[".contents"]][[z]] )  # index info 
+        }
+
+        fpp = inla_get_indices(
+            "Predictor", 
+            tag=tag, 
+            start=start, 
+            len=length, 
+            model="direct_match"
+        )
+        
+        fpp = unlist(fpp)
+        ndat = length(fpp)
+        Osamples_preds = array(NA, dim=c( ndat,  nposteriors ) )
+        for (i in 1:nposteriors) {
+            Osamples_preds[,i] =  S_preds[[i]]$latent[fpp,] 
+        }
+        fpp = NULL
+        S_preds = NULL;
+        message( "\nSaving:  ", fn_prediction_samples )
+        read_write_fast( Osamples_preds, fn=fn_prediction_samples )  # on logit scale
+
+        gc()
+
+
         for (z in c("tag", "start", "length") ) {
             assign(z, attributes(S)[[".contents"]][[z]] )  # index info 
         }
@@ -214,21 +253,28 @@ model_size_results = function(p, todo="post_stratified_weights",
         }
         fkk = NULL
         message( "\nSaving:  ", fn_observation_samples )
-        read_write_fast( Osamples[iobs,], fn=fn_observation_samples )  # on logit scale
+        read_write_fast( Osamples, fn=fn_observation_samples )  # on logit scale
+
+
 
         # same order as O, samples of the ratio of probabilities (a/i)
-        post_stratified_ratio  = Osamples[ ip,] / Osamples[iobs,]  
+        # prediction time-slice on embedding au
+        post_stratified_ratio  = Osamples_preds[ ip,] / Osamples  
         
-        message( "\nSaving:  ", fn_prediction_samples )
-        read_write_fast( post_stratified_ratio, fn=fn_prediction_samples )  # on logit scale
+        message( "\nSaving:  ", fn_psratio_samples )
+        read_write_fast( post_stratified_ratio, fn=fn_psratio_samples )  # on logit scale
         post_stratified_ratio = NULL
 
-        post_stratified_ratio_obs = Osamples[ ipo,] / Osamples[iobs,]   
+
+        # prediction time-slice on M
+        post_stratified_ratio_obs = Osamples_preds[ ipo,] / Osamples    
         message( "\nSaving:  ", fn_prediction_samples_obs )
         read_write_fast( post_stratified_ratio_obs, fn=fn_prediction_samples_obs )  # on logit scale
         
         post_stratified_ratio_obs = NULL
         Osamples = NULL
+        Osamples_preds = NULL
+        ip = ipo = NULL
         gc()
 
         fe = inla_get_indices(
