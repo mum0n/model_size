@@ -2,12 +2,8 @@ sizestructure_db = function(
     p=NULL, 
     toget=NULL, 
     datasource = "snowcrab",   
-    # rawdatadir = file.path(homedir, "projects", "model_size", "outputs", "size_structure", "modes_kernel_mixture_models_set"), 
-    rawdatadir = file.path(homedir, "projects", "model_size", "data"), 
     regions=c("cfanorth", "cfasouth", "cfa4x"), 
     redo=FALSE, 
-    
-    outdir=NULL,
     span = NULL,
     pg=NULL,
  
@@ -29,109 +25,10 @@ sizestructure_db = function(
     zlevels=c(0, 100),
     Y=NULL, 
     ... ) { 
- 
-
-    if ( toget=="carstm_inputs") {
-        
-        if (datasource=="snowcrab") {
-            km = NULL
-            for (yr in p$yrs) {
-                fn = file.path( rawdatadir, "kmm", paste("kmm_parameter_summaries_", yr, ".rdz", sep="") )
-                if (file.exists(fn)) {
-                    km = rbind(km, aegis::read_write_fast(fn) )
-                }
-            }
-            setDT(km)
-            pg = areal_units( p=p , areal_units_directory=p$project.outputdir )  # reload
-            M = bio.snowcrab::snowcrab.db(p=p, DS="carstm_inputs",  sppoly=pg, redo=FALSE )
-            setDT(M)
-
-            set = M[ tag=="observations", ]
-            set$sid = gsub("\\.", "~", set$id) 
-
-            # # sex codes
-            # male = 0
-            # female = 1
-            # sex.unknown = 2
-
-            # # maturity codes
-            # immature = 0
-            # mature = 1
-            # mat.unknown = 2
-
-            det = bio.snowcrab::snowcrab.db(p=p, DS="det.georeferenced" )
-            setDT(det)
-            det$sid = paste( det$trip, det$set, sep="~")
-            dsex = det$sex
-            det$sex = NA
-            det[ dsex==0, "sex" ] = "m"
-            det[ dsex==1, "sex" ] = "f"
-
-            dmat = det$mat
-            det$mat = NA
-            det[ dmat==0, "mat" ] = "i"
-            det[ dmat==1, "mat" ] = "m"
-
-            det$yr = as.character(det$yr)
-
-            sk = list()
-            for (vn in unique(km$stage)) {
-                sk[[vn]] = km[ stage==vn, ][ set, on="sid"]  # same order as m observations
-                # merge creates na's
-                sk[[vn]]$stage = vn
-           
-                sksex = sort(unique(sk[[vn]]$sex)) 
-                skmat = sort(unique(sk[[vn]]$mat))
-                skinstar = sort(unique(sk[[vn]]$instar))
-           
-                sk[[vn]]$sex =  sksex # sort removes na
-                sk[[vn]]$mat = skmat
-                sk[[vn]]$instar = skinstar
-                sk[[vn]][ is.na(sigmasq_mean), "sigmasq_mean"] = 0 
-#                sk[[vn]][ is.na(sigmasq_sd), "sigmasq_sd"] = 0
-                sk[[vn]][ is.na(alpha_mean), "alpha_mean"] = 0 
-#                sk[[vn]][ is.na(alpha_sd), "alpha_sd"] = 0
-                inds = det[ 
-                    sid %in% sk[[vn]][["sid"]] & 
-                    mat==skmat & 
-                    sex==sksex , ]
-                ninds = inds[, .(Nkmm=.N), by=c("sid", "yr")]
-                sk[[vn]] = ninds[ sk[[vn]], on=c("sid", "yr") ]
-            }
-
-            return( list(M=M[tag=="predictions",], km=km, pg=pg, set=set, sk=sk ) )
-        }
-
-    } 
     
-    if ( toget=="arealunits") {
-        fn = file.path(p$project.outputdir,  "areal_units_size_structure.rdz")
-        pg = NULL
-        if (!redo) {
-            pg = read_write_fast( fn )
-            return(pg)
-        }
-        pg = areal_units( p = p, areal_units_directory=p$project.outputdir )
-        read_write_fast( data=pg, fn=fn)
-        return(pg)
-    }
-
     if ( toget=="rawdata") {
-
           
-        # note ranges in CW will be log transformed later
-        if (is.null(span)) {
-            span = function( sexid) {
-                switch(sexid,
-                    male   = c( 5, 155, 40),
-                    female = c( 5, 95,  40)
-                )
-            }
-        }
 
-        if (is.null(Y)) {
-            if (exists("yrs", p)) Y = p$yrs
-        }
 
         # sex codes
         # male = 0
@@ -143,9 +40,10 @@ sizestructure_db = function(
         # mature = 1
         # mat.unknown = 2
 
+
         if (!redo) {
             M = NULL 
-            fn = file.path( rawdatadir, paste("size_distributions_rawdata", ".rdz", sep="" ))
+            fn = file.path( p$project_data_directory, paste("size_distributions_rawdata", ".rdz", sep="" ))
             if (file.exists(fn)) {
                 M = aegis::read_write_fast(fn) 
             }
@@ -170,7 +68,6 @@ sizestructure_db = function(
         det$sid = paste(det$trip, det$set, sep="~")
         det = det[, .(sid, shell, cw, sex, mass, mat, gonad, durometer, chela, abdomen)]
         det = det[ mat %in% c("0", "1") & sex %in% c("0", "1"),]
-
 
         M = set[ det, on=.(sid)]
         
@@ -231,7 +128,7 @@ sizestructure_db = function(
 
         M$shell = factor( M$shell )
         
-        fn = file.path( rawdatadir, paste("size_distributions_rawdata", ".rdz", sep="" ))
+        fn = file.path( p$project_data_directory, "size_distributions_rawdata", ".rdz", sep="" )
         read_write_fast( data=M, fn=fn )
         return(M)
     }
@@ -239,13 +136,29 @@ sizestructure_db = function(
 
     if (toget == "crude" ) {
 
-        savedir = file.path(rawdatadir, "crude")
+        # note ranges in CW will be log transformed later
+        if (is.null(span)) {
+            if (exists("span", p)) {
+                span = p$span
+            } else {
+                span = function( sexid) {
+                    switch(sexid,
+                        male   = c( 5, 155, 50),
+                        female = c( 5, 95,  30)
+                    )
+                }
+            }
+        }
+
+        savedir = file.path( p$project_output_directory, "crude")
         if (!dir.exists(savedir)) dir.create(savedir, recursive=TRUE, showWarnings =FALSE) 
 
         if (!redo) {
+            if (is.null(Y)) {
+                if (exists("yrs", p)) Y = p$yrs
+            }
             M = NULL
-            if (!is.vector(Y)) stop("Y should be a year vector")
-            for (yr in as.character(Y)) {
+            for (yr in Y) {
                 fn = file.path( savedir, paste("size_distributions_crude_", yr, ".rdz", sep="" ))
                 if (file.exists(fn)) {
                     m = NULL
@@ -254,10 +167,11 @@ sizestructure_db = function(
                     M = rbind( M, m)
                 }
             }
+
             return(M)
         }
     
-        P = sizestructure_db(p=p, toget="rawdata", rawdatadir=rawdatadir)
+        P = sizestructure_db(p=p, toget="rawdata" )
         
         sexid = list(male = "0", female = "1" )
         P$cwd = NA
@@ -269,13 +183,13 @@ sizestructure_db = function(
 
         P = P[ is.finite(cwd) ,]
 
-        P = P[ year %in% Y, ]
+        P = P[ year %in% p$yrs , ]
         
         # aggregate by cwd 
         Z = P[,  .( N=.N, mass=mean(mass, na.rm=TRUE), sa=mean(sa, na.rm=TRUE) ),  
             by=.( region, year, sex, mat, cwd, sid) ]
         
-        P = NULL;gc()
+        P = NULL; gc()
 
         Z$year = as.factor(Z$year)
         Z$region = as.factor(Z$region)
@@ -291,11 +205,11 @@ sizestructure_db = function(
         Z$density = Z$N / Z$sa
         Z[ !is.finite(density), "density"] = 0  
 
-        for (yr in as.character(Y)) {
+        for (yr in as.character(p$yrs)) {
             M = Z[ year==yr, ]
             M$log_density = log(M$density)  
-            M = M[ ,         
-                .(  nsamples = length(which(N>0)),
+            M = M[ , .(  
+                    nsamples = length(which(N>0)),
                     number_mean = mean( N, na.rm=TRUE ),
                     number_sd = sd( N, na.rm=TRUE ),
                     sa_mean = mean( sa, na.rm=TRUE ),
@@ -310,12 +224,12 @@ sizestructure_db = function(
                 by= .( region, sex, mat, cwd)
             ]
 
-            M$den_lb = M$den - 1.96*M$deb_sd
-            M$den_ub = M$den + 1.96*M$deb_sd
+            M$den_lb = M$den - 1.96*M$den_sd
+            M$den_ub = M$den + 1.96*M$den_sd
             
             M$denl = exp(M$den_log_geo)
-            M$denl_lb = exp(M$den_log_geo - (1.96*M$den_log_geo_sd))
-            M$denl_ub = exp(M$den_log_geo + (1.96*M$den_log_geo_sd))
+            M$denl_lb = exp( M$den_log_geo - 1.96*M$den_log_geo_sd) 
+            M$denl_ub = exp(M$den_log_geo +  1.96*M$den_log_geo_sd) 
 
             # capture NaN's due to no counts
             i = which(!is.finite(M$den_log_geo))
@@ -335,20 +249,23 @@ sizestructure_db = function(
             i = which(!is.finite(M$denl_ub))
             if (length(i)>0) M$denl_ub[i] = 0
 
+            M$cwd = as.numeric(as.character(M$cwd))
+            M$year = as.numeric(as.character(M$year))
 
             fn = file.path( savedir, paste("size_distributions_crude_", yr, ".rdz", sep="" ))
             read_write_fast( data=M, fn=fn )
         }
 
-        return(sizestructure_db(p=p, toget="crude", span=span, Y=Y, rawdatadir=rawdatadir, redo=FALSE))     
+        return(sizestructure_db(p=p, toget="crude", span=span, Y=Y, redo=FALSE))     
     }
-
+ 
+ 
 
     if (toget=="kernel_density_weighted") {
 
 
         if (0) {
-            pg = areal_units(p=p)
+            pg = areal_units(p=p, areal_units_directory=p$project_data_directory)
             np = 512 
             span = NULL 
             ldx=NULL 
@@ -378,8 +295,8 @@ sizestructure_db = function(
             } else {
                 span = function( sexid) {
                     switch(sexid,
-                        male   = c( 5, 155, 40),
-                        female = c( 5, 95,  40)
+                        male   = c( 5, 155, 50),
+                        female = c( 5, 95,  30)
                     )
                 }
             }
@@ -403,10 +320,10 @@ sizestructure_db = function(
 
         kdtype = paste( "kernel_densities", strata, np, sep="_" )
 
-        outdir = file.path( p$project.outputdir, "size_structure", kdtype )
-        dir.create(outdir, recursive=TRUE, showWarnings =FALSE) 
+        savedir = file.path( p$project_output_directory, "size_structure", kdtype )
+        dir.create(savedir, recursive=TRUE, showWarnings =FALSE) 
  
-        fn0 = file.path( outdir, "kernel_density_weighted.rdz" )
+        fn0 = file.path( savedir, "kernel_density_weighted.rdz" )
 
         xr = round( log(p$xrange), digits=2 ) 
         if (is.null(ldx)) ldx = diff(xr)/(np-1)
@@ -414,7 +331,7 @@ sizestructure_db = function(
     
         if (!redo) {
 
-            if (is.null(p$yrs)) {
+            if (is.null(Y)) {
                 # if no years, then current saved version:
                 O = NULL
                 if (!redo) {
@@ -425,8 +342,8 @@ sizestructure_db = function(
 
             M = NULL
             
-            for (yr in as.character(p$yrs) ) {
-                fn   = file.path( outdir, paste( "kd_", yr, ".rdz", sep="" ) )
+            for (yr in as.character(Y) ) {
+                fn   = file.path( savedir, paste( "kd_", yr, ".rdz", sep="" ) )
                 if (file.exists(fn)) {
                     m = NULL
                     m = read_write_fast( fn=fn )
@@ -514,7 +431,7 @@ sizestructure_db = function(
                 }
                 if (is.null(out1) | is.null(out2)) next()
                 out = cbind(out1, out2)
-                fnout  = file.path( outdir, paste( "kd_", yr, ".rdz", sep="" ) )
+                fnout  = file.path( savedir, paste( "kd_", yr, ".rdz", sep="" ) )
                 read_write_fast( data=out, fn=fnout )
                 print(fnout ) 
             }
@@ -559,13 +476,12 @@ sizestructure_db = function(
                 }   # seasons  
                 if (is.null(out1) | is.null(out2)) next()
                 out = cbind(out1, out2)
-                fnout  = file.path( outdir, paste( "kd_", yr, ".rdz", sep="" ) )
+                fnout  = file.path( savedir, paste( "kd_", yr, ".rdz", sep="" ) )
                 read_write_fast( data=out, fn=fnout )
                 print(fnout ) 
             }
         }
-        return ( sizestructure_db(p=p, toget="kernel_density_weighted", strata=strata, outdir=outdir, 
-            pg=pg, ti_window=ti_window,  sigdigits=sigdigits,  
+        return ( sizestructure_db(p=p, toget="kernel_density_weighted", strata=strata,  pg=pg, ti_window=ti_window,  sigdigits=sigdigits,  
             bw=bw, np=np, Y=Y, redo=FALSE ))
     }
  
@@ -573,7 +489,7 @@ sizestructure_db = function(
 
     if (toget=="kernel_density_modes") { 
 
-        fn = file.path( outdir, paste("size_distributions_summary_", strata, ".rdz", sep="") )
+        fn = file.path( p$project_output_directory, paste("size_distributions_summary_", strata, ".rdz", sep="") )
         
         O = NULL
         if (!redo) {
@@ -585,7 +501,7 @@ sizestructure_db = function(
  
         M = sizestructure_db(p=p, toget="kernel_density_weighted", 
           bw=bw, np=np, ldx=ldx, Y=years, strata=strata, pg=pg, 
-          sigdigits=sigdigits, ti_window=ti_window,  outdir=outdir )   
+          sigdigits=sigdigits, ti_window=ti_window  )   
    
         xvals =   attr(M, "xvals")
         xr =   attr(M, "xr")
@@ -812,13 +728,13 @@ sizestructure_db = function(
         if (!redo) {
             if (toget =="modal_groups") {
                 mds = NULL
-                fn = file.path(outdir, "modes_summary.rdz")
+                fn = file.path(p$project_output_directory, "modes_summary.rdz")
                 if (file.exists(fn)) mds = read_write_fast(fn)
                 if (!is.null(mds)) return (mds)
             }
             if (toget =="modal_groups_models") {
                 mds_models = NULL
-                fn = file.path(outdir, "modes_models.rdz")
+                fn = file.path(p$project_output_directory, "modes_models.rdz")
                 if (file.exists(fn)) mds_models = aegis::read_write_fast(fn)
                 if (!is.null(mds_models)) return (mds_models)
             }        
@@ -828,7 +744,7 @@ sizestructure_db = function(
 
         survey_size_freq_dir = file.path( p$annual.results, "figures", "size.freq", "survey")
 
-        if (is.null(M)) M = sizestructure_db(p=p, toget="kernel_density_modes", strata=strata, outdir=outdir )
+        if (is.null(M)) M = sizestructure_db(p=p, toget="kernel_density_modes", strata=strata )
         
         MI = M[["ysm"]][["densities"]]
         MO = M[["ysm"]][["peaks"]]
@@ -1193,11 +1109,11 @@ sizestructure_db = function(
         mds$stage = paste(mds$sex, mds$mat, instar, sep="|")
 
         # save as rdata for use in julia
-        fn = file.path(outdir, "modes_summary.rdz")
+        fn = file.path(p$project_output_directory, "modes_summary.rdz")
         read_write_fast(mds, fn=fn)
 
         mds_models  = list(oif, oim, omf, omm, of, om)
-        fn = file.path(outdir, "modes_models.rdz")
+        fn = file.path(p$project_output_directory, "modes_models.rdz")
         read_write_fast(mds_models, fn=fn)
     
         return(mds)
@@ -1223,7 +1139,7 @@ sizestructure_db = function(
       }
     
       ## Base data
-      mds = sizestructure_db(p=p, toget="modal_groups", outdir=outdir )
+      mds = sizestructure_db(p=p, toget="modal_groups"  )
 
       p$bioclass = "all"  # all data
       M = model_size_data_carstm( p=p )  
@@ -1451,5 +1367,83 @@ sizestructure_db = function(
       read_write_fast( data=M, fn=fn)
       return(M) 
     }
+
+
+    if ( toget=="carstm_inputs") {
+        
+        if (datasource=="snowcrab") {
+
+            savedir = file.path(p$project_output_directory, "kmm")
+            if (!dir.exists(savedir)) dir.create(savedir, recursive=TRUE, showWarnings =FALSE) 
+
+            km = NULL
+            for (yr in p$yrs) {
+                fn = file.path( savedir, "kmm", paste("kmm_parameter_summaries_", yr, ".rdz", sep="") )
+                if (file.exists(fn)) {
+                    km = rbind(km, aegis::read_write_fast(fn) )
+                }
+            }
+            setDT(km)
+            pg = areal_units( p=p, areal_units_directory=p$project_data_directory )  # reload
+            M = bio.snowcrab::snowcrab.db(p=p, DS="carstm_inputs",  sppoly=pg, redo=FALSE )
+            setDT(M)
+
+            set = M[ tag=="observations", ]
+            set$sid = gsub("\\.", "~", set$id) 
+
+            # # sex codes
+            # male = 0
+            # female = 1
+            # sex.unknown = 2
+
+            # # maturity codes
+            # immature = 0
+            # mature = 1
+            # mat.unknown = 2
+
+            det = bio.snowcrab::snowcrab.db(p=p, DS="det.georeferenced" )
+            setDT(det)
+            det$sid = paste( det$trip, det$set, sep="~")
+            dsex = det$sex
+            det$sex = NA
+            det[ dsex==0, "sex" ] = "m"
+            det[ dsex==1, "sex" ] = "f"
+
+            dmat = det$mat
+            det$mat = NA
+            det[ dmat==0, "mat" ] = "i"
+            det[ dmat==1, "mat" ] = "m"
+
+            det$yr = as.character(det$yr)
+
+            sk = list()
+            for (vn in unique(km$stage)) {
+                sk[[vn]] = km[ stage==vn, ][ set, on="sid"]  # same order as m observations
+                # merge creates na's
+                sk[[vn]]$stage = vn
+           
+                sksex = sort(unique(sk[[vn]]$sex)) 
+                skmat = sort(unique(sk[[vn]]$mat))
+                skinstar = sort(unique(sk[[vn]]$instar))
+           
+                sk[[vn]]$sex =  sksex # sort removes na
+                sk[[vn]]$mat = skmat
+                sk[[vn]]$instar = skinstar
+                sk[[vn]][ is.na(sigmasq_mean), "sigmasq_mean"] = 0 
+#                sk[[vn]][ is.na(sigmasq_sd), "sigmasq_sd"] = 0
+                sk[[vn]][ is.na(alpha_mean), "alpha_mean"] = 0 
+#                sk[[vn]][ is.na(alpha_sd), "alpha_sd"] = 0
+                inds = det[ 
+                    sid %in% sk[[vn]][["sid"]] & 
+                    mat==skmat & 
+                    sex==sksex , ]
+                ninds = inds[, .(Nkmm=.N), by=c("sid", "yr")]
+                sk[[vn]] = ninds[ sk[[vn]], on=c("sid", "yr") ]
+            }
+
+            return( list(M=M[tag=="predictions",], km=km, pg=pg, set=set, sk=sk ) )
+        }
+
+    } 
 
 }

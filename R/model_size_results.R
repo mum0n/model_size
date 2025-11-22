@@ -63,7 +63,7 @@ model_size_results = function(p, todo="post_stratified_weights",
     if ( todo == "post_stratified_weights_redo" ){
       # assemble all bioclasses 
       # surface area
-      pg = areal_units(p=p)
+      pg = areal_units(p=p, areal_units_directory=p$project_data_directory)
 
       sa_vars = c(
         "cfanorth_surfacearea", 

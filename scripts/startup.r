@@ -35,16 +35,16 @@ p = parameters_add(p, list(
   project_name = project_name,
   project_directory = project_directory,
   data_root = project_directory,
-  datadir = project_directory,   # all unprocessed inputs (and simple manipulations) ..    
-  project.outputdir = file.path( project_directory, "outputs" ), # interpolations and mapping
+  project_data_directory = file.path(project_directory, "data"),   # all unprocessed inputs (and simple manipulations) ..    
+  project_output_directory = file.path( project_directory, "outputs" ), # interpolations and mapping
   modeldir = file.path( project_directory, "outputs", "modelled" )  # all model outputs
 ) )
 
  
 if ( !file.exists(p$project_directory) ) dir.create( p$project_directory, showWarnings=FALSE, recursive=TRUE )
-if ( !file.exists(p$datadir) ) dir.create( p$datadir, showWarnings=FALSE, recursive=TRUE )
+if ( !file.exists(p$project_data_directory) ) dir.create( p$project_data_directory, showWarnings=FALSE, recursive=TRUE )
 if ( !file.exists(p$modeldir) ) dir.create( p$modeldir, showWarnings=FALSE, recursive=TRUE )
-if ( !file.exists(p$project.outputdir) ) dir.create( p$project.outputdir, showWarnings=FALSE, recursive=TRUE )
+if ( !file.exists(p$project_output_directory) ) dir.create( p$project_output_directory, showWarnings=FALSE, recursive=TRUE )
 
 
 
@@ -85,6 +85,14 @@ p$size_range = function( bioclass ) {
 }
 
 p$size_bandwidth = 30  # no of size bins (for modelling size-bias only) .. on a log scale internally
+
+# note ranges in CW will be log transformed later
+p$span = function( sexid) {
+  switch(sexid,
+    male   = c( 5, 155, 50), # ie. every 3 mm CW
+    female = c( 5, 95,  30)
+  )
+}
 
 
 # model formula: 
@@ -136,11 +144,11 @@ p$theta = list(
 )
    
 
-p$xrange = c(8, 170)  # size range (CW)
-
-figures_dir = file.path( project_directory, "outputs", "figures" )
-dx = 2 #  width of carapace with discretization to produce "cwd"
-ss_outdir = file.path(p$project.outputdir, "size_structure")  # model_size/outputs/size_structure
-sizedatadir = file.path( homedir, "bio.data", "bio.snowcrab", "output", "size_structure" ) # bio.data/bio.snowcrab/output/size_structure
-
-
+p$xrange = c(8, 170)  # size range of data (CW' mm)
+ 
+p$regions_list = list( 
+  cfanorth="cfanorth", 
+  cfasouth="cfasouth", 
+  cfa4x="cfa4x", 
+  cfaall=c("cfanorth", "cfasouth","cfa4x") 
+)

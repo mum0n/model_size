@@ -4,7 +4,7 @@ model_size_data_carstm = function(p, redo=c("")) {
   # p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
 
   fn = file.path( 
-    p$modeldir,  
+    p$project_data_directory,  
     paste( "size_distributions_tabulated_data_zeros.rdz", sep="" )  
   )
   
@@ -87,7 +87,7 @@ model_size_data_carstm = function(p, redo=c("")) {
   p$carstm_model_label = "all"
  
   # set level data from snow crab surveys 
-  sppoly=areal_units( p=p )
+  sppoly=areal_units( p=p, areal_units_directory=p$project_data_directory )
   setcm = snowcrab.db( 
     p=p, 
     DS="carstm_inputs", 

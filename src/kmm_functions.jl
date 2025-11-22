@@ -264,7 +264,7 @@ end
 
 function size_structured_data(; sigdigits=3 ) 
     # data created in R using : Y = size_distributions( p=p, toget="base_data" ) 
-    fn = projectdir( "outputs", "size_structure",  "base_data_julia.rdz" )
+    fn = projectdir( "data", "base_data_julia.rdz" )
     o = load( fn, convert=true)["out"]
     
     Y  = o["Y"] 

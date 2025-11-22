@@ -204,24 +204,26 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
           fit = read_write_fast( fn=fn )
           fit_theta = fit$mode$theta
           fit_control_compute = fit$control.compute 
-          modelinfo = attributes(fit)$modelinfo
+          modelinfo = fit$modelinfo
           MS = modelinfo$MS
           fit = NULL
           gc()
         }
 
         if (is.null(fit_theta)) {
-            message("Model fit needs to be created" )
+            message("Model fit needs to be created?" )
             stop()
         }
 
-        M = model_size_data_carstm( p=p )  
-        sppoly <<- attributes(M)$sppoly
 
         H <<- inla_hyperparameters(  reference_sd = MS[["sd"]], alpha=0.5, MS[["median.50%"]] ) 
 
-        # here we work on the prediction surface
+        M = model_size_data_carstm( p=p )  
+        sppoly <<- attributes(M)$sppoly
         M = M[ tag=="predictions", ]
+        # here we work on the prediction surface
+
+        message("Starting prediction process" )
 
         fit_preds = inla( 
             data=M, 
