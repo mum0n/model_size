@@ -189,8 +189,7 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
 
         read_write_fast( data=fit, fn=fn )  # read_write_fast is a wrapper for a number of save/reads ... default being qs::qsave
 
-        fit_theta = fit$mode$theta
-        fit_control_compute = fit$control.compute 
+        fit_theta = fit$mode$theta  
         fit = NULL; gc()
 
     }
@@ -202,8 +201,7 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
         if (is.null(fit_theta)) {
           message("Loading info from model fit: ", fn, "\n")
           fit = read_write_fast( fn=fn )
-          fit_theta = fit$mode$theta
-          fit_control_compute = fit$control.compute 
+          fit_theta = fit$mode$theta 
           modelinfo = fit$modelinfo
           MS = modelinfo$MS
           fit = NULL
@@ -220,8 +218,9 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
 
         M = model_size_data_carstm( p=p )  
         sppoly <<- attributes(M)$sppoly
-        M = M[ tag=="predictions", ]
-        # here we work on the prediction surface
+        
+        # M = M[ tag=="predictions", ] # here we work on the prediction surface
+        # using just predictions causes error, using all data
 
         message("Starting prediction process" )
 
@@ -230,14 +229,21 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
             formula=p$formula, 
             family="binomial", 
             safe = FALSE,
-            verbose=verbose,
+            verbose=TRUE,
             debug = FALSE,
-            inla.mode="compact",
+            inla.mode="classic",
             control.predictor = list(compute = TRUE,  link = 1), 
-            control.compute= fit_control_compute,
-            control.mode = list( theta= fit_theta, restart=FALSE ),  # force prediction without optimization
+            control.compute = control.compute,
+            control.mode = list( theta= fit_theta, restart=FALSE, fixed=TRUE ),  # force prediction without optimization
             num.threads=num.threads
         )
+
+        if (inherits(fit_preds, "try-error" )) {
+          message( "\n---\n---\n" )
+          message( "Model fit_preds not converging! Adjust control.inla() options or check data. Giving up ...")
+          message( "\n---\n---\n" )
+          return(fit_preds)
+        }
 
         fit_preds$modelinfo = list(
             bioclass = p$bioclass, 

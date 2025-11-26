@@ -213,7 +213,7 @@ M = sizestructure_db( p=p, toget="rawdata",  redo=FALSE )
  
 
 #  plot naive simple size frequency (regular, ie, sum)
-plotsavedir = file.path( project_directory, "outputs", "figures", "sf_naive_sum" )
+plotsavedir = file.path( p$project_output_directory, "figures", "sf_naive_sum" )
 
 for (ir in 1:length(p$regions_list) ) {
   REG = p$regions_list[[ir]]
@@ -250,7 +250,7 @@ M = sizestructure_db( p=p, toget="crude", redo=FALSE )
 #  plot size frequency as naive arithmetic areal density
 
 M$mn = M$den; M$lb = M$den_lb; M$ub = M$den_ub
-plotsavedir = file.path( project_directory, "outputs", "figures", "sf_naive_arithmean" )
+plotsavedir = file.path( p$project_output_directory, "figures", "sf_naive_arithmean" )
 
 for (ir in 1:length(p$regions_list) ) {
   REG = p$regions_list[[ir]]
@@ -282,7 +282,7 @@ The geometric mean areal density representation is more robust as the distributi
   
 #  plot size frequency as naive geometric mean areal density
 M$mn = M$denl; M$lb = M$denl_lb; M$ub = M$denl_ub
-plotsavedir = file.path( project_directory, "outputs", "figures", "sf_naive_geomean" )
+plotsavedir = file.path( p$project_output_directory, "figures", "sf_naive_geomean" )
 
 for (ir in 1:length(p$regions_list) ) {
   REG = p$regions_list[[ir]]
@@ -329,7 +329,7 @@ plt = plot_map(H)
 (plt)
 
 
-fn_plt = file.path( project_directory, "outputs", "figures", "map_highdensity_locations.png" )
+fn_plt = file.path( p$project_output_directory, "figures", "map_highdensity_locations.png" )
 ggsave(filename=fn_plt, plot=plt, dpi=288 )
 
 ```
@@ -449,9 +449,9 @@ if (debugging) {
     # posteriors and effects plots
 
     # set level data from snow crab surveys 
-    # sppoly=areal_units( p=p )
+    # pg=areal_units( p=p, areal_units_directory=p$project_data_directory )
       
-    # p$space_name = sppoly$AUID 
+    # p$space_name = pg$AUID 
     # p$space_id = 1:length(p$space_name)  # must match M$space
 
     # p$time_name = as.character(p$yrs)
@@ -714,7 +714,7 @@ O[i, .N , by=.(year)][order(year),]
 Bottom line: reasonable success in estimating individual survey/design weights.  And operationally viable (~ 4 days of computation). These model-based size distributions respect/account for unmeasured spatial and temporal effects and measured environmental structure and as such are more flexible and less biased representations than blindly assuming exchangeablity at the individual level (*iid*). 
 
 
-#### Size bias/selectivity
+#### Size bias (aka, selectivity)
 
 The application of the above post-stratified weights provides a distribution that scales observations of individuals to observed environmental conditions. However, there is also bias associated with size, often referred to as sampling gear "selectivity". In fishery applications this bias is usually estimated in a process-based dynamical model as a residual nuisance factor or estimated *apriori* via experimentation and then deterministically used to correct size-distributions. 
 
@@ -869,94 +869,34 @@ The algorithm for the *local* mode detection is simple: a *local* smooth kernel 
 #| output: false 
 #| echo: false
 #| label: size-normalization
-
-# homedir="C:/home/jae/"  # on MSwindows
-
-project_name = "model_size"
-project_directory = file.path( homedir, "projects", project_name )
-
-year_start = 1999
-year_end = 2024
-yrs = year_start:year_end
  
-source( file.path( project_directory, "scripts", "startup.r") )
 
-pg = areal_units(p=p)
-# key defaults that define kernal densities:
-np = 512  # # discretizations in fft
-
-xr = round( log(p$xrange), digits=2 ) 
-ldx = diff(xr)/(np-1)  # 0.005988
-xvals = seq( xr[1], xr[2], by=ldx )
-
-# bw is on log scale ... approx (log) SD for each interval  
-#  data_resolution is ~1 to 2 mm (observation error)
-#  but some catgories are wider than others :
-#   male imm  = 10 to 100 mm
-#   male mat  = 60 to 168 mm
-#   female imm = 10 to 45 mm
-#   female mat = 35 to 65 mm
-
-# bw = 0.1 # ~ 20 ldx ~ overly smooth
-# bw = 0.05  # used for modal analysis
-# bw = 0.025  # optimal for sparse data  <<<<<< DEFAULT for histograms >>>>>>
-# bw = 0.01 # 2 ldx is too noisy for arithmetic but good for geometric means
-
-# class-specific band widths
-bw =list( 
-  "0"=list("0"=0.05, "1"=0.05), #male( imm, mat)
-  "1"=list("0"=0.04, "1"=0.04 ) #female( imm, mat)
-)
-
-# years of interest:
-years = as.character( yrs )
-
-ti_window=c(-4,4)  # include data from +/1 4 weeks 
-sigdigits = 3
+if (0) {
+  # bw (bandwidth) is on log scale ... approx (log) SD for each interval  
+  #  data_resolution is ~1 to 2 mm (observation error) 
+  # bw = 0.1 # ~ 20 ldx ~ overly smooth
+  # bw = 0.05  # used for modal analysis
+  # bw = 0.025  # optimal for sparse data  <<<<<< DEFAULT for histograms >>>>>>
+  # bw = 0.01 # 2 ldx is too noisy for arithmetic but good for geometric means
+  
+  # defaults
+  p$bw =list( 
+    "0"=list("0"=0.05, "1"=0.05), #male( imm, mat)
+    "1"=list("0"=0.04, "1"=0.04 ) #female( imm, mat)
+  )
+}  
 
 
-# create a database of local kernel density estimates along strata
-# strata is "yasm":  year, area, season, maturity
+# create a database of local kernel density estimates 
+# along strata ("yasm":  year, area, season, maturity)
 # with data boosting from neighbours in space and time
 
-M = sizestructure_db(
-  p=p, 
-  toget="kernel_density_weighted", 
-  bw=bw, 
-  np=np, 
-  ldx=ldx,  
-  Y=years, 
-  pg=pg, 
-  sigdigits=sigdigits, 
-  ti_window=ti_window,  
-  redo=TRUE 
-) 
+M = sizestructure_db( p=p, toget="kernel_density_weighted", redo=TRUE ) 
 
  
 # identify modes from above kernel density estimates, when there is enough data
 
-nmin = 3
-bw2 =list( 
-  "0"=list("0"=0.03, "1"=0.03 ), #male( imm, mat)
-  "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
-)
-
-lowpassfilter=0.001
-lowpassfilter2=0.001
-
-M = sizestructure_db(
-  p=p, 
-  toget="kernel_density_modes", 
-  bw=bw2, 
-  np=np, 
-  Y=years, 
-  pg=pg, 
-  sigdigits=sigdigits, 
-  n_min=nmin,
-  lowpassfilter=lowpassfilter, 
-  lowpassfilter2=lowpassfilter2,  
-  redo=redo 
-)
+M = sizestructure_db( p=p, toget="kernel_density_modes", redo=TRUE )
 
 
  
@@ -973,6 +913,18 @@ Now we can try to make this more precise by using kernel mixture modelling to de
 
 The use of a mixture of distributions has a long history. Pearson (1894) where it was used to identify/classify species of crabs. Holmes (1892) also studied mixture models of wealth disparity.  Most numerical methods assigning or classifying data into a cluster or group generally requires the number of such groups to be specified *apriori*. The exception being, Infinite Mixture Models (Ghahramani 2011). Fortunately, we have a reasonable understanding of the number of approximate modes of instar carapace widths from visual analysis of size-frequency distributions.  
 
+
+<https://turinglang.org/stable/tutorials/01-gaussian-mixture-model/>
+
+<https://mc-stan.org/users/documentation/case-studies/identifying_mixture_models.html>
+
+
+
+
+
+
+#### Finite mixtures model
+
 The finite form of the problem is well known and understood. Implementation is usually with Maximum likelihood using an Expectation-Maximization algorithm (EM; Dempster, Laird, & Rubin, 1977). The solutions to such problems are dependent upon the number of modes chosen, or often the location of the modes, apriori. Many tools exist for estimation:
 
 - https://cran.r-project.org/web/packages/mixtools/vignettes/mixtools.pdf
@@ -981,56 +933,31 @@ The finite form of the problem is well known and understood. Implementation is u
 
 - https://statmath.wu.ac.at/~gruen/BayesMix/bayesmix-intro.pdf
 
-must specify constant node using mcmc Jags
+
+One must specify, *apiori* constant nodes using mcmc Jags.
 
 <https://cran.r-project.org/web/packages/mclust/vignettes/mclust.html>
 
-problems
+
+Problems with the approach:
 
 <https://arxiv.org/pdf/2007.04470>
 
 
 <https://dr.lib.iastate.edu/server/api/core/bitstreams/333bb46d-c759-4202-8f41-0e921271de53/content>
 
-good reviews <https://snunnari.github.io/SBE/mclachlan.pdf>
+
+Good reviews:
+
+<https://snunnari.github.io/SBE/mclachlan.pdf>
 
 <https://en.wikipedia.org/wiki/Mixture_model?wprov=sfti1>
 
 <https://www.sciencedirect.com/topics/medicine-and-dentistry/mixture-model>
 
 
+Here we use a Bayesian implementation of the finite mixture model to infer membership of observations to latent (unobserved) group $k$ from unlabelled data and infer the overall mixture weights $w_k$ and mean values of each group, $\mu_i$:
 
-We can cluster the data using a Bayesian mixture model. The aim of this task is to infer a a latent grouping (hidden structure) from unlabelled data.
-
-
-Unidimensional Kernel Mixture model with K pre-specified components that cover the space
-
-$\\alpha$ = concentration parameter of 1 (or k, the dimension of the
-  Dirichlet distribution, by the definition used in the topic modelling
-  literature) results in all sets of probabilities being equally likely, i.e.,
-  in this case the Dirichlet distribution of dimension k is equivalent to a
-  uniform distribution over a k-1-dimensional simplex. This is not the same as
-  what happens when the concentration parameter tends towards infinity. In the
-  former case, all resulting distributions are equally likely (the distribution
-  over distributions is uniform). In the latter case, only near-uniform
-  distributions are likely (the distribution over distributions is highly
-  peaked around the uniform distribution).
-
-label="observation (i)", ylabel="cluster (k)", legend=false, ) end
-
-
-https://turing.ml/dev/tutorials/01-gaussian-mixture-model/
-
-
-#### Finite mixtures model
-
-<https://turinglang.org/stable/tutorials/01-gaussian-mixture-model/>
-
-<https://mc-stan.org/users/documentation/case-studies/identifying_mixture_models.html>
-
-we want to infer the mixture weights, the parameters $\mu_i$ and the assignment of each datum to a cluster i
-
-standard normal distributions as priors for $\mu$ and a Dirichlet distribution with parameters $\alpha_i$ as prior for $w$
 
 $$
 \begin{aligned} 
@@ -1044,14 +971,20 @@ x_i & \sim \mathcal{N}([\mu_{z_i}, \mu_{z_i}]^\mathsf{T}, I) \qquad
 \end{aligned}
 $$
 
-Here (next) we estimate these latent modal size estimates, W = log(carapace width; mm) and the potential growth increments and simultaneously classifiy the observations. Density and variability estimation via Bayesian Kernel Mixture Models (BKMM) is done in Julia
+Gaussian distributions are used as priors for $\mu$ and a Dirichlet distribution with concentration parameters $\alpha_i$ as prior for $w$.
+
+<add more details of parameters>
+
+https://turing.ml/dev/tutorials/01-gaussian-mixture-model/
+
+This Bayesian Kernel Mixture Model (BKMM) is implemented in Julia (see below).
 
 NOTE: this approach is slow. Use operationally at each set level is not viable.  Test again at annual level of aggregation.
 
   
 
 #### Computation
- 
+
 We define a latent kernel mixture model with initial guesses centered on these *naive local* modal stage. This process decomposes the observed size structure into approximate composition/representation of *stage* (instar, maturity, sex): *alpha* (relative composition of each stage), *sigma_mean* (standard deviation of sizes in each stage), and *imode* (the latent modes of each stage). These are determined from Bayesian kernel mixture models.
 
 For more details, see: https://journal.r-project.org/articles/RJ-2023-043/
@@ -1178,7 +1111,8 @@ This model ignores environmental covariates and does not permit instar modes to 
 #| echo: false
 #| label: kmm-basic-model
 
-# run mcmc sampling model size distributions across strata (predicted modes are deterministically fixed)
+# run mcmc sampling model size distributions across strata 
+# predicted modes are deterministically fixed
 # aggregated by region and year
 
 outdir = projectdir( 
@@ -1782,7 +1716,7 @@ for (stage in p$stages) {
       vn = variabletomodel
 
       fit = NULL; gc()
-      fit = carstm_model( p=p, DS="modelled_fit") #,  sppoly = pg )
+      fit = carstm_model( p=p, DS="modelled_fit") #,  sppoly = pg 
 
       pld = data.table(
         observed = MM[iobs , ..vn] , 
@@ -1967,35 +1901,23 @@ and then tweaked a bit as carapace width cannot shrink:
  
 # find most frequent peaks and valleys .. if recreating this, stepping through the function is probably best 
 # as there are many decisions that need to be made   
-bw3 =list( 
-  "0"=list("0"=0.03, "1"=0.03 ), #male( imm, mat)
-  "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
-)
+
+# defaults
+# p$bw_modal =list( 
+#  "0"=list("0"=0.03, "1"=0.03 ), #male( imm, mat)
+#  "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
+#)
 
 
-M = sizestructure_db(p=p, toget="kernel_density_modes", 
-  bw=bw2, np=np, 
-  pg=pg, sigdigits=sigdigits, n_min=nmin,
-  lowpassfilter=lowpassfilter, lowpassfilter2=lowpassfilter2,  
-  redo=FALSE )
+M = sizestructure_db(p=p, toget="kernel_density_modes" )
 
-mds = sizestructure_db(
-  p=p, 
-  toget="modal_groups", 
-  bw=bw3, 
-  np=np, ldx=ldx, 
-  M=M, 
-  sigdigits=sigdigits, lowpassfilter2=lowpassfilter2, redo=TRUE 
-)
+mds = sizestructure_db(p=p, toget="modal_groups", redo=TRUE )
 
 
 ``` 
 
 These are the results:
-
-
-
-
+ 
 
 Female growth of modes (t vs t-1)
 
@@ -2209,10 +2131,17 @@ growth with modes from kde
 
 
 ```{r}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: growth-increments
 
 # growth increments
+
 compute_growth_increments = FALSE
+
 if (compute_growth_increments) {
+
   sex = "m"; variabletomodel = "imodes"
   psims = aegis::read_write_fast( file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".rdz", sep="") ) )
 
@@ -2289,7 +2218,7 @@ for (nm in names(grw)) {
 # first merge environmental data from SS$M, the data from the prediction surface
 # note time for increments is for the terminal time point 
 
-dd = degreedays( pg, years, t0)
+dd = degreedays( pg, p$yrs, t0)
 
 
 M = SS$M[, c("space", "year", "z", "t", "log.substrate.grainsize", "pca1" ), with=FALSE] 

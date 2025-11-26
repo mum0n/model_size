@@ -143,9 +143,51 @@ p$theta = list(
     ) 
 )
    
-
+# key defaults that define kernel densities:
+p$np = 512  # # discretizations in fft
 p$xrange = c(8, 170)  # size range of data (CW' mm)
+p$xr = round( log(p$xrange), digits=2 ) 
+p$ldx = diff(p$xr)/(p$np-1)
+p$xvals = seq( p$xr[1], p$xr[2], by=p$ldx ) 
+
+
+# bw is on log scale ... approx (log) SD for each interval  
+#  data_resolution is ~1 to 2 mm (observation error)
+#  but some catgories are wider than others :
+#   male imm  = 10 to 100 mm
+#   male mat  = 60 to 168 mm
+#   female imm = 10 to 45 mm
+#   female mat = 35 to 65 mm
+
+# bw = 0.1 # ~ 20 ldx ~ overly smooth
+# bw = 0.05  # used for modal analysis
+# bw = 0.025  # optimal for sparse data  <<<<<< DEFAULT for histograms >>>>>>
+# bw = 0.01 # 2 ldx is too noisy for arithmetic but good for geometric means
+
+# class-specific band widths (for aggregation)
+p$bw =list( 
+  "0"=list("0"=0.05, "1"=0.05), #male( imm, mat)
+  "1"=list("0"=0.04, "1"=0.04 ) #female( imm, mat)
+)
  
+
+# class-specific band widths (for modal group identification)
+p$bw_modal =list( 
+  "0"=list("0"=0.03, "1"=0.03 ), #male( imm, mat)
+  "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
+)
+
+
+# aggregation constraints/options
+p$kernel="gaussian"
+p$strata = "yasm"
+p$ti_window=c(-4,4)  # include data from +/1 4 weeks 
+p$sigdigits = 3
+p$nmin = 3
+p$lowpassfilter=0.001
+p$lowpassfilter2=0.001
+ 
+
 p$regions_list = list( 
   cfanorth="cfanorth", 
   cfasouth="cfasouth", 

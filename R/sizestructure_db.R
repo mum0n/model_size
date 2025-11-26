@@ -4,31 +4,14 @@ sizestructure_db = function(
     datasource = "snowcrab",   
     regions=c("cfanorth", "cfasouth", "cfa4x"), 
     redo=FALSE, 
-    span = NULL,
-    pg=NULL,
- 
-    np = 512,
-    ldx=NULL,
-    bw =list( 
-        "0"=list("0"=0.05, "1"=0.05), #male( imm, mat)
-        "1"=list("0"=0.04, "1"=0.04 ) #female( imm, mat)
-    ),
-    kernel="gaussian",   
-    ti_window=c(-4,4),
-    n_min=1,
-    sigdigits=2,
-    strata="yasm",
-    lowpassfilter=0,
-    lowpassfilter2=0.001,
     plot_solutions = FALSE,
     tlevels=c(-2, 6),
     zlevels=c(0, 100),
     Y=NULL, 
     ... ) { 
-    
-    if ( toget=="rawdata") {
-          
 
+
+    if ( toget=="rawdata") {
 
         # sex codes
         # male = 0
@@ -135,21 +118,7 @@ sizestructure_db = function(
 
 
     if (toget == "crude" ) {
-
-        # note ranges in CW will be log transformed later
-        if (is.null(span)) {
-            if (exists("span", p)) {
-                span = p$span
-            } else {
-                span = function( sexid) {
-                    switch(sexid,
-                        male   = c( 5, 155, 50),
-                        female = c( 5, 95,  30)
-                    )
-                }
-            }
-        }
-
+ 
         savedir = file.path( p$project_output_directory, "crude")
         if (!dir.exists(savedir)) dir.create(savedir, recursive=TRUE, showWarnings =FALSE) 
 
@@ -178,7 +147,7 @@ sizestructure_db = function(
 
         for (j in c("male", "female")) {
             k = which( P$sex==sexid[[j]] )
-            P$cwd[k] = discretize_data( x=P$cw[k], span=span(j) )  
+            P$cwd[k] = discretize_data( x=P$cw[k], span=p$span(j) )  
         }
 
         P = P[ is.finite(cwd) ,]
@@ -256,7 +225,7 @@ sizestructure_db = function(
             read_write_fast( data=M, fn=fn )
         }
 
-        return(sizestructure_db(p=p, toget="crude", span=span, Y=Y, redo=FALSE))     
+        return(sizestructure_db(p=p, toget="crude", Y=Y, redo=FALSE))     
     }
  
  
@@ -266,21 +235,18 @@ sizestructure_db = function(
 
         if (0) {
             pg = areal_units(p=p, areal_units_directory=p$project_data_directory)
-            np = 512 
-            span = NULL 
-            ldx=NULL 
                 
-            bw =list( 
+            p$bw =list( 
                 "0"=list("0"=0.05, "1"=0.05), #male( imm, mat)
                 "1"=list("0"=0.04, "1"=0.04 ) #female( imm, mat)
             )
-            kernel="gaussian"     
-            ti_window=c(-4,4) 
-            n_min=1 
-            sigdigits=2 
-            strata="yasm" 
-            lowpassfilter=0 
-            lowpassfilter2=0.001 
+            p$kernel="gaussian"     
+            p$ti_window=c(-4,4) 
+            p$n_min=1 
+            p$sigdigits=2 
+            p$lowpassfilter=0 
+            p$lowpassfilter2=0.001 
+            p$strata="yasm" 
             plot_solutions = FALSE 
             tlevels=c(-2, 6)
             zlevels=c(0, 100)
@@ -288,19 +254,6 @@ sizestructure_db = function(
         }
 
         
-        # note ranges in CW will be log transformed later
-        if (is.null(span)) {
-            if (exists("span", p)) {
-                span = p$span 
-            } else {
-                span = function( sexid) {
-                    switch(sexid,
-                        male   = c( 5, 155, 50),
-                        female = c( 5, 95,  30)
-                    )
-                }
-            }
-        }
         
         # sex codes
         # male = 0
@@ -318,16 +271,13 @@ sizestructure_db = function(
         }
 
 
-        kdtype = paste( "kernel_densities", strata, np, sep="_" )
+        kdtype = paste( "kernel_densities", p$strata, p$np, sep="_" )
 
         savedir = file.path( p$project_output_directory, "size_structure", kdtype )
         dir.create(savedir, recursive=TRUE, showWarnings =FALSE) 
  
         fn0 = file.path( savedir, "kernel_density_weighted.rdz" )
 
-        xr = round( log(p$xrange), digits=2 ) 
-        if (is.null(ldx)) ldx = diff(xr)/(np-1)
-        xvals = seq( xr[1], xr[2], by=ldx )
     
         if (!redo) {
 
@@ -356,17 +306,7 @@ sizestructure_db = function(
             M$sex = as.character(M$sex)
             M$mat = as.character(M$mat)
             M$au = as.character(M$au)
-
-            attr(M, "xrange") = p$xrange
-            attr(M, "xvals") = xvals
-            attr(M, "xr") = xr
-            attr(M, "bw") = bw
-            attr(M, "ldx") = ldx
-            attr(M, "np") = np
-            attr(M, "ti_window") = ti_window
-            attr(M, "pg") = pg
-            attr(M, "sigdigits") = sigdigits
-            
+ 
             read_write_fast( data=M, fn=fn0 )
 
             return(M)            
@@ -388,19 +328,21 @@ sizestructure_db = function(
         sexes = c("0", "1")  # 0 ,1, 2 male, female, unknown
         mats = c("0", "1")   # 0 ,1, 2  imm, mat, unknown
 
+        pg = areal_units(p=p, areal_units_directory=p$project_data_directory)
+
         nbs = attributes(pg)$nb$nbs  # immediate neighbours only
      
-        if (strata=="yasm") {
+        if (p$strata=="yasm") {
             # weekly basis
-            M$ti = M$year + round(M$dyear, digits=sigdigits)         # discretize time quarterly
+            M$ti = M$year + round(M$dyear, digits=p$sigdigits)         # discretize time quarterly
             # if (0) { yr=2022; wk=40; auid="360"; sx="1"; ma="1" }
             for (yr in yrs) {
                 out1 = NULL
                 out2 = NULL
                 # print(yr)
                 for (wk in 1:52) {
-                    mti1 = yr + (wk + ti_window[1])/52
-                    mti2 = yr + (wk + ti_window[2])/52
+                    mti1 = yr + (wk + p$ti_window[1])/52
+                    mti2 = yr + (wk + p$ti_window[2])/52
                     kt = M[ ti >= mti1 & ti <= mti2, which=TRUE ]
                     if ( length(kt) < 1)  next() 
                     auids = na.omit(unique(M$space_id[kt]))
@@ -419,9 +361,9 @@ sizestructure_db = function(
                                 if (N < 1) next() 
                                 tout = paste("| sex: ", sx, "| mat: ", ma, "| au: ", auid, "|year: ", yr, "| week: ", wk, "| N: ", N ) 
                                 message(tout )
-                                uu = try( density( M$logcw[n], bw=bw[[sx]][[ma]], kernel=kernel, from=xr[1], to=xr[2], n=np, weights=M$wt[n], na.rm=TRUE ))
+                                uu = try( density( M$logcw[n], bw=p$bw[[sx]][[ma]], kernel=p$kernel, from=p$xr[1], to=p$xr[2], n=p$np, weights=M$wt[n], na.rm=TRUE ))
                                 if (inherits(uu, "class-error")) next()
-                                uu$y = uu$y / sum(uu$y) / ldx  # density
+                                uu$y = uu$y / sum(uu$y) / p$ldx  # density
                                 out1 = rbind( out1, data.table( sex=sx, mat=ma, au=auid, year=yr, wk=wk, Nsample=N, Neffective=round( sum( M$wt[n]) ) )) 
                                 out2 = rbind( out2, data.table( t(uu$y))  )
                                 res = NULL
@@ -436,10 +378,10 @@ sizestructure_db = function(
                 print(fnout ) 
             }
 
-        } else if (strata=="smryzt")  {
+        } else if (p$strata=="smryzt")  {
 
             # quarterly basis if (0) { yr=2022; season=40; au="360"; sex="1"; mat="1" }
-            M$ti = M$year + round(trunc(M$julian / 365 * 4 ) / 4, digits=sigdigits)         # discretize time quarterly
+            M$ti = M$year + round(trunc(M$julian / 365 * 4 ) / 4, digits=p$sigdigits)         # discretize time quarterly
             seasons = seq(0, 0.75, by=0.25)  #            
             for (yr in yrs) {
                 out1 = NULL
@@ -463,9 +405,9 @@ sizestructure_db = function(
 
                                 tout = paste("|sid: ", si, "| sex: ", sx, "| mat: ", ma, "| au: ", au, "|year: ", yr, "| season: ", season, "| N: ", N ) 
                                 message(tout )
-                                uu = try( density( M$logcw[n], bw=bw[[sx]][[ma]], kernel=kernel, from=xr[1], to=xr[2], n=np, weights=M$wt[n], na.rm=TRUE ))
+                                uu = try( density( M$logcw[n], bw=p$bw[[sx]][[ma]], kernel=p$kernel, from=p$xr[1], to=p$xr[2], n=p$np, weights=M$wt[n], na.rm=TRUE ))
                                 if (inherits(uu, "class-error")) next()
-                                uu$y = uu$y / sum(uu$y) / ldx  # density
+                                uu$y = uu$y / sum(uu$y) / p$ldx  # density
                                 
                                 out1 = rbind( out1, data.table( sid=si, sex=sx, mat=ma, au=au, year=yr, season=season, Nsample=N, Neffective=round( sum( M$wt[n]) ) )) 
                                 out2 = rbind( out2, data.table( t(uu$y))  )
@@ -481,15 +423,14 @@ sizestructure_db = function(
                 print(fnout ) 
             }
         }
-        return ( sizestructure_db(p=p, toget="kernel_density_weighted", strata=strata,  pg=pg, ti_window=ti_window,  sigdigits=sigdigits,  
-            bw=bw, np=np, Y=Y, redo=FALSE ))
+        return ( sizestructure_db(p=p, toget="kernel_density_weighted", Y=Y, redo=FALSE ))
     }
  
     # -----------------
 
     if (toget=="kernel_density_modes") { 
 
-        fn = file.path( p$project_output_directory, paste("size_distributions_summary_", strata, ".rdz", sep="") )
+        fn = file.path( p$project_output_directory, paste("size_distributions_summary_", p$strata, ".rdz", sep="") )
         
         O = NULL
         if (!redo) {
@@ -499,19 +440,8 @@ sizestructure_db = function(
 
         # spatial window is nearest-neighbours in spatial graph
  
-        M = sizestructure_db(p=p, toget="kernel_density_weighted", 
-          bw=bw, np=np, ldx=ldx, Y=years, strata=strata, pg=pg, 
-          sigdigits=sigdigits, ti_window=ti_window  )   
+        M = sizestructure_db(p=p, toget="kernel_density_weighted", Y=years  )   
    
-        xvals =   attr(M, "xvals")
-        xr =   attr(M, "xr")
-        bw =   attr(M, "bw")
-        ldx =   attr(M, "ldx")
-        np =   attr(M, "np")
-        ti_window = attr(M, "ti_window")
-        pg = attr(M, "pg")
-        sigdigits = attr(M, "sigdigits")  
-
         zlevels=c(0, 100)
         tlevels= c(-2, 6)
         sexes=c("0", "1")
@@ -522,7 +452,7 @@ sizestructure_db = function(
         peak_values = data.table()
         trough_values = data.table()
 
-        if (strata=="smryzt") {
+        if (p$strata=="smryzt") {
             aus=c("cfanorth", "cfasouth", "cfa4x")
             
             if (exists("sid", M)) {
@@ -541,8 +471,8 @@ sizestructure_db = function(
             }
 
             K = aggregate_by( M, 
-                agg_by = c("year", "sex", "mat", "region", "zi", "ti" ),  # strata
-                xvals= xvals,
+                agg_by = c("year", "sex", "mat", "region", "zi", "ti" ),  # p$strata
+                xvals= p$xvals,
                 recale_density_to_numerical_density=TRUE,  ### keep normalized to reduce scale issues
                 agg_function = function(x) {exp(mean( log(x), na.rm=TRUE) ) }, # geometric_mean 
                 add_offset=TRUE 
@@ -558,10 +488,10 @@ sizestructure_db = function(
                 if (!exists(vn, K)) next()
 
                 mds = identify_modes( Z=as.vector(t(K[, ..vn])),
-                    sigdigits=sigdigits, 
-                    lowpassfilter=lowpassfilter, lowpassfilter2=lowpassfilter2, 
-                    dx=ldx, X=xvals,
-                    n_min=n_min, plot_solutions=TRUE )   
+                    sigdigits=p$sigdigits, 
+                    lowpassfilter=p$lowpassfilter, lowpassfilter2=p$lowpassfilter2, 
+                    dx=p$ldx, X=p$xvals,
+                    n_min=p$nmin, plot_solutions=TRUE )   
                 if (is.null(mds)) next()
                 if (inherits(mds, "try-error")) next()
                 # out[[s]][[m]][[r]][[y]][[z]][[t]] = mds
@@ -576,12 +506,14 @@ sizestructure_db = function(
             setnames(peak_values, "V7", "peak_values")
             setnames(trough_values, "V7", "trough_values")
 
-        } else if (strata=="yasm" ) {
-       
+        } else if (p$strata=="yasm" ) {
+            
+            pg = areal_units(p=p, areal_units_directory=p$project_data_directory)
+
             aus=pg$AUID
             K = aggregate_by( M, 
-                agg_by = c( "year", "au", "sex", "mat" ),  # strata
-                xvals= xvals,
+                agg_by = c( "year", "au", "sex", "mat" ),  # p$strata
+                xvals= p$xvals,
                 recale_density_to_numerical_density=TRUE,  ### keep normalized to reduce scale issues
                 agg_function = function(x) {exp(mean( log(x), na.rm=TRUE) ) }, # geometric_mean 
                 add_offset=TRUE 
@@ -593,10 +525,10 @@ sizestructure_db = function(
                 vn = paste(y,a,s,m, sep="_" )
                 if (!exists(vn, K)) next()
                 mds = identify_modes( Z=as.vector(t(K[, ..vn])),
-                  sigdigits=sigdigits, 
-                    lowpassfilter=lowpassfilter, lowpassfilter2=lowpassfilter2, 
-                    dx=ldx, X=xvals,
-                    n_min=n_min, plot_solutions=TRUE)   
+                  sigdigits=p$sigdigits, 
+                    lowpassfilter=p$lowpassfilter, lowpassfilter2=p$lowpassfilter2, 
+                    dx=p$ldx, X=p$xvals,
+                    n_min=p$nmin, plot_solutions=TRUE)   
                 if (is.null(mds)) next()
                 if (inherits(mds, "try-error")) next()
                 peaks = rbind(peaks, cbind(s, m, a, y, t(t(mds[["peaks"]])) ))
@@ -637,9 +569,9 @@ sizestructure_db = function(
             if (length(Z) < 1) next()
             mds = identify_modes( 
                 Z=Z, # W=W,
-                n_min=n_min, 
-                lowpassfilter=lowpassfilter, lowpassfilter2=lowpassfilter2,
-                xvals=xvals, dx=ldx, bw=bw[[sx]][[ma]], sigdigits=sigdigits, plot=TRUE) 
+                n_min=p$nmin, 
+                lowpassfilter=p$lowpassfilter, lowpassfilter2=p$lowpassfilter2,
+                xvals=p$xvals, dx=p$ldx, bw=p$bw[[sx]][[ma]], sigdigits=p$sigdigits, plot=TRUE) 
             if (is.na(mds$N)) next()
 
             out = rbind( out, data.table( cw=mds$peaks, mat=ma, sex=sx, year=yr) )
@@ -656,7 +588,7 @@ sizestructure_db = function(
         out = NULL
         dists = NULL
         
-        if (strata=="yasm") {
+        if (p$strata=="yasm") {
             
             for (yr in years) {
             for (sx in c("0", "1")) {
@@ -669,9 +601,9 @@ sizestructure_db = function(
             if (length(Z) < 1) next()
             mds = identify_modes( 
                 Z=Z, # W=W,
-                n_min=n_min, 
-                lowpassfilter=lowpassfilter, lowpassfilter2=lowpassfilter2,
-                xvals=xvals, dx=ldx, bw=bw[[sx]][[ma]], sigdigits=sigdigits, plot=TRUE) 
+                n_min=p$nmin, 
+                lowpassfilter=p$lowpassfilter, lowpassfilter2=p$lowpassfilter2,
+                xvals=p$xvals, dx=p$ldx, bw=p$bw[[sx]][[ma]], sigdigits=p$sigdigits, plot=TRUE) 
             if (is.na(mds$N)) next()
 
             out = rbind( out, data.table( cw=mds$peaks, mat=ma, sex=sx, year=yr, auid=au) )
@@ -683,7 +615,7 @@ sizestructure_db = function(
             
             }}}}
          
-        } else if (strata=="smryzt") {
+        } else if (p$strata=="smryzt") {
             
             regions = unique(O[[vn]]$r)
             tis = unique(O[[vn]]$t)
@@ -699,9 +631,9 @@ sizestructure_db = function(
             if (length(Z) < 1) next()
 
             mds = identify_modes( 
-                Z=Z,  n_min=n_min, 
+                Z=Z,  n_min=p$nmin, 
                 lowpassfilter=0.0, lowpassfilter2=0,
-                xvals=xvals, dx=ldx, bw=bw[[sx]][[ma]], sigdigits=sigdigits, plot=TRUE) 
+                xvals=p$xvals, dx=p$ldx, bw=p$bw[[sx]][[ma]], sigdigits=p$sigdigits, plot=TRUE) 
             if (is.na(mds$N)) next()
 
             out = rbind( out, data.table( cw=mds$peaks, mat=ma, sex=sx, year=yr) )
@@ -715,7 +647,7 @@ sizestructure_db = function(
  
         }
 
-        O[[strata]] = list(peaks=out, densities=dists)
+        O[[p$strata]] = list(peaks=out, densities=dists)
  
         read_write_fast( data=O, fn=fn )
         return(O)
@@ -740,37 +672,37 @@ sizestructure_db = function(
             }        
         }
         
+
         message("These solutions need to be checked carefully and cleaned appropriately ...")
-
-        survey_size_freq_dir = file.path( p$annual.results, "figures", "size.freq", "survey")
-
-        if (is.null(M)) M = sizestructure_db(p=p, toget="kernel_density_modes", strata=strata )
+ 
+        plotsavedir = file.path( p$project_output_directory, "figures", "modal_groups" )
         
+        M = sizestructure_db(p=p, toget="kernel_density_modes" )
         MI = M[["ysm"]][["densities"]]
         MO = M[["ysm"]][["peaks"]]
 
-        fn = file.path(survey_size_freq_dir, "modes_male_imm_allsolutions.png" )
+        fn = file.path(plotsavedir, "modes_male_imm_allsolutions.png" )
         png(filename=fn, width=1000,height=600, res=144)
             plot(density~cw, MI[sex=="0" & mat=="0" , ], pch="." )
             abline(v=MO[ sex=="0" & mat=="0", cw ], col="gray", lwd=0.5 )
         dev.off()
         print(fn)
 
-        fn = file.path(survey_size_freq_dir, "modes_male_mat_allsolutions.png" )
+        fn = file.path(plotsavedir, "modes_male_mat_allsolutions.png" )
         png(filename=fn, width=1000,height=600, res=144)
             plot(density~cw, MI[sex=="0" & mat=="1" , ], pch=".")  # NOTE misses the largest size group
             abline(v=MO[ sex=="0" & mat=="1", cw ], col="gray" )
         dev.off()
         print(fn)
 
-        fn = file.path(survey_size_freq_dir, "modes_female_imm_all_solutions.png" )
+        fn = file.path(plotsavedir, "modes_female_imm_all_solutions.png" )
         png(filename=fn, width=1000,height=600, res=144)
             plot(density~cw, MI[sex=="1" & mat=="0" , ], pch=".")
             abline(v=MO[ sex=="1" & mat=="0", cw ], col="gray" )
         dev.off()
         print(fn)
 
-        fn = file.path(survey_size_freq_dir, "modes_female_mat_all_solutions.png" )
+        fn = file.path(plotsavedir, "modes_female_mat_all_solutions.png" )
         png(filename=fn, width=1000,height=600, res=144)
             plot(density~cw, MI[sex=="1" & mat=="1" , ], pch=".")
             abline(v=MO[ sex=="1" & mat=="1", cw ], col="gray" )
@@ -779,32 +711,32 @@ sizestructure_db = function(
 
         # collect point estimates 
  
-        fn = file.path(survey_size_freq_dir, "modes_male_imm.png" )
+        fn = file.path(plotsavedir, "modes_male_imm.png" )
         png(filename=fn, width=1000,height=600, res=144)
         mi = identify_modes( Z = unlist(MO[ sex=="0" & mat=="0" , cw]),  
-            lowpassfilter2=lowpassfilter2, xvals=xvals, dx=ldx, bw=bw[["0"]][["0"]], sigdigits=3, plot=TRUE) 
+            lowpassfilter2=p$lowpassfilter2, xvals=p$xvals, dx=p$ldx, bw=p$bw_modal[["0"]][["0"]], sigdigits=3, plot=TRUE) 
         abline(v=4, col="orange", lwd=2, lty="dashed") # likely a nonmode
         dev.off()
         print(fn)
 
-        fn = file.path(survey_size_freq_dir, "modes_male_mat.png" )
+        fn = file.path(plotsavedir, "modes_male_mat.png" )
         png(filename=fn, width=1000,height=600, res=144)
         mm = identify_modes( Z = unlist(MO[ sex=="0" & mat=="1" , cw]),  
-            lowpassfilter2=lowpassfilter2, xvals=xvals, dx=ldx, bw=bw[["0"]][["1"]], sigdigits=3, plot=TRUE) 
+            lowpassfilter2=p$lowpassfilter2, xvals=p$xvals, dx=p$ldx, bw=p$bw_modal[["0"]][["1"]], sigdigits=3, plot=TRUE) 
         dev.off()
         print(fn)
 
-        fn = file.path(survey_size_freq_dir, "modes_female_imm.png" )
+        fn = file.path(plotsavedir, "modes_female_imm.png" )
         png(filename=fn, width=1000,height=600, res=144)
         fi = identify_modes( Z = unlist(MO[ sex=="1" & mat=="0" , cw]),  
-            lowpassfilter2=lowpassfilter2, xvals=xvals, dx=ldx, bw=bw[["1"]][["0"]], sigdigits=3, plot=TRUE) 
+            lowpassfilter2=p$lowpassfilter2, xvals=p$xvals, dx=p$ldx, bw=p$bw_modal[["1"]][["0"]], sigdigits=3, plot=TRUE) 
         dev.off()
         print(fn)
     
-        fn = file.path(survey_size_freq_dir, "modes_female_mat.png" )
+        fn = file.path(plotsavedir, "modes_female_mat.png" )
         png(filename=fn, width=1000,height=600, res=144)
         fm = identify_modes( Z = unlist(MO[ sex=="1" & mat=="1" , cw]),  
-            lowpassfilter2=lowpassfilter2, xvals=xvals, dx=ldx, bw=bw[["1"]][["1"]], sigdigits=3, plot=TRUE) 
+            lowpassfilter2=p$lowpassfilter2, xvals=p$xvals, dx=p$ldx, bw=p$bw_modal[["1"]][["1"]], sigdigits=3, plot=TRUE) 
         dev.off()
         print(fn)
     
@@ -828,7 +760,7 @@ sizestructure_db = function(
         f = mds[ sex=="f", ][order(mat, cw),]
         f$seq = 1:nrow(f)
 
-        fn = file.path(survey_size_freq_dir, "modes_female_growth_trajectory_empirical.png" )
+        fn = file.path(plotsavedir, "modes_female_growth_trajectory_empirical.png" )
         png(filename=fn, width=1000,height=600, res=144)
             plot( cw ~ seq, f)
             i =4:6  # hyp: imm just under corresponding mature size
@@ -844,7 +776,7 @@ sizestructure_db = function(
         m$seq = 1:nrow(m)
 
 
-        fn = file.path(survey_size_freq_dir, "modes_male_growth_trajectory_empirical.png" )
+        fn = file.path(plotsavedir, "modes_male_growth_trajectory_empirical.png" )
         png(filename=fn, width=1000,height=600, res=144)
             plot( cw ~ seq, m)
             i = 5:7 # hyp: imm just under corresponding mature size
@@ -871,7 +803,7 @@ sizestructure_db = function(
         }
 
      
-        fn = file.path(survey_size_freq_dir, "modes_female_growth_trajectory_empirical_tweaked.png" )
+        fn = file.path(plotsavedir, "modes_female_growth_trajectory_empirical_tweaked.png" )
         png(filename=fn, width=1000,height=600, res=144)
            # verify:
             f = mds[ sex=="f", ][order(mat, cw),]
@@ -900,7 +832,7 @@ sizestructure_db = function(
 
  
      
-        fn = file.path(survey_size_freq_dir, "modes_male_growth_trajectory_empirical_tweaked.png" )
+        fn = file.path(plotsavedir, "modes_male_growth_trajectory_empirical_tweaked.png" )
         png(filename=fn, width=1000,height=600, res=144)
             # verify:
             m = mds[ sex=="m", ][order(mat, cw),]
@@ -1019,7 +951,7 @@ sizestructure_db = function(
         mds$cwlb = exp(mds$predicted - 1.96*mds$predicted_se )
         mds$cwub = exp(mds$predicted + 1.96*mds$predicted_se )
     
-        fn = file.path(survey_size_freq_dir, "modes_growth_female.png" )
+        fn = file.path(plotsavedir, "modes_growth_female.png" )
         png(filename=fn, width=1000, height=600, res=144)
             f = mds[ sex=="f", ][order(mat, instar),]
             plot( cwmean ~ instar, f, type="p" )
@@ -1033,7 +965,7 @@ sizestructure_db = function(
             arrows(f$instar[i], f$cwmean[i], f$instar[i+1], f$cwmean[i+1], length=0.2 )
         dev.off()
     
-        fn = file.path(survey_size_freq_dir, "modes_growth_male.png" )
+        fn = file.path(plotsavedir, "modes_growth_male.png" )
         png(filename=fn, width=1000,height=600, res=144)
             m = mds[ sex=="m", ][order(mat, instar),]
             plot( cwmean ~ instar, m, type="p" )
@@ -1052,7 +984,7 @@ sizestructure_db = function(
         mds$diff_prop = mds$diff / exp(mds$logcw0)  # fractional increase
         mds$diffp = exp(mds$pred) - exp(mds$logcw0) 
 
-        fn = file.path(survey_size_freq_dir, "modes_growth_increment.png" )
+        fn = file.path(plotsavedir, "modes_growth_increment.png" )
         png(filename=fn, width=1000,height=600, res=144)
             plot(diff_prop ~ instar, mds, type="n")
             points(diff_prop ~ instar, mds[sex=="f" & mat=="i",], col="orange", pch=19 )
@@ -1149,7 +1081,7 @@ sizestructure_db = function(
 
       M = M[ year %in% p$yrs, ]
 
-      # M$cwd = discretize_data( x=M$cw, span=span )  
+      # M$cwd = discretize_data( x=M$cw, span=p$span( p$bioclass ) )  
 
       M$mat[ M$mat=="2" & M$shell != "1" ] = "1"  # override
    
@@ -1175,6 +1107,9 @@ sizestructure_db = function(
       set$space_id = NA
       Z = sf::st_as_sf( set[,.(lon, lat)], coords=c("lon", "lat") )
       st_crs(Z) = st_crs( projection_proj4string("lonlat_wgs84") )
+
+      pg = areal_units(p=p, areal_units_directory=p$project_data_directory)
+
       for (aoi in 1:nrow(pg)) {
           ks = which(!is.na( st_points_in_polygons(pts=Z, polys=pg[aoi, "AUID"], varname= "AUID" ) ))
           if (length(ks) > 0 ) set$space_id[ks] = pg$AUID[aoi]
