@@ -4,9 +4,12 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
   num.threads="1:1:1", improve.fit=FALSE, theta0 = NULL, restart=TRUE,
   inla.mode="compact", verbose=TRUE,
   control.inla = list( strategy="gaussian", int.strategy="eb",  fast=TRUE, h=0.01, force.diagonal=TRUE,  cmin=0.0001 ),
-  control.compute = list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, save.memory=TRUE )
+  control.compute = list( dic=TRUE, waic=TRUE, cpo=FALSE, config=TRUE, return.marginals.predictor=TRUE, save.memory=TRUE ),
+  working.directory = tempfile(pattern = "to_delete_", tmpdir =p$project_output_directory, fileext = "") 
   ) {
      
+    message("Files are being stored in the output directory. Remember to delete them once finished.\n", working.directory, "\n" )
+
     p$selection$biologicals_using_snowcrab_filter_class = p$bioclass
    
     fn = file.path(  
@@ -87,6 +90,7 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
             control.predictor = list(compute = TRUE,  link = 1), 
             control.compute=control.compute,
             control.mode= list( theta= theta0, restart=restart ),
+            working.directory =working.directory ,
             num.threads=num.threads
         ), silent=TRUE )
 
@@ -108,6 +112,7 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
             control.predictor = list(compute = TRUE,  link = 1), 
             control.compute = control.compute,
             control.mode= list( theta= theta0, restart=restart ),
+            working.directory =working.directory ,
             num.threads=num.threads
           ), silent=TRUE )
       }
@@ -126,6 +131,7 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
             control.inla = list( strategy = "auto", fast=FALSE, int.strategy="auto" ),
             control.predictor = list(compute = TRUE,  link = 1), 
             control.compute = control.compute,
+            working.directory =working.directory ,
             num.threads=num.threads
           ), silent=TRUE )
         }
@@ -149,6 +155,7 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
             control.inla = list( strategy="laplace", h=0.01, force.diagonal=TRUE, cmin=0.001 ),
             control.predictor = list(compute = TRUE,  link = 1), 
             control.compute= control.compute,
+            working.directory =working.directory ,
             num.threads=num.threads
           ), silent=TRUE )
         }
@@ -235,6 +242,7 @@ model_size_presence_absence = function( p, todo=c("fit", "fit_preds"),
             control.predictor = list(compute = TRUE,  link = 1), 
             control.compute = control.compute,
             control.mode = list( theta= fit_theta, restart=FALSE, fixed=TRUE ),  # force prediction without optimization
+            working.directory =working.directory ,
             num.threads=num.threads
         )
 

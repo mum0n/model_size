@@ -39,7 +39,7 @@ sizestructure_db = function(
         set$year = set$yr 
         set$region = NA
         for ( region in regions ) {
-            r = polygon_inside(x=set, region=aegis.polygons::polygon_internal_code(region), planar=F)
+            r = polygon_inside(x=set, region=region, planar=F)
             if (length(r) > 0) set$region[r] = region
         }
         set= set[!is.na(region), ]
@@ -462,7 +462,7 @@ sizestructure_db = function(
                 set = set[ , .(sid, t, z, lon, lat ) ]
                 set$region = NA
                 for ( region in aus ) {
-                    r = polygon_inside(x=set, region=aegis.polygons::polygon_internal_code(region), planar=F)
+                    r = polygon_inside(x=set, region=region, planar=F)
                     if (length(r) > 0) set$region[r] = region
                 }
                 set$zi = cut( set$z, breaks=c(zlevels, Inf ), labels=zlevels )   
@@ -1100,7 +1100,7 @@ sizestructure_db = function(
       
     #   set$region = NA
     #   for ( region in c("cfanorth", "cfasouth", "cfa4x") ) {
-    #       r = polygon_inside(x=set, region=aegis.polygons::polygon_internal_code(region), planar=FALSE)
+    #       r = polygon_inside(x=set, region=region, planar=FALSE)
     #       if (length(r) > 0) set$region[r] = region
     #   }
 

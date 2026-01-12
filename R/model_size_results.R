@@ -1,5 +1,8 @@
 model_size_results = function(p, todo="post_stratified_weights", 
-  nposteriors=5000, mc.cores=1, only_observations=TRUE ) {
+  nposteriors=1000, mc.cores=1, only_observations=TRUE,   
+  working.directory = tempfile(pattern = "to_delete_", tmpdir =p$project_output_directory, fileext = "")  ) {
+
+    message("Files are being stored in the output directory. Remember to delete them once finished.\n", working.directory, "\n" )
 
     # all classes (observations) 
     fn_post_stratified_weights = file.path( p$modeldir, "post_stratified_results.rdz" ) 
@@ -100,6 +103,8 @@ model_size_results = function(p, todo="post_stratified_weights",
         # operate upon "fit" first and remove from memory to reduce RAM demand 
         message("\nSampling and extracting for: ", bc)
 
+        inla.setOption( working.directory=working.directory )
+
         fit = model_size_presence_absence( p=p, todo="load_preds" ) 
 
         S = inla.posterior.sample( nposteriors, fit, add.names=FALSE, num.threads=mc.cores )
@@ -138,7 +143,7 @@ model_size_results = function(p, todo="post_stratified_weights",
         setDT(M)
   
         # observations (individual, i)
-        O = O[, .(
+        O = M[iobs, .(
             kuid, AUID, sid, crabno, year, cyclic, cwd, mat, sex,
             z, substrate.grainsize, dyear, dyri, t, pca1, pca2,
             cw, mass, data_offset,
@@ -157,14 +162,14 @@ model_size_results = function(p, todo="post_stratified_weights",
     
     
         # add associated areal unit level predictions (a)
-        O$auid_prob_mean = P$individual_prob_mean[ ip ]
-        O$auid_prob_sd = P$individual_prob_sd[ ip ]
+        O$auid_prob_mean = M$individual_prob_mean[ ip ]
+        O$auid_prob_sd = M$individual_prob_sd[ ip ]
     
-        O$auid_prob_mean2 = P$individual_prob_mean[ ipo ]
-        O$auid_prob_sd2 = P$individual_prob_sd[ ipo ]
+        O$auid_prob_mean2 = M$individual_prob_mean[ ipo ]
+        O$auid_prob_sd2 = M$individual_prob_sd[ ipo ]
         O$bioclass = bc
         
-        gc()
+        M=NULL; gc()
 
         # note: 
         # we will add surface area outside of this function 
@@ -185,8 +190,7 @@ model_size_results = function(p, todo="post_stratified_weights",
 
         out = rbind( out, O )  # retain for aggregate save at the end
 
-        O = NULL
-        gc()
+        O = NULL;         gc()
 
         # obtain joint-posterior samples
 
