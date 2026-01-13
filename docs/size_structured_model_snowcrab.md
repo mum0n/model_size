@@ -168,6 +168,7 @@ $$
 To re-iterate, this quantity ($\omega_i$, which we will refer to as a *Post-stratified weight*) provides a means of re-scaling observations to an expected number that respects the model-derived estimates of each individual's sampling environment as well as those of the larger, embedding areal unit/stratum, while simultaneously, carrying forward the joint error distributions of all factors being considered. As such, this weight, which can be computed from the predicted probabilities and offsets as $\omega_i= \frac{\theta_a O_a}{\theta_i O_i},$ can then be used to construct a size frequency distribution that respects the joint distribution of all modeled parameters and environmental conditions. 
 
 
+
 ### Computation
 
 First we load the necessary environment:
@@ -423,14 +424,13 @@ Each random spatial component follows a Conditional AutoRegressive (CAR) structu
 
 num.threads = "2:-1" # for parallel processing INLA options, -1 means try to be clever
  
+ maxld= -5782.4600 fn= 68 theta= 9.5277 -1.1492 1.3065 1.8221 -0.5658 1.5527 0.0185 0.1705 0.2242 -3.2049 -2.3076 2.0410 1.0551 -4.1246 10.8105 -2.8997 -0.7100 1.3266 [20.78, 550.519]
 
-maxld= -5808.4839 fn=315 theta= 9.5313 -1.0628 1.3082 1.8358 -0.5756 1.5487 0.0196 0.1739 0.2227 -3.1791 -2.3112 2.0438 1.0664 -4.0849 11.0493 -3.1462 -0.7335 1.2004 [21.35, 461.542]
-.gatelessgate
-
+theta0 = c(  9.5313, -1.0628, 1.3082, 1.8358, -0.5756, 1.5487, 0.0196, 0.1739, 0.2227, -3.1791, -2.3112, 2.0438, 1.0664, -4.0849, 11.0493, -3.1462, -0.7335, 1.2004)
 
 for ( bioclass in c(  "f.mat", "m.mat",  "m.imm", "f.imm" )) {
     p$bioclass = bioclass
-    fit = model_size_presence_absence( p=p, num.threads=num.threads )
+    fit = model_size_presence_absence( p=p, num.threads=num.threads, theta0=theta0 )
     fit = NULL; gc()
 }
 
