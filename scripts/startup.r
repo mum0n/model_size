@@ -118,8 +118,9 @@ p$formula = as.formula( paste(
 #    ' + f( space2, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, 
 #    group=inla.group( cwd2, method="quantile", n=9 ), hyper=H$besag, control.group=list(model="rw2", hyper=H$rw2)) ', 
 
-# start modes of paramaters closer to known solutions
+# start modes of paramaters closer to previous solutions
 
+# years : 2000 - 2024 
 p$theta = list(
     f.imm = c(
 9.8791, -2.1682, -1.3834, 1.3522, 0.7025, 0.7836, 2.2636,
@@ -142,7 +143,31 @@ p$theta = list(
 -1.1382, -0.3519, 1.0917
     ) 
 )
-   
+
+
+# shorter timeseries (2005 - 2025)
+p$theta_new = list(
+    f.imm = c(
+9.8791, -2.1682, -1.3834, 1.3522, 0.7025, 0.7836, 2.2636,
+4e-04, -0.6663, -0.5588, 0.1819, 3.201, 2.1819, -2.2789, 3.7194,
+-1.6712, -0.1614, 0.7537
+    ),
+    f.mat = c( 9.5313, -1.0628, 1.3082, 1.8358, -0.5756, 1.5487, 0.0196, 0.1739, 0.2227, -3.1791, -2.3112, 2.0438, 1.0664, 
+      -4.0849, 11.0493, -3.1462, -0.7335, 1.2004), # -5782.4600 
+    m.imm = c( 
+9.9177, -2.5095, -2.3357, 2.1833, 1.4904, 1.3417, 1.5166,
+0.0069, -0.4652, -0.2505, -1.338, 4.2284, 2.0433, -2.2634, 4.336,
+-1.3908, -0.7029, 0.8225
+    ),
+    m.mat = c(
+9.9007, 0.2020, 1.4624, 2.1964, 0.5940, 2.5761, 1.9452,
+0.0102, 0.2808, 1.2686, -0.1217, 3.2817, 4.2241, -2.4502, 4.4544,
+-1.1382, -0.3519, 1.0917
+    ) 
+)
+
+
+
 # key defaults that define kernel densities:
 p$np = 512  # # discretizations in fft
 p$xrange = c(8, 170)  # size range of data (CW' mm)

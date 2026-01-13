@@ -424,13 +424,9 @@ Each random spatial component follows a Conditional AutoRegressive (CAR) structu
 
 num.threads = "2:-1" # for parallel processing INLA options, -1 means try to be clever
  
- maxld= -5782.4600 fn= 68 theta= 9.5277 -1.1492 1.3065 1.8221 -0.5658 1.5527 0.0185 0.1705 0.2242 -3.2049 -2.3076 2.0410 1.0551 -4.1246 10.8105 -2.8997 -0.7100 1.3266 [20.78, 550.519]
-
-theta0 = c(  9.5313, -1.0628, 1.3082, 1.8358, -0.5756, 1.5487, 0.0196, 0.1739, 0.2227, -3.1791, -2.3112, 2.0438, 1.0664, -4.0849, 11.0493, -3.1462, -0.7335, 1.2004)
-
 for ( bioclass in c(  "f.mat", "m.mat",  "m.imm", "f.imm" )) {
     p$bioclass = bioclass
-    fit = model_size_presence_absence( p=p, num.threads=num.threads, theta0=theta0 )
+    fit = model_size_presence_absence( p=p, num.threads=num.threads, theta0=p$theta[[bioclass]] )
     fit = NULL; gc()
 }
 
