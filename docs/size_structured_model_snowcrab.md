@@ -423,7 +423,8 @@ Each random spatial component follows a Conditional AutoRegressive (CAR) structu
 # each bioclass
 
 num.threads = "2:-1" # for parallel processing INLA options, -1 means try to be clever
- 
+
+
 for ( bioclass in c(  "f.mat", "m.mat",  "m.imm", "f.imm" )) {
     p$bioclass = bioclass
     fit = model_size_presence_absence( p=p, num.threads=num.threads, theta0=p$theta[[bioclass]] )
@@ -524,7 +525,9 @@ if (debugging) {
  
 ```
 
-Now that we have predicted probabilities $\theta_i$ for each individual observation, and for each stratum $\theta_a$, we can compute post-stratification weights $\omega_i$ from the joint posteriors to carry them forward for further Bayesian analysis and synthesis. Here we will use the point estimates of posterior means for a quick summary.
+Now that we have predicted probabilities $\theta_i$ for each individual observation, and for each stratum $\theta_a$, we can compute post-stratification weights $\omega_i$ from the joint posteriors to carry them forward for further  analysis and synthesis. 
+
+But first a quick visualization using the point estimates of posterior means to get a sense of the pattern.
 
 
 ```{r post-stratification-weights}
@@ -847,9 +850,9 @@ n = nrow(ss) # n is the number of discretizations in the model fit for cwd
 
 ## 2. Size and abundance by stage
 
-In order to develop a stage-based (that is, sex, instar, maturity group specific) representation of snow crab, we need to be able to identify for each size distribution of each stage.  
+In order to develop a stage-based representation of snow crab, we need to be able to classify individuals to each stage. By stage, here we mean by sex, instar, and maturity status. Use of *apriori* information to classify individuals is a common technique from which, one can then proceed to compute numbers and/or areal density and ultimately some index of abundance. Such *apriori* classification criteria are obtained by tracking growth/moult increments from laboratory rearing, mark-recapture or inferred from individual size measurements in a survey. However, this can be problematic if stages overlap in size, as they often do. This is because most organisms, including snow crab, demonstrate envionmental sensitivity and plasticity in growth. Any imperfections in mimicking their natural deepwater environment in tanks will ultimately result in high natural mortality and stress. This can be due biases and varaibility associated with improper oxygen, pH, light levels, bacterial, fungal and dinoflagellate infections, food availability, and areal densities, etc. Such divergent environmental conditions alter growth patterns and so can increase mis-classification error. The use of mark-recapture of immature crab in the wild is more relaistic but also cost-prohibitive as natural mortality rates being high and sampling intensity and efficiency being low (due to large mesh sizes in traps and surveys being costly). Further, they undergo semi-annual to bi-annual molting and so tag-retention is highly variable. If tagged inside the body cavity (e.g. RFID), this would be less of an issue; however, it is less viable as they are consumed by humans resulting in health and safety considerations and potentially very high costs. 
 
-Use of *apriori* information to classify individuals is a common technique. These bounds in size classes are used to directly compute areal density. This is imperfect as large groups can bleed into adjacent smaller groups. Such *apriori* classification information can be obtained by tracking growth/moult increments from laboratory rearing, mark-recapture or inferred from individual size measurements in a survey. Like most organisms, snow crab demonstrate envionmental sensitivity and plasticity in growth, as such properly simulating the natural deepwater environment in tanks is both important and difficult; and usually result in high natural mortality; while mark-recapture of immature crab is not possible due to difficulties of tag retention through semi-annual to bi-annual molting frequencies. As such, here, we focus upon the third approach, inference from measurements derived from population-based surveys. 
+Due to the above issues, here, we focus upon inference from measurements derived from population-based surveys. 
 
 A naive *first approximation* of the above can be obtained by using kernel density representations of size frequency at *local* (small spatial area unit and temporal scales) nodes, paying particular attention to the location of peaks and valleys in the distirbutions. This *local* representation is used as there may be regional and time-dependent changes in size structure (strong year-classes, growth, poor environmental conditions, etc.). Sex and maturity status are determined from observation and where missing, inferred from size-shape changes (carapace width to chela height males or abdominal flap width for females). From these smooth representations of size structure, the locations of modes can be readily derived. Inference of the main modes of size for each sex-maturity group can then be determined. Once known, classification of individuals into each stage can then be accomplished in a second stage by making distributional assumptions (central tendency and variance) or simply using defined size boundaries (also called, "knife edged cuts") to classify individuals to stage. After which, models of size-specific growth, mortality etc. can be estimated.
 
@@ -1000,7 +1003,7 @@ First save a data dump for all size data to be read into Julia: initial estimate
 #### Data
 
 First bring in the base data.
- 
+
 ```{r}
 #| eval: true
 #| output: false 
