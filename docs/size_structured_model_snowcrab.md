@@ -191,6 +191,7 @@ source( file.path( project_directory, "scripts", "startup.r") )
 
 ```
 
+
 #### Naive IID representations
 
 Tabulations, that is, simple sums, along size bins ("cw"; carapace width) produce the usual size-frequency distributions. They can also be represented as arithmetic mean density or geometric mean densities. These all these naive representations assume exchangeability between individuals (*iid*), which is a big assumption.
