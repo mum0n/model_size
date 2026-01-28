@@ -26,7 +26,9 @@ It is of course, nearly impossible to correctly design or account for these dyna
 
 What this means is that observations may not be of equal importance in describing the system. For example, if an observations occurs with more frequently an area that is not representative of the system then it’s influence would be more elevated than it should be. Similarly, if an observation occurs in an area that is highly representative of the system, then it’s influence should be higher than it may be considered under the assumption of equal influence. In other words, simply adding the observations together becomes inappropriate. 
 
-A model based approach is one possible recourse to adjust and discover the relative importance of each observation in representing the overall system and ultimately reduce some of theses biases as much as possible. Here we explore the use of kernel mixture modelling to decompose the size structure at the level of each observation event. The modes and distributional parameters of the kernel mixture model are then modelled in space and time using a spatio-temporal CAR model. These are then reconstituted in the sampling domain to provide a model-based size structure, that accounts for these biases as much as possible through the use of environmental covariates as well as spatial and spatiotemporal random effects to absorb the unmeasured biases.
+A model based approach is one possible recourse to adjust and discover the relative importance of each observation in representing the overall system and ultimately reduce some of theses biases as much as possible (Post-stratified weights).
+
+Here we explore the use of kernel mixture modelling to decompose the size structure at the level of each observation event. The modes and distributional parameters of the kernel mixture model are then modelled in space and time using a spatio-temporal CAR model. These are then reconstituted in the sampling domain to provide a model-based size structure, that accounts for these biases as much as possible through the use of environmental covariates as well as spatial and spatiotemporal random effects to absorb the unmeasured biases.
 
 ## Main steps
 
