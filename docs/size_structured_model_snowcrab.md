@@ -847,6 +847,13 @@ n = nrow(ss) # n is the number of discretizations in the model fit for cwd
 ```
 
 
+#### Abundance from Post-Stratifed weights of a spatiotemporal (binomial) model
+
+
+Sum from directly size frequencies .. to do
+
+
+
 
 ## 2. Size and abundance by stage
 
@@ -855,16 +862,14 @@ In order to develop a stage-based representation of snow crab, we need to be abl
 Due to the above issues, here, we focus upon inference from measurements derived from population-based surveys. 
 
 
-### 2.1. Local kernel density representation: a naive first approximation
+### 2.1. Local kernel density representation of size structure: a naive first approximation
 
-A naive *first approximation* of relative numbers of individuals in a given size/stage class can be obtained by using a *Kernel density representations* of size frequency at *local* (small spatial area unit and temporal scales) nodes, paying particular attention to the location of peaks and valleys in the distirbutions. This *local* representation is used as there may be regional and time-dependent changes in size structure (strong year-classes, growth, poor environmental conditions, etc.). Sex and maturity status are determined from observation and where missing, inferred from size-shape changes (carapace width to chela height males or abdominal flap width for females). From these smooth representations of size structure, the locations of modes can be readily derived. Inference of the main modes of size for each sex-maturity group can then be determined. Once known, classification of individuals into each stage can then be accomplished in a second stage by making distributional assumptions (central tendency and variance) or simply using defined size boundaries (also called, "knife edged cuts") to classify individuals to stage. After which, models of size-specific growth, mortality etc. can be estimated.
+A naive *first approximation* of relative numbers of individuals in a given size/stage class can be obtained by using a *Kernel density representations* of size frequency at *local* (small spatial area unit and temporal scales) nodes, paying particular attention to the location of peaks and valleys in the distirbutions. This *local* representation is esstentially a smoothed size frequency historgram. 
 
-The above inference can be accomplished using the size-selectivity-corrected or size-selectivity-uncorrected distributions from *Section 1* as a basis. Or, though it is not recommended, one can use the naive size-frequency distributions, if exchangeability, (i.e., *iid*) assumptions can be asserted to be valid. They are not always valid.
-  
-The algorithm for the *local* mode detection is simple: a *local* smooth kernel density representation of size frequency distribution is estimated for each local node (small area and time unit), potentially boosted by data from adjacent neighbours in space and time. This *local* approach is particularly appropriate if there are regional (i.e large-scaled) and longer time-dependent changes in abundance and growth rates due to variations in environmental structure (temperature, depth, substrate, predator and prey fields, etc.). Some minor tuning of bandwidth size is required to resolve stages as they have divergent size ranges and growth increments.
+It is created with data-boosting from local neighbouring areas as there may be regional and time-dependent changes in size structure (strong year-classes, growth, poor environmental conditions, etc.). The algorithm for the *local* mode detection is simple: a *local* smooth kernel density representation of size frequency distribution is estimated for each local node (small area and time unit), potentially boosted by data from adjacent neighbours in space and time. This *local* approach is particularly appropriate if there are regional (i.e large-scaled) and longer time-dependent changes in abundance and growth rates due to variations in environmental structure (temperature, depth, substrate, predator and prey fields, etc.). Some minor tuning of bandwidth size is required to resolve stages as they have divergent size ranges and growth increments. Sex and maturity status are determined from observation and where missing, inferred from size-shape changes (carapace width to chela height males or abdominal flap width for females).  
 
 
-#### Computation
+#### Computation: smooth representations
  
 ```{r}
 #| eval: true
@@ -889,220 +894,27 @@ if (0) {
 }  
 
 
-# create a database of local kernel density estimates 
+# create a database of local (weighted) kernel density representations of size structure (i.e., smoothed histograms) 
 # along strata ("yasm":  year, area, season, maturity)
 # with data boosting from neighbours in space and time
 
 M = sizestructure_db( p=p, toget="kernel_density_weighted", redo=TRUE ) 
 
- 
-# identify modes from above kernel density estimates, when there is enough data
-
-M = sizestructure_db( p=p, toget="kernel_density_modes", redo=TRUE )
-
-
- 
 ```
 
 
-
-
-### 2.2. Mixture of distributions: Finite Mixture Model -- FMM
-
-A simple kernel density approach was used in Section 2.1 to get a first approximation of growth patterns by identifying frequently occurring modes from size frequency data at areal unit and annual timescales (above).
-
-Now we can try to make this more precise by using kernel mixture modelling to decompose the size density distributions to estimate both the latent modes of size withing each approximate stage. The implicit assumption is that genetically determined growth trajectory is strong and approximated by  the population level kernel density estimates, and that  variations/deviations from it these are due to variations in the local environmental conditions (resource availability, stress, etc).
-
-The use of a mixture of distributions has a long history. Pearson (1894) where it was used to identify/classify species of crabs. Holmes (1892) also studied mixture models of wealth disparity.  Most numerical methods assigning or classifying data into a cluster or group generally requires the number of such groups to be specified *apriori*. The exception being, Infinite Mixture Models (Ghahramani 2011). Fortunately, we have a reasonable understanding of the number of approximate modes of instar carapace widths from visual analysis of size-frequency distributions.  
-
-
-<https://turinglang.org/stable/tutorials/01-gaussian-mixture-model/>
-
-<https://mc-stan.org/users/documentation/case-studies/identifying_mixture_models.html>
-
-
-
-#### Finite mixtures model
-
-The finite form of the problem is well known and understood. Implementation is usually with Maximum likelihood using an Expectation-Maximization algorithm (EM; Dempster, Laird, & Rubin, 1977). The solutions to such problems are dependent upon the number of modes chosen, or often the location of the modes, apriori. Many tools exist for estimation:
-
-- https://cran.r-project.org/web/packages/mixtools/vignettes/mixtools.pdf
-
-- https://cran.r-project.org/web/packages/flexmix/vignettes/bootstrapping.pdf
-
-- https://statmath.wu.ac.at/~gruen/BayesMix/bayesmix-intro.pdf
-
-
-One must specify, *apiori* constant nodes using mcmc Jags.
-
-<https://cran.r-project.org/web/packages/mclust/vignettes/mclust.html>
-
-
-Problems with the approach:
-
-<https://arxiv.org/pdf/2007.04470>
-
-
-<https://dr.lib.iastate.edu/server/api/core/bitstreams/333bb46d-c759-4202-8f41-0e921271de53/content>
-
-
-Good reviews:
-
-<https://snunnari.github.io/SBE/mclachlan.pdf>
-
-<https://en.wikipedia.org/wiki/Mixture_model?wprov=sfti1>
-
-<https://www.sciencedirect.com/topics/medicine-and-dentistry/mixture-model>
-
-
-Here we use a Bayesian implementation of the finite mixture model to infer membership of observations to latent (unobserved) group $k$ from unlabelled data and infer the overall mixture weights $w_k$ and mean values of each group, $\mu_i$:
-
-
-$$
-\begin{aligned} 
-\mu_k & \sim \mathcal{N}(0, 1) \qquad (k = 1,\ldots,K) \\
-w & \sim \operatorname{Dirichlet}(\alpha_1, \ldots, \alpha_K) \\
-
-z_i & \sim \operatorname{Categorical}(w) \qquad (i = 1,\ldots,N), \\
-
-x_i & \sim \mathcal{N}([\mu_{z_i}, \mu_{z_i}]^\mathsf{T}, I) \qquad
-(i=1,\ldots,N).
-\end{aligned}
-$$
-
-Gaussian distributions are used as priors for $\mu$ and a Dirichlet distribution with concentration parameters $\alpha_i$ as prior for $w$.
-
-<add more details of parameters>
-
-https://turing.ml/dev/tutorials/01-gaussian-mixture-model/
-
-This Bayesian Kernel Mixture Model (BKMM) is implemented in Julia (see below).
-
-NOTE: this approach is slow. Use operationally at each set level is not viable.  Test again at annual level of aggregation.
-
+From the above smooth representations of size structure, the locations of the multiple modes in the distributions can be readily derived. Inference of the most frequent modes of size for each sex-maturity group can then be determined. The above inference can be accomplished using the size-selectivity-corrected or size-selectivity-uncorrected distributions from *Section 1* as a basis. Or, though it is not recommended, one can use the naive size-frequency distributions, if exchangeability, (i.e., *iid*) assumptions can be asserted to be valid. They are not always valid.
   
-
-#### Computation
-
-We define a latent kernel mixture model with initial guesses centered on these *naive local* modal stage. This process decomposes the observed size structure into approximate composition/representation of *stage* (instar, maturity, sex): *alpha* (relative composition of each stage), *sigma_mean* (standard deviation of sizes in each stage), and *imode* (the latent modes of each stage). These are determined from Bayesian kernel mixture models.
-
-For more details, see: https://journal.r-project.org/articles/RJ-2023-043/
-
-First save a data dump for all size data to be read into Julia: initial estimate of main modes via kernel density estimation at a fine space-time resolution from R and "mds" naive modal estimates.
-
-
  
+#### Computation: implementation in R
 
-
-#### Data
-
-First bring in the base data.  Note the begining is a repeat of the initial setup copied here for convenience.
 
 ```{r}
 #| eval: true
 #| output: false 
 #| echo: false
-#| label: size-normalization
-
-
-# homedir="C:/home/jae/"  # on MSwindows
-
-project_name = "model_size"
-project_directory = file.path( homedir, "projects", project_name )
-
-year_start = 1999
-year_end = 2024
-yrs = year_start:year_end
- 
-source( file.path( project_directory, "scripts", "startup.r") )
-
-   
-# individual level data for further processing (already created above)
-p$bioclass = "all"  # all data
-M = model_size_data_carstm( p=p )  
-
-pg = attributes(M)$sppoly
-nb = attributes(pg)$nb$nbs
-au = pg$AUID
-
-M = M[tag=="observations", ]
- 
-# save useful data to file for use in Julia
-# saving areal units in case we do carstm in julia .. for now not used
-out = list( Y=M, nb=nb, au=au )  
-fn = file.path( p$project_directory, "data", "base_data_julia.rds" )  
-saveRDS( data=out, file=fn )
-
-```
-
-Now load the data into Julia and compute:
-
-
-```{julia}
-#| eval: false 
-#| output: false
-#| echo: false
-#| label: size-import-data-julia
-
-using DrWatson
-   
-@static if Sys.iswindows()
-    base_directory = joinpath( "C:\\", "home", "jae", "projects" )
-elseif Sys.islinux()
-    base_directory = joinpath(homedir(), "projects" )
-elseif Sys.isapple()
-else
-end
-
-project_directory = joinpath( base_directory, "model_size")
-
-quickactivate( project_directory )
-
-if false 
-  # if first time on julia:
-  using Pkg
-  Pkg.instantiate()
-  Pkg.update()
-end
-
-include( scriptsdir( "kmm_startup.jl" )) # load libs and local functions
-
-include( srcdir( "kmm_functions.jl" ))
-
-# install_required_packages(pkgs)  # in case you need to install packages
-
-   
-nmin=3
-sexes = ["m", "f"]
-mats = ["i", "m"]
-yrs = 1996:2024
-regions = ["cfanorth", "cfasouth", "cfa4x"  ]
-
-size_data_directory = projectdir( "outputs", "size_structure" )
- 
-include( joinpath( base_directory, "model_covariance", "src", "car_functions.jl" ))   
- 
-# load R-saved data:
-Y, nb, aus = size_structured_data()  # "base_data_julia" in R
- 
-xrange = (8, 170)   # mm
-Y = Y[ (Y.logcw .>= log(xrange[1])) .&  (Y.logcw .<= log(xrange[2])) ,:]
-
-```
-
-
-Now get the modes:
-
-
-```{r}
-#| eval: true
-#| output: false
-#| echo: false
-#| label: size-modes-domain
- 
-# find most frequent peaks and valleys .. if recreating this, stepping through the function is probably best 
-# as there are many decisions that need to be made   
-
+#| label: modes_of_modes
+  
 # defaults
 # p$bw_modal =list( 
 #  "0"=list("0"=0.03, "1"=0.03 ), #male( imm, mat)
@@ -1110,16 +922,25 @@ Now get the modes:
 #)
 
 
-M = sizestructure_db(p=p, toget="kernel_density_modes" )
+# identify local modes in the above, local (weighted) kernel density representations 
 
-mds = sizestructure_db(p=p, toget="modal_groups", redo=TRUE )
+M = sizestructure_db( p=p, toget="kernel_density_modes", redo=TRUE )  
+# M = sizestructure_db(p=p, toget="kernel_density_modes" )
+ 
+# Now get the size modes:
+  
+# find most frequent peaks and valleys .. if recreating this, stepping through the function is probably best 
+# as there are many decisions that need to be made   
+ 
+mds = sizestructure_db( p=p, toget="modal_groups", redo=TRUE )  
 
+```
 
-``` 
+Once the above is known, classification of individuals into each stage can then be accomplished in a second stage by making distributional assumptions (central tendency and variance) or simply using defined size boundaries (also called, "knife edged cuts") to classify individuals to stage. Models of size-specific growth, mortality etc. can be estimated with such "naive" classification. We will refer to classifications associated with "naive" kernel density representations as a "First-order approximation" of growth patterns.
+
 
 These are the results:
- 
-
+  
 Female growth of modes (t vs t-1)
 
 ```{output}
@@ -1311,9 +1132,103 @@ F-statistic: 3.19e+03 on 1 and 7 DF,  p-value: 1.43e-10
 
 
 ```
- 
 
-#### Naive approach (in julia)
+
+#### Computation: implementation in Julia
+ 
+The above computation is implemented in Julia (for speed).
+
+First save a data dump for all size data to be read into Julia: initial estimate of main modes via kernel density estimation at a fine space-time resolution from R and "mds" naive modal estimates. Note the beginning is a repeat of the initial setup copied here for convenience.
+
+```{r}
+#| eval: true
+#| output: false 
+#| echo: false
+#| label: size-normalization-data-from-R
+ 
+# homedir="C:/home/jae/"  # on MSwindows
+
+project_name = "model_size"
+project_directory = file.path( homedir, "projects", project_name )
+
+year_start = 1999
+year_end = 2024
+yrs = year_start:year_end
+ 
+source( file.path( project_directory, "scripts", "startup.r") )
+
+# individual level data for further processing (already created above)
+p$bioclass = "all"  # all data
+M = model_size_data_carstm( p=p )  
+
+pg = attributes(M)$sppoly
+nb = attributes(pg)$nb$nbs
+au = pg$AUID
+
+M = M[tag=="observations", ]
+ 
+# save useful data to file for use in Julia
+# saving areal units in case we do carstm in julia .. for now not used
+out = list( Y=M, nb=nb, au=au )  
+fn = file.path( p$project_directory, "data", "base_data_julia.rds" )  
+saveRDS( data=out, file=fn )
+ 
+``` 
+
+ 
+Now, load the above base size data and modes (from R) into Julia:
+
+
+```{julia}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: size-import-data-julia
+
+using DrWatson
+   
+@static if Sys.iswindows()
+    base_directory = joinpath( "C:\\", "home", "jae", "projects" )
+elseif Sys.islinux()
+    base_directory = joinpath(homedir(), "projects" )
+elseif Sys.isapple()
+else
+end
+
+project_directory = joinpath( base_directory, "model_size")
+
+quickactivate( project_directory )
+
+if false 
+  # if first time on julia:
+  using Pkg
+  Pkg.instantiate()
+  Pkg.update()
+end
+
+include( scriptsdir( "kmm_startup.jl" )) # load libs and local functions
+
+include( srcdir( "kmm_functions.jl" ))
+
+# install_required_packages(pkgs)  # in case you need to install packages
+ 
+nmin=3
+sexes = ["m", "f"]
+mats = ["i", "m"]
+yrs = 1996:2024
+regions = ["cfanorth", "cfasouth", "cfa4x"  ]
+
+size_data_directory = projectdir( "outputs", "size_structure" )
+ 
+include( joinpath( base_directory, "model_covariance", "src", "car_functions.jl" ))   
+ 
+# load R-saved data:
+Y, nb, aus = size_structured_data()  # "base_data_julia" in R
+ 
+xrange = (8, 170)   # mm
+Y = Y[ (Y.logcw .>= log(xrange[1])) .&  (Y.logcw .<= log(xrange[2])) ,:]
+
+```
 
 Compute modes from Kernel Density Estimated smooths (weighted by swept area) for each areal-unit (small area polygon with nearest neighbours) and time-unit (+/- 4 weeks) level mode estimates are then aggregated across all areas and times
 
@@ -1333,12 +1248,64 @@ mds = kernel_density_estimated_modes(Y; toget="summary", yrs=yrs )
 
 ```
 
-### 2.3 Classify with Bayesian Kernel Mixture Model -- BKMM
 
-We can improve upon the above naive *local* representation of stage and subsequent classification, by instead modelling size frequency distributions as a local mixture of distributions of size for each stage. This is accomplished by *Bayesian Kernel Mixture Models* (BKMM) which we will also describe below. BKMM has the advantage of simultaneously determining the distribution of each stage and probabilistically classifying each individual observation into each stage.  
+### 2.2. A Mixture of distributions representation of size structure
+
+To improve upon the "First-order approximation" of growth patterns (Section 2.1), we now try to decompose the size density distributions as a mixture of (latent) distributions. The assumed growth process is assumed to be genetically determined and can be represented by these mixtures, and that variations/deviations from the overall latent processes are due to variations in local environmental conditions experienced by each individual (temperatures, resource availability, stress, disease, etc). 
+ 
+The finite form of the mixtures problem (Finite mixture models, FMM) is well known and understood. Pearson (1894) where it was used to identify/classify species of crabs. Holmes (1892) used a mixture model of wealth disparity. Implementation is usually with Maximum likelihood using an Expectation-Maximization algorithm (EM; Dempster, Laird, & Rubin, 1977).  
+
+Most numerical methods assigning or classifying data into a cluster or group generally requires the number of such groups to be specified *apriori*. The solutions to such problems are dependent upon the number of modes chosen, or often the location of the modes, apriori. Fortunately, we have a reasonable understanding of the number of approximate modes of instar carapace widths from visual analysis of size-frequency distributions. 
+
+Many tools exist for FMM estimation: 
+
+- [mixtools](https://cran.r-project.org/web/packages/mixtools/vignettes/mixtools.pdf)
+- [bootstrapping](https://cran.r-project.org/web/packages/flexmix/vignettes/bootstrapping.pdf)
+- [bayesmix](https://statmath.wu.ac.at/~gruen/BayesMix/bayesmix-intro.pdf)
+- [mclust/jags](https://cran.r-project.org/web/packages/mclust/vignettes/mclust.html)
 
 
-##### Basic model: a *determinsitic* kernel mixture model (KMM) with n_imodes gaussian components
+Infinite Mixture Models (Ghahramani 2011) also exist but not studied here.
+
+Here we use a Bayesian implementation of the Finite mixture model (*Bayesian Kernel Mixture Models*, BKMM). BKMM has the advantage of simultaneously determining the distribution of each stage and probabilistically classifying each individual observation into each stage or  latent (unobserved) group $k$ from unlabelled data and infer the overall mixture weights $w_k$ and mean values of each group, $\mu_i$:
+
+$$
+\begin{aligned} 
+\mu_k & \sim \mathcal{N}(0, 1) \qquad (k = 1,\ldots,K) \\
+w & \sim \operatorname{Dirichlet}(\alpha_1, \ldots, \alpha_K) \\
+
+z_i & \sim \operatorname{Categorical}(w) \qquad (i = 1,\ldots,N), \\
+
+x_i & \sim \mathcal{N}([\mu_{z_i}, \mu_{z_i}]^\mathsf{T}, I) \qquad
+(i=1,\ldots,N).
+\end{aligned}
+$$
+
+Gaussian distributions are used as priors for $\mu$ and a Dirichlet distribution with concentration parameters $\alpha_i$ as prior for $w$.
+
+ -- add more details of parameters here--
+
+
+
+NOTE: this approach is slow. Use operationally at each set level is not viable.  Test again at annual level of aggregation.
+
+##### Resources
+
+- [Gaussian mixture models in Turing/Julia](https://turinglang.org/stable/tutorials/01-gaussian-mixture-model/)
+- [Mixture models in Stan](https://mc-stan.org/users/documentation/case-studies/identifying_mixture_models.html)
+- [Wikipedia](https://en.wikipedia.org/wiki/Mixture_model?wprov=sfti1)
+- [mclachlan](https://snunnari.github.io/SBE/mclachlan.pdf)
+- [review](https://www.sciencedirect.com/topics/medicine-and-dentistry/mixture-model)
+- [problems](https://arxiv.org/pdf/2007.04470)
+- [problems2](https://dr.lib.iastate.edu/server/api/core/bitstreams/333bb46d-c759-4202-8f41-0e921271de53/content)
+- [For more details](https://journal.r-project.org/articles/RJ-2023-043/)
+
+  
+#### Computation 
+
+We define a latent kernel mixture model with initial guesses centered on the modes derived from *naive local* kernel representions (Section 2.1). This process decomposes the observed size structure into approximate composition/representation of *stage* (instar, maturity, sex): *alpha* (relative composition of each stage), *sigma_mean* (standard deviation of sizes in each stage), and *imode* (the latent modes of each stage). 
+
+##### A. Basic model: a *determinsitic* kernel mixture model (KMM) with n_imodes gaussian components
 
 For each area of interest (CFA), classify instar relative numbers.
 
@@ -1388,6 +1355,7 @@ kmm_chain( Y, mds; modeltype="deterministic", yrs=yrs, sexes=sexes, mats=mats, r
   for i in 3:8
     histogram!( skipmissing( os[:, i]), bins=xbins)
   end
+
   pl
   
   # create a summary and save to file
@@ -1403,7 +1371,8 @@ kmm_chain( Y, mds; modeltype="deterministic", yrs=yrs, sexes=sexes, mats=mats, r
    
 ```
 
-##### *Latent* KMM with approximate modes and observation error
+
+##### B. *Latent* KMM with approximate modes and observation error
 
 For each sampling location, classify instar relative numbers.
 
@@ -1552,6 +1521,288 @@ kmm_spatial_models( Y, nb, aus, yrs=yrs, sexes=sexes, mats=mats )
 function kmm_spatial_models( Y, yrs=yrs, sexes=sexes, mats=mats ) 
  ... bym()
 end
+```
+
+
+
+ 
+
+
+
+
+
+
+
+#### Spatiotemporal modelling of KMM parameters (CARSTM)
+
+Temporal and spatial modelling for each stage of the latent modes, alpha, and sigma_mean using spatial and spatiotemporal CAR models with depth, bottom temperatures as covariates.
+
+Spatial modelling by year for associated stats using CAR and sa as offsets to give densities.
+
+A spatial CAR for each time slice (year) to spatially smooth local
+population size structure.
+
+Time modeling (e.g. AR, RW, etc ) requires lags and as growth is not deterministic, adding that structure here is probably not a good choice
+
+better left for growth modeling in a separate process stage later.
+
+To consider:
+
+-- assume no movement across au's to compute au-specific sampling selectivity
+-- compute growth curves based upon location of latent modes in subsequent time periods
+-- cartsm above
+-- carstm modes -- environmental challenges -> lower mode values
+-- carstm sigmas -- environmental variability -> sigma
+-- carstm alphas
+    -- alphas are probabilities of latent modes in each sampling location .. so integral of "population" proportions (should sum to 1.0) ..
+    -- track peaks ... ??
+
+Prepare inputs
+
+```{r}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: kmm-carstm
+
+## NOTE:: Nkmm is specific to each (year, sex, mat, set)  .. but not stage (instar) 
+
+for (stage in p$stages ) {
+  # stage = "f|m|11"
+  M0 = SS$sk[[stage]]
+
+  for (variabletomodel in p$varsnames) {
+
+    p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
+    p$variabletomodel = variabletomodel
+
+    M = rbind(M0[ is.finite(get(variabletomodel)), ], SS$M, fill=TRUE, use.names=TRUE)
+    # variabletomodel = "imodes"
+
+    # keep model as simple as possible .. reflecting environmental covariates only
+    p$formula = as.formula( paste( p$variabletomodel,
+        ' ~ 1',
+        ' + f( time, model="iid",  hyper=H$iid  ) ',
+        ' + f( cyclic, model="iid", hyper=H$iid  )',
+        ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2 ) ',
+        ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2 ) ',
+      #  ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+      #  ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+      #  ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+        # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
+        ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
+        ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="iid", hyper=H$iid)) '
+    ) )
+
+    p$family =  "gaussian"  
+    weights = M$Nkmm
+    weights[ is.na(weights)] =1
+    weights[ weights==0] =1
+
+    if (variabletomodel=="Nkmm") {
+      p$formula = update.formula( p$formula, . ~ . + offset( data_offset) ) # CARSTM does log-transformation internally  
+      p$family =  "poisson"
+      weights = rep(1, nrow(M))
+    }
+
+    res = NULL
+    res = carstm_model( p=p, sppoly=pg, data=M,
+      nposteriors = p$nposteriors, 
+      toget = c("summary", "random_spatial", "predictions"), 
+      posterior_simulations_to_retain=c( "summary", "random_spatial", "predictions"), 
+      num.threads="4:2",  # very memory intensive ... serial process   
+      # debug="extract",
+      control.inla = list(  cmin=0, h=0.05, diagonal=1e-5, fast=FALSE, improved.simplified.laplace=TRUE, restart=1 ), 
+      weights=weights,
+      verbose=TRUE   
+    )
+
+  
+    # res = carstm_model(  p=pN, DS="carstm_summary" )  # parameters in p and summary
+    res_vars = c( names( res$hypers), names(res$fixed) )
+    for (i in 1:length(res_vars) ) {
+      o = carstm_prior_posterior_compare( res, vn=res_vars[i] )  
+      dev.new(); print(o)
+    }   
+
+  }
+}
+
+# extract and reformat posterior simulations
+psims = list(m=list(), f=list() )
+for (stage in p$stages ) {
+  
+  if (grepl("^f", stage)) sex = "f"
+  if (grepl("^m", stage)) sex = "m"
+  
+  for (variabletomodel in p$varsnames) {
+    if (!exists(variabletomodel, psims[[sex]] )) psims[[sex]][[variabletomodel]] = list()
+    p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
+    p$variabletomodel = variabletomodel
+    res = NULL
+    res = carstm_model( p=p, DS="carstm_samples", sppoly=pg )
+    rsims = NULL
+    if (!is.null(res)) rsims = res$predictions
+    psims[[sex]][[variabletomodel]][[stage]] = rsims
+  }
+}
+
+# save by sex and variablename (split as they are large file sizes) for further analysis (12_* : growth and instar dynamics)
+for (sex in c("f", "m")) {
+for (variabletomodel in p$varsnames) {
+  fn = file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".rdz", sep="") )
+  out = psims[[sex]][[variabletomodel]]
+  read_write_fast( data=out, fn=fn )
+}}
+psims = out = NULL ; gc()
+
+
+# Now some maps and figures
+
+for (stage in p$stages) {
+
+    M0 = SS$sk[[stage]]
+  
+    for (variabletomodel in p$varsnames) {
+
+      p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
+      p$variabletomodel = variabletomodel
+
+      res = NULL
+      res = carstm_model( p=p,  DS="carstm_summary" )  # parameters in p and direct summary
+  
+      if (is.null(res)) next()
+            
+      oeffdir = file.path(p$data_root, p$carstm_model_label, "figures")
+      fn_root_prefix = "Predicted_numerical_abundance"
+      carstm_plot_marginaleffects( p, oeffdir, fn_root_prefix ) 
+  
+
+      # maps of some of the results
+      outputdir = file.path(p$data_root, p$carstm_model_label, "maps" )
+      carstm_plot_map( p, outputdir, fn_root_prefix , additional_features, toplot="random_spatial", probs=c(0.025, 0.975) ) 
+      carstm_plot_map( p, outputdir, fn_root_prefix , additional_features, toplot="predictions", probs=c(0.1, 0.9)) 
+
+
+      # posterior predictive check
+      MM = rbind(M0[ is.finite(get(variabletomodel)), ], SS$M, fill=TRUE, use.names=TRUE)
+      iobs = which(MM$tag == "observations")
+      vn = variabletomodel
+
+      fit = NULL; gc()
+      fit = carstm_model( p=p, DS="modelled_fit") #,  sppoly = pg 
+
+      pld = data.table(
+        observed = MM[iobs , ..vn] , 
+        fitted = fit$summary.fitted.values[["mean"]] [iobs]
+      )
+      names(pld) = c("observed", "fitted")
+      anno1 = paste( "Pearson correlation: ", round( cor( pld$fitted, pld$observed, use="pairwise.complete.obs" ), 3))
+      # cor( fitted, observed, use="pairwise.complete.obs", "spearman" )
+
+      out = ggplot(pld, aes(x =  observed, y = fitted )) +
+        geom_abline(slope=1, intercept=0, color="darkgray", lwd=1.4 ) +
+        geom_point(color="slategray") +
+        labs(caption=anno1, color="slateblue") +
+        theme( plot.caption = element_text(hjust = 0, size=12 ) )# move caption to the left 
+  
+      outputdir = file.path( p$modeldir, p$carstm_model_label )
+      fn = file.path(outputdir, paste("posterior_predictive_check_", vn, ".png", sep="") )
+      ggsave(filename=fn, plot=out, device="png", width=12, height = 8)
+      print(out)  
+
+      fit  = MM = NULL; gc()
+  }
+}
+
+```
+
+
+
+#### Reconstruct size structure
+
+The posterior distributions of each of these parameters are then used to reconstitute/reconstruct a size distribution that can be assessed in any sub-domain, for description and further analysis (such as growth and dynamics).
+
+Reconstruct size structure and associated parameters from KMM samples
+
+From the KMM decompostion and spatiotemporal interpolations, we can now reconstruct a few biologically informative features:
+
+- growth increment across cohort as a function of location
+- growth rate parameters as a function of location
+- size at maturity as a function of location
+- min value of selectivity coefficients grwven constant natural mortality (as a function of location)
+- etc.
+
+
+
+
+
+### Reconstruct size structure at arbitrary areal units
+
+```{r}
+#| eval: false 
+#| output: false
+#| echo: false
+#| label: kmm-reconstruct
+
+## Next simulate with julia called from R:
+if ( !any( grepl("JuliaCall", o[,"Package"] ) ) ) install.packages("JuliaCall")
+
+# load JuliaCall interface
+library(JuliaCall)
+
+julia = try( julia_setup( install=FALSE, installJulia=FALSE ) )
+
+if ( inherits(julia, "try-error") ) {
+  install_julia()
+  julia = try( julia_setup( install=FALSE, installJulia=FALSE ) ) # make sure it works
+  if ( inherits(julia, "try-error") )  stop( "Julia install failed, install manually?") 
+}
+
+# currentwd = getwd() 
+
+julia_command( "using Distributions" )  # for kmm_sample (defined in kmm_functions.jl)
+
+include( joinpath( homedir(), "projects", "model", "kmm_functions.jl" ))   
+
+julia_assign( "N", N )  
+julia_assign( "n_imodes", n_imodes )  
+
+# setwd(p$output.dir)  # julia_source cannot traverse directories .. temporarily switch directory
+out = list()
+
+for (stage in p$stages) {
+  out[[stage]] = list()
+
+  M0 = SS$sk[[stage]]
+
+  for (variabletomodel in p$varsnames) {
+
+    p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
+    p$variabletomodel = variabletomodel
+
+    res = NULL
+    res = carstm_model( p=p, DS="carstm_predictions", sppoly=pg ) # to load currently saved results
+    if (is.null(res)) next()
+
+    ## transfer params to julia environment
+    sims = list()
+
+    for (au in aus) {
+      res_pred = res$predictions[aui,,]       
+      julia_assign( "res_pred", res_pred )  # copy data into julia session
+      julia_command("out = kmm_sample( res, N=1, n_imodes=1 )")
+      sims[[au]] = julia_eval("out")  # copy results back to R
+    }
+
+    out[[stage]][[variabletomodel]] = sims
+  
+  }
+}
+
+read_write_fast( data=out, fn="outputfile.rdz" )
+
+
 ```
 
 
@@ -1790,287 +2041,8 @@ p$stages = p$stages[ -grep("04", p$stages)] # data density of instar 4 seems to 
  
 
 ```
- 
 
-#### Size structure from Post-Stratifed weights of a spatiotemporal (binomial) model
 
-
-Sum from directly size frequencies .. to fill in
-
-
-
-
-
-
-#### Spatiotemporal modelling of KMM parameters (CARSTM)
-
-Temporal and spatial modelling for each stage of the latent modes, alpha, and sigma_mean using spatial and spatiotemporal CAR models with depth, bottom temperatures as covariates.
-
-Spatial modelling by year for associated stats using CAR and sa as offsets to give densities.
-
-A spatial CAR for each time slice (year) to spatially smooth local
-population size structure.
-
-Time modeling (e.g. AR, RW, etc ) requires lags and as growth is not deterministic, adding that structure here is probably not a good choice
-
-better left for growth modeling in a separate process stage later.
-
-To consider:
-
--- assume no movement across au's to compute au-specific sampling selectivity
--- compute growth curves based upon location of latent modes in subsequent time periods
--- cartsm above
--- carstm modes -- environmental challenges -> lower mode values
--- carstm sigmas -- environmental variability -> sigma
--- carstm alphas
-    -- alphas are probabilities of latent modes in each sampling location .. so integral of "population" proportions (should sum to 1.0) ..
-    -- track peaks ... ??
-
-Prepare inputs
-
-```{r}
-#| eval: false 
-#| output: false
-#| echo: false
-#| label: kmm-carstm
-
-## NOTE:: Nkmm is specific to each (year, sex, mat, set)  .. but not stage (instar) 
-
-for (stage in p$stages ) {
-  # stage = "f|m|11"
-  M0 = SS$sk[[stage]]
-
-  for (variabletomodel in p$varsnames) {
-
-    p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
-    p$variabletomodel = variabletomodel
-
-    M = rbind(M0[ is.finite(get(variabletomodel)), ], SS$M, fill=TRUE, use.names=TRUE)
-    # variabletomodel = "imodes"
-
-    # keep model as simple as possible .. reflecting environmental covariates only
-    p$formula = as.formula( paste( p$variabletomodel,
-        ' ~ 1',
-        ' + f( time, model="iid",  hyper=H$iid  ) ',
-        ' + f( cyclic, model="iid", hyper=H$iid  )',
-        ' + f( inla.group( t, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2 ) ',
-        ' + f( inla.group( z, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2 ) ',
-      #  ' + f( inla.group( substrate.grainsize, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-      #  ' + f( inla.group( pca1, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-      #  ' + f( inla.group( pca2, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-        # ' + f( inla.group( pca3, method="quantile", n=9 ), model="rw2", scale.model=TRUE, hyper=H$rw2) ',
-        ' + f( space, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, hyper=H$bym2 ) ',
-        ' + f( space_time, model="bym2", graph=slot(sppoly, "nb"), scale.model=TRUE, group=time_space, hyper=H$bym2, control.group=list(model="iid", hyper=H$iid)) '
-    ) )
-
-    p$family =  "gaussian"  
-    weights = M$Nkmm
-    weights[ is.na(weights)] =1
-    weights[ weights==0] =1
-
-    if (variabletomodel=="Nkmm") {
-      p$formula = update.formula( p$formula, . ~ . + offset( data_offset) ) # CARSTM does log-transformation internally  
-      p$family =  "poisson"
-      weights = rep(1, nrow(M))
-    }
-
-    res = NULL
-    res = carstm_model( p=p, sppoly=pg, data=M,
-      nposteriors = p$nposteriors, 
-      toget = c("summary", "random_spatial", "predictions"), 
-      posterior_simulations_to_retain=c( "summary", "random_spatial", "predictions"), 
-      num.threads="4:2",  # very memory intensive ... serial process   
-      # debug="extract",
-      control.inla = list(  cmin=0, h=0.05, diagonal=1e-5, fast=FALSE, improved.simplified.laplace=TRUE, restart=1 ), 
-      weights=weights,
-      verbose=TRUE   
-    )
-
-  
-    # res = carstm_model(  p=pN, DS="carstm_summary" )  # parameters in p and summary
-    res_vars = c( names( res$hypers), names(res$fixed) )
-    for (i in 1:length(res_vars) ) {
-      o = carstm_prior_posterior_compare( res, vn=res_vars[i] )  
-      dev.new(); print(o)
-    }   
-
-  }
-}
-
-# extract and reformat posterior simulations
-psims = list(m=list(), f=list() )
-for (stage in p$stages ) {
-  
-  if (grepl("^f", stage)) sex = "f"
-  if (grepl("^m", stage)) sex = "m"
-  
-  for (variabletomodel in p$varsnames) {
-    if (!exists(variabletomodel, psims[[sex]] )) psims[[sex]][[variabletomodel]] = list()
-    p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
-    p$variabletomodel = variabletomodel
-    res = NULL
-    res = carstm_model( p=p, DS="carstm_samples", sppoly=pg )
-    rsims = NULL
-    if (!is.null(res)) rsims = res$predictions
-    psims[[sex]][[variabletomodel]][[stage]] = rsims
-  }
-}
-
-# save by sex and variablename (split as they are large file sizes) for further analysis (12_* : growth and instar dynamics)
-for (sex in c("f", "m")) {
-for (variabletomodel in p$varsnames) {
-  fn = file.path( p$modeldir, paste("psims", "_", sex, "_", variabletomodel, ".rdz", sep="") )
-  out = psims[[sex]][[variabletomodel]]
-  read_write_fast( data=out, fn=fn )
-}}
-psims = out = NULL ; gc()
-
-
-# Now some maps and figures
-
-for (stage in p$stages) {
-
-    M0 = SS$sk[[stage]]
-  
-    for (variabletomodel in p$varsnames) {
-
-      p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
-      p$variabletomodel = variabletomodel
-
-      res = NULL
-      res = carstm_model( p=p,  DS="carstm_summary" )  # parameters in p and direct summary
-  
-      if (is.null(res)) next()
-            
-      oeffdir = file.path(p$data_root, p$carstm_model_label, "figures")
-      fn_root_prefix = "Predicted_numerical_abundance"
-      carstm_plot_marginaleffects( p, oeffdir, fn_root_prefix ) 
-  
-
-      # maps of some of the results
-      outputdir = file.path(p$data_root, p$carstm_model_label, "maps" )
-      carstm_plot_map( p, outputdir, fn_root_prefix , additional_features, toplot="random_spatial", probs=c(0.025, 0.975) ) 
-      carstm_plot_map( p, outputdir, fn_root_prefix , additional_features, toplot="predictions", probs=c(0.1, 0.9)) 
-
-
-      # posterior predictive check
-      MM = rbind(M0[ is.finite(get(variabletomodel)), ], SS$M, fill=TRUE, use.names=TRUE)
-      iobs = which(MM$tag == "observations")
-      vn = variabletomodel
-
-      fit = NULL; gc()
-      fit = carstm_model( p=p, DS="modelled_fit") #,  sppoly = pg 
-
-      pld = data.table(
-        observed = MM[iobs , ..vn] , 
-        fitted = fit$summary.fitted.values[["mean"]] [iobs]
-      )
-      names(pld) = c("observed", "fitted")
-      anno1 = paste( "Pearson correlation: ", round( cor( pld$fitted, pld$observed, use="pairwise.complete.obs" ), 3))
-      # cor( fitted, observed, use="pairwise.complete.obs", "spearman" )
-
-      out = ggplot(pld, aes(x =  observed, y = fitted )) +
-        geom_abline(slope=1, intercept=0, color="darkgray", lwd=1.4 ) +
-        geom_point(color="slategray") +
-        labs(caption=anno1, color="slateblue") +
-        theme( plot.caption = element_text(hjust = 0, size=12 ) )# move caption to the left 
-  
-      outputdir = file.path( p$modeldir, p$carstm_model_label )
-      fn = file.path(outputdir, paste("posterior_predictive_check_", vn, ".png", sep="") )
-      ggsave(filename=fn, plot=out, device="png", width=12, height = 8)
-      print(out)  
-
-      fit  = MM = NULL; gc()
-  }
-}
-
-```
-
-#### Reconstruct size structure
-
-The posterior distributions of each of these parameters are then used to reconstitute/reconstruct a size distribution that can be assessed in any sub-domain, for description and further analysis (such as growth and dynamics).
-
-Reconstruct size structure and associated parameters from KMM samples
-
-From the KMM decompostion and spatiotemporal interpolations, we can now reconstruct a few biologically informative features:
-
-- growth increment across cohort as a function of location
-- growth rate parameters as a function of location
-- size at maturity as a function of location
-- min value of selectivity coefficients grwven constant natural mortality (as a function of location)
-- etc.
-
-
-
-
-
-### Reconstruct size structure at arbitrary areal units
-
-```{r}
-#| eval: false 
-#| output: false
-#| echo: false
-#| label: kmm-reconstruct
-
-## Next simulate with julia called from R:
-if ( !any( grepl("JuliaCall", o[,"Package"] ) ) ) install.packages("JuliaCall")
-
-# load JuliaCall interface
-library(JuliaCall)
-
-julia = try( julia_setup( install=FALSE, installJulia=FALSE ) )
-
-if ( inherits(julia, "try-error") ) {
-  install_julia()
-  julia = try( julia_setup( install=FALSE, installJulia=FALSE ) ) # make sure it works
-  if ( inherits(julia, "try-error") )  stop( "Julia install failed, install manually?") 
-}
-
-# currentwd = getwd() 
-
-julia_command( "using Distributions" )  # for kmm_sample (defined in kmm_functions.jl)
-
-include( joinpath( homedir(), "projects", "model", "kmm_functions.jl" ))   
-
-julia_assign( "N", N )  
-julia_assign( "n_imodes", n_imodes )  
-
-# setwd(p$output.dir)  # julia_source cannot traverse directories .. temporarily switch directory
-out = list()
-
-for (stage in p$stages) {
-  out[[stage]] = list()
-
-  M0 = SS$sk[[stage]]
-
-  for (variabletomodel in p$varsnames) {
-
-    p$carstm_model_label = paste("kmm", stage, variabletomodel, sep="_")
-    p$variabletomodel = variabletomodel
-
-    res = NULL
-    res = carstm_model( p=p, DS="carstm_predictions", sppoly=pg ) # to load currently saved results
-    if (is.null(res)) next()
-
-    ## transfer params to julia environment
-    sims = list()
-
-    for (au in aus) {
-      res_pred = res$predictions[aui,,]       
-      julia_assign( "res_pred", res_pred )  # copy data into julia session
-      julia_command("out = kmm_sample( res, N=1, n_imodes=1 )")
-      sims[[au]] = julia_eval("out")  # copy results back to R
-    }
-
-    out[[stage]][[variabletomodel]] = sims
-  
-  }
-}
-
-read_write_fast( data=out, fn="outputfile.rdz" )
-
-
-```
 
 ## 3. a size-based parameterization of growth
 

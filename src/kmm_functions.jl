@@ -2,7 +2,9 @@ showall(x) = show(stdout, "text/plain", x)
 
 
 function modes_naive() 
+    # deprecated --  these are now computed in julia .. instar_inference() in this file
     # these imodes come from naive kernel density analyses of size structure by (in R:):
+
     # mds = model_size::sizestructure_db( p=p, toget="modal_groups", strata=strata, bw=bw, np=np, ldx=ldx, 
     #    sigdigits=sigdigits, redo=TRUE )
     fn = projectdir( "outputs", "size_structure",  "modes_summary.rds" )
@@ -12,16 +14,22 @@ function modes_naive()
 end
   
 
-function instar_prediction_naive( logcw, sex )
-    if sex=="f"
-        # cw = exp(2.198848 + 0.315026 * (instar - 4) ) # left bounds
-        instar = floor( 4 + ( logcw - 2.198848 ) /  0.315026 )
-    end
+function instar_prediction_naive( logcw, sex; method="knife_edge_cut" )
     
-    if sex=="m"
-        # cw = exp(1.917564 + 0.298914 * (instar - 3) )  # left bounds
-        instar = floor( 3 + ( logcw - 1.917564 ) /  0.298914 )
-    end    
+    if method == "knife_edge_cut"
+        # using historical growth functions and knife edge cuts ...
+        if sex=="f"
+            # cw = exp(2.198848 + 0.315026 * (instar - 4) ) # left bounds
+            instar = floor( 4 + ( logcw - 2.198848 ) /  0.315026 )
+        end
+        
+        if sex=="m"
+            # cw = exp(1.917564 + 0.298914 * (instar - 3) )  # left bounds
+            instar = floor( 3 + ( logcw - 1.917564 ) /  0.298914 )
+        end    
+    else
+        error("method not recognized")
+    end
 
     return instar
 end
