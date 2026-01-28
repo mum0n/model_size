@@ -1041,8 +1041,11 @@ sizestructure_db = function(
         mds$stage = paste(mds$sex, mds$mat, instar, sep="|")
 
         # save as rdata for use in julia
-        fn = file.path(p$project_output_directory, "modes_summary.rdz")
-        read_write_fast(mds, fn=fn)
+        fz = file.path(p$project_output_directory, "modes_summary.rdz")
+        read_write_fast(mds, fn=fz)
+
+        fs = file.path(p$project_output_directory, "modes_summary.rds")
+        saveRDS(mds_models, file=fs)
 
         mds_models  = list(oif, oim, omf, omm, of, om)
         fn = file.path(p$project_output_directory, "modes_models.rdz")

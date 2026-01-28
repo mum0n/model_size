@@ -3,9 +3,9 @@ showall(x) = show(stdout, "text/plain", x)
 
 function modes_naive() 
     # these imodes come from naive kernel density analyses of size structure by (in R:):
-    # mds = size_distributions(p=p, toget="modal_groups", strata=strata, bw=bw, np=np, ldx=ldx, 
+    # mds = model_size::sizestructure_db( p=p, toget="modal_groups", strata=strata, bw=bw, np=np, ldx=ldx, 
     #    sigdigits=sigdigits, redo=TRUE )
-    fn = projectdir( "outputs", "size_structure",  "modes_summary.rdz" )
+    fn = projectdir( "outputs", "size_structure",  "modes_summary.rds" )
     mds = load( fn, convert=true)["mds"]
     # limit size range (CW)
     return mds
@@ -264,7 +264,7 @@ end
 
 function size_structured_data(; sigdigits=3 ) 
     # data created in R using : Y = size_distributions( p=p, toget="base_data" ) 
-    fn = projectdir( "data", "base_data_julia.rdz" )
+    fn = projectdir( "data", "base_data_julia.rds" )
     o = load( fn, convert=true)["out"]
     
     Y  = o["Y"] 
@@ -759,7 +759,7 @@ function kmm_summary( ; mds=Any[], yrs=1999:2000, sexes=["m", "f"], mats=["i", "
         println( fnout )
         if save_r_data
             # RCall.@rput out
-            fnR = replace(fnout, "jl2"=>"rdz")
+            fnR = replace(fnout, "jl2"=>"rds")
             cmdR = string( "read_write_fast( out, fn=", "'$fnR')" )
             # RCall.reval(cmdR)
         end
@@ -774,7 +774,7 @@ function normalize_size_structure(U; sexes="0", mats="0", aus="7", yrs=2009, wee
   bw=0.1,  nsmp=1024, np=256, xr=extrema(U), nmin=5, 
   outdir_nss=joinpath( project_directory, "size_structure", "posteriors_summaries" ), overwrite=false )   
 
-  # deprcated: now done in R (bio.snowcrab::size_distributions.R)
+  # deprecated: now done in R (bio.snowcrab::size_distributions.R)
 
   if false
       # debug: 

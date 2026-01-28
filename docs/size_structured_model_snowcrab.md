@@ -854,16 +854,13 @@ In order to develop a stage-based representation of snow crab, we need to be abl
 
 Due to the above issues, here, we focus upon inference from measurements derived from population-based surveys. 
 
-A naive *first approximation* of the above can be obtained by using kernel density representations of size frequency at *local* (small spatial area unit and temporal scales) nodes, paying particular attention to the location of peaks and valleys in the distirbutions. This *local* representation is used as there may be regional and time-dependent changes in size structure (strong year-classes, growth, poor environmental conditions, etc.). Sex and maturity status are determined from observation and where missing, inferred from size-shape changes (carapace width to chela height males or abdominal flap width for females). From these smooth representations of size structure, the locations of modes can be readily derived. Inference of the main modes of size for each sex-maturity group can then be determined. Once known, classification of individuals into each stage can then be accomplished in a second stage by making distributional assumptions (central tendency and variance) or simply using defined size boundaries (also called, "knife edged cuts") to classify individuals to stage. After which, models of size-specific growth, mortality etc. can be estimated.
-
-We can improve upon the above naive *local* representation of stage and subsequent classification, by instead modelling size frequency distributions as a local mixture of distributions of size for each stage. This is accomplished by *Bayesian Kernel Mixture Models* (BKMM) which we will also describe below. BKMM has the advantage of simultaneously determining the distribution of each stage and probabilistically classifying each individual observation into each stage.  
-
-Both of the above inferential approaches can be accomplished with the size-selectivity-corrected or size-selectivity-uncorrected distributions from *Section 1* as a basis. Or, though it is not recommended, one can use the naive size-frequency distributions, if exchangeability, (i.e., *iid*) assumptions can be asserted to be valid. They are not always valid.
-  
-  
 
 ### 2.1. Local kernel density representation: a naive first approximation
 
+A naive *first approximation* of relative numbers of individuals in a given size/stage class can be obtained by using a *Kernel density representations* of size frequency at *local* (small spatial area unit and temporal scales) nodes, paying particular attention to the location of peaks and valleys in the distirbutions. This *local* representation is used as there may be regional and time-dependent changes in size structure (strong year-classes, growth, poor environmental conditions, etc.). Sex and maturity status are determined from observation and where missing, inferred from size-shape changes (carapace width to chela height males or abdominal flap width for females). From these smooth representations of size structure, the locations of modes can be readily derived. Inference of the main modes of size for each sex-maturity group can then be determined. Once known, classification of individuals into each stage can then be accomplished in a second stage by making distributional assumptions (central tendency and variance) or simply using defined size boundaries (also called, "knife edged cuts") to classify individuals to stage. After which, models of size-specific growth, mortality etc. can be estimated.
+
+The above inference can be accomplished using the size-selectivity-corrected or size-selectivity-uncorrected distributions from *Section 1* as a basis. Or, though it is not recommended, one can use the naive size-frequency distributions, if exchangeability, (i.e., *iid*) assumptions can be asserted to be valid. They are not always valid.
+  
 The algorithm for the *local* mode detection is simple: a *local* smooth kernel density representation of size frequency distribution is estimated for each local node (small area and time unit), potentially boosted by data from adjacent neighbours in space and time. This *local* approach is particularly appropriate if there are regional (i.e large-scaled) and longer time-dependent changes in abundance and growth rates due to variations in environmental structure (temperature, depth, substrate, predator and prey fields, etc.). Some minor tuning of bandwidth size is required to resolve stages as they have divergent size ranges and growth increments.
 
 
@@ -910,7 +907,7 @@ M = sizestructure_db( p=p, toget="kernel_density_modes", redo=TRUE )
 
 
 
-### 2.2. Mixture of distributions
+### 2.2. Mixture of distributions: Finite Mixture Model -- FMM
 
 A simple kernel density approach was used in Section 2.1 to get a first approximation of growth patterns by identifying frequently occurring modes from size frequency data at areal unit and annual timescales (above).
 
@@ -922,9 +919,6 @@ The use of a mixture of distributions has a long history. Pearson (1894) where i
 <https://turinglang.org/stable/tutorials/01-gaussian-mixture-model/>
 
 <https://mc-stan.org/users/documentation/case-studies/identifying_mixture_models.html>
-
-
-
 
 
 
@@ -1002,13 +996,14 @@ First save a data dump for all size data to be read into Julia: initial estimate
 
 #### Data
 
-First bring in the base data.
+First bring in the base data.  Note the begining is a repeat of the initial setup copied here for convenience.
 
 ```{r}
 #| eval: true
 #| output: false 
 #| echo: false
 #| label: size-normalization
+
 
 # homedir="C:/home/jae/"  # on MSwindows
 
@@ -1035,8 +1030,8 @@ M = M[tag=="observations", ]
 # save useful data to file for use in Julia
 # saving areal units in case we do carstm in julia .. for now not used
 out = list( Y=M, nb=nb, au=au )  
-fn = file.path( p$project_directory, "data", "base_data_julia.rdz" )  
-read_write_fast( data=out, fn=fn )
+fn = file.path( p$project_directory, "data", "base_data_julia.rds" )  
+saveRDS( data=out, file=fn )
 
 ```
 
@@ -1050,9 +1045,25 @@ Now load the data into Julia and compute:
 #| label: size-import-data-julia
 
 using DrWatson
+   
+@static if Sys.iswindows()
+    base_directory = joinpath( "C:\\", "home", "jae", "projects" )
+elseif Sys.islinux()
+    base_directory = joinpath(homedir(), "projects" )
+elseif Sys.isapple()
+else
+end
 
-quickactivate( joinpath(homedir(), "projects", "model_size") )
+project_directory = joinpath( base_directory, "model_size")
 
+quickactivate( project_directory )
+
+if false 
+  # if first time on julia:
+  using Pkg
+  Pkg.instantiate()
+  Pkg.update()
+end
 
 include( scriptsdir( "kmm_startup.jl" )) # load libs and local functions
 
@@ -1068,8 +1079,8 @@ yrs = 1996:2024
 regions = ["cfanorth", "cfasouth", "cfa4x"  ]
 
 size_data_directory = projectdir( "outputs", "size_structure" )
-
-include( joinpath( homedir(), "projects", "model_covariance", "src", "car_functions.jl" ))   
+ 
+include( joinpath( base_directory, "model_covariance", "src", "car_functions.jl" ))   
  
 # load R-saved data:
 Y, nb, aus = size_structured_data()  # "base_data_julia" in R
@@ -1078,6 +1089,229 @@ xrange = (8, 170)   # mm
 Y = Y[ (Y.logcw .>= log(xrange[1])) .&  (Y.logcw .<= log(xrange[2])) ,:]
 
 ```
+
+
+Now get the modes:
+
+
+```{r}
+#| eval: true
+#| output: false
+#| echo: false
+#| label: size-modes-domain
+ 
+# find most frequent peaks and valleys .. if recreating this, stepping through the function is probably best 
+# as there are many decisions that need to be made   
+
+# defaults
+# p$bw_modal =list( 
+#  "0"=list("0"=0.03, "1"=0.03 ), #male( imm, mat)
+#  "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
+#)
+
+
+M = sizestructure_db(p=p, toget="kernel_density_modes" )
+
+mds = sizestructure_db(p=p, toget="modal_groups", redo=TRUE )
+
+
+``` 
+
+These are the results:
+ 
+
+Female growth of modes (t vs t-1)
+
+```{output}
+
+summary( lm(formula = logcw ~ logcw0 * mat, data = mds[sex == "f", ], 
+    na.action = "na.omit") )
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.06112 -0.01220  0.00077  0.01119  0.05588 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)   0.2558     0.0819    3.12   0.0206
+logcw0        1.0167     0.0248   40.93  1.4e-08
+matm         -1.7146     0.3592   -4.77   0.0031
+logcw0:matm   0.4026     0.0929    4.33   0.0049
+
+Residual standard error: 0.0367 on 6 degrees of freedom
+  (4 observations deleted due to missingness)
+Multiple R-squared:  0.997,	Adjusted R-squared:  0.996 
+F-statistic:  779 on 3 and 6 DF,  p-value: 3.67e-08
+ 
+```
+
+Male growth of modes  (t vs t-1)
+
+```{output}
+
+summary( lm(formula = logcw ~ logcw0 * mat, data = mds[sex == "m", ], 
+    na.action = "na.omit") )
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.07578 -0.01237  0.00164  0.01968  0.05031 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  0.16958    0.07278    2.33    0.053
+logcw0       1.03569    0.02079   49.81  3.4e-10
+matm        -0.17502    0.37497   -0.47    0.655
+logcw0:matm  0.00467    0.09023    0.05    0.960
+
+Residual standard error: 0.04 on 7 degrees of freedom
+  (5 observations deleted due to missingness)
+Multiple R-squared:  0.998,	Adjusted R-squared:  0.997 
+F-statistic: 1.05e+03 on 3 and 7 DF,  p-value: 1.2e-09
+
+```
+ 
+
+The overall growth patterns of snow crab is reasonably well understood. Due to short moult cycles of less than a year in the early stages, growth can be monitored reasonably. However beyond a size range of approximately XX mm, inter-molt periods can be 1 or more years in length. Longevity of snow crab can be from 11 (females) to 15 (males) years. Long term rearing of snow crab is a challenge as living conditions are generally less than ideal or at least different in substantial ways from a natural environment, especially for the larger sized organisms. This can of course create selection biases, such as stunting due to environmental stress (over-crowding, feeding irregularities, water quality, etc.). 
+
+There also seems to exist inter-individual and regional-variability in growth patterns due to the interplay between environmental (especially bottom temperatures and resource availablity) and potentially genetic factors at large geographic scales, depending upon oceanic currents. Mark-recapture studies can inform such inference for many species, however, in snow crab, due to the loss of external tags during molts or difficulty and expense of internal tags, this cannot be used effectively.
+
+Observations in more natural settings are also possible by scuba or remote operated vehicle/camera systems. However, such information is quite costly and resource intensive and also susceptible to selection bias in that recaptured or surviving animals tend to be those in better physiological condition than average and so can result in expectations of overly optimistic growth patterns. When routine sampling occurs, a more cost-effective way to establish or corroborate these growth patterns is to decompose observed size frequency distributions. Though there is also inherent size-selection biases in such data due to size-related behavior (habitat preferences) and capture efficiency (net size, speed, depth) that changes with different size and stages, it is still possible to extract some meaningful information of size modes from such data and infer growth patterns.
+
+Given some set of observations of size frequency, subjective "best guesses" (classification by "eye") and implicit reasoning can be used to establish and classify these growth modes. When groups are distinct, this is reasonable. However, observations of size frequencies often demonstrate a mixture of distributions that are heavily overlapping. Even the most state-of-the-art computational algorithms cannot fit such distributions easily. One of the leading more objective approaches to estimate classification using point estimates of latent parameters became available with the development of the Expectation-Maximization (EM) algorithm operating in an Maximum Likelihood framework (Dempster et al 1977; see also the closely related Kalman Filter (Roweis and Ghahramani 1999) and for distributions in Bayesian frameworks with Variational Inference (Nguyen 2023) and general latent Bayesian Inference. Here we use the latter method, more specifically, Latent *Bayesian Kernel Mixture Model (BKMM)*, using population census-based data to identify growth stanzas using snow crab data derived from the Maritimes Region of Atlantic Canada.  
+
+
+```{table}
+                Coef.  Std. Error      t  Pr(>|t|)  Lower 95%  Upper 95%
+
+(Intercept)  1.05187   0.0430406   24.44    <1e-04   0.932365   1.17136
+instar       0.321978  0.00640426  50.28    <1e-06   0.304196   0.339759
+  
+(Intercept)  1.49157    0.216241    6.90    0.0917  -1.25602     4.23917
+instar       0.268652   0.0221858  12.11    0.0525  -0.0132459   0.550549
+  
+(Intercept)  1.10376   0.0259636   42.51    <1e-08   1.04237    1.16515
+instar       0.308079  0.00308857  99.75    <1e-11   0.300775   0.315382
+  
+(Intercept)  0.335281  0.114697     2.92    0.2098  -1.12208    1.79264
+instar       0.363371  0.00953601  38.11    0.0167   0.242204   0.484537
+```
+
+      
+![image](media/example_modal_classification_2.png)
+
+![image](media/density_2020_1_f_imodes.png)
+
+![image](media/density_2020_f_imodes.png)
+
+![image](media/density_2020_m_imodes.png)
+
+![image](media/density_2021_f_imodes.png)
+
+![image](media/density_2021_m_imodes.png)
+
+![image](media/density_f_imodes.png)
+
+![image](media/density_m_imodes.png)
+
+![image](media/plot_growth_male.png)
+
+![image](media/plot_growth_female.png)
+
+ 
+ 
+Female mature simple model: cw vs instar
+
+```output
+ 
+summary( lm(formula = logcw ~ instar, data = mds[sex == "f" & mat == "m", 
+    ], na.action = "na.omit") )
+
+Residuals:
+      1       2       3 
+-0.0253  0.0507 -0.0253 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  -0.0157     0.4402   -0.04    0.977
+instar        0.4090     0.0439    9.32    0.068
+
+Residual standard error: 0.0621 on 1 degrees of freedom
+Multiple R-squared:  0.989,	Adjusted R-squared:  0.977 
+F-statistic: 86.9 on 1 and 1 DF,  p-value: 0.068
+ 
+```
+
+Female immature simple model: cw vs instar
+
+```output
+
+summary( lm(formula = logcw ~ instar, data = mds[sex == "f" & mat == "i", 
+    ], na.action = "na.omit") )
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.05154 -0.00868 -0.00699  0.00403  0.06546 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  1.12368    0.04548    24.7  2.9e-07
+instar       0.31059    0.00593    52.4  3.2e-09
+
+Residual standard error: 0.0355 on 6 degrees of freedom
+  (3 observations deleted due to missingness)
+Multiple R-squared:  0.998,	Adjusted R-squared:  0.997 
+F-statistic: 2.75e+03 on 1 and 6 DF,  p-value: 3.24e-09
+
+```
+
+Male mature simple model: cw vs instar
+
+```output
+
+summary( lm(formula = logcw ~ instar, data = mds[sex == "m" & mat == "m", 
+    ], na.action = "na.omit") )
+
+Residuals:
+       1        2        3 
+ 0.00283 -0.00567  0.00283 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  0.65417    0.05413    12.1   0.0526
+instar       0.33550    0.00491    68.4   0.0093
+
+Residual standard error: 0.00694 on 1 degrees of freedom
+  (1 observation deleted due to missingness)
+Multiple R-squared:     1,	Adjusted R-squared:     1 
+F-statistic: 4.67e+03 on 1 and 1 DF,  p-value: 0.00931
+
+```
+
+Male immature simple model: cw vs instar
+
+```output
+
+summary( lm(formula = logcw ~ instar, data = mds[sex == "m" & mat == "i", 
+    ], na.action = "na.omit") )
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.04238 -0.02548 -0.00584  0.02079  0.08236 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)   1.1912     0.0446    26.7  2.6e-08
+instar        0.2994     0.0053    56.5  1.4e-10
+
+Residual standard error: 0.0411 on 7 degrees of freedom
+  (3 observations deleted due to missingness)
+Multiple R-squared:  0.998,	Adjusted R-squared:  0.997 
+F-statistic: 3.19e+03 on 1 and 7 DF,  p-value: 1.43e-10
+ 
+
+
+```
+ 
 
 #### Naive approach (in julia)
 
@@ -1099,7 +1333,10 @@ mds = kernel_density_estimated_modes(Y; toget="summary", yrs=yrs )
 
 ```
 
-#### Classify with KMM
+### 2.3 Classify with Bayesian Kernel Mixture Model -- BKMM
+
+We can improve upon the above naive *local* representation of stage and subsequent classification, by instead modelling size frequency distributions as a local mixture of distributions of size for each stage. This is accomplished by *Bayesian Kernel Mixture Models* (BKMM) which we will also describe below. BKMM has the advantage of simultaneously determining the distribution of each stage and probabilistically classifying each individual observation into each stage.  
+
 
 ##### Basic model: a *determinsitic* kernel mixture model (KMM) with n_imodes gaussian components
 
@@ -1557,6 +1794,7 @@ p$stages = p$stages[ -grep("04", p$stages)] # data density of instar 4 seems to 
 
 #### Size structure from Post-Stratifed weights of a spatiotemporal (binomial) model
 
+
 Sum from directly size frequencies .. to fill in
 
 
@@ -1898,223 +2136,6 @@ and then tweaked a bit as carapace width cannot shrink:
 ![Figure 2-3d. Growth trajectory inferred from modes and tweaked for females.](/home/jae/bio.data/bio.snowcrab/assessments/2024/figures/size.freq/survey/modes_female_growth_trajectory_empirical_tweaked.png)
 
 
-```{r}
-#| eval: true
-#| output: false
-#| echo: false
-#| label: size-modes-domain
- 
-# find most frequent peaks and valleys .. if recreating this, stepping through the function is probably best 
-# as there are many decisions that need to be made   
-
-# defaults
-# p$bw_modal =list( 
-#  "0"=list("0"=0.03, "1"=0.03 ), #male( imm, mat)
-#  "1"=list("0"=0.03, "1"=0.03 ) #female( imm, mat)
-#)
-
-
-M = sizestructure_db(p=p, toget="kernel_density_modes" )
-
-mds = sizestructure_db(p=p, toget="modal_groups", redo=TRUE )
-
-
-``` 
-
-These are the results:
- 
-
-Female growth of modes (t vs t-1)
-
-```{output}
-
-summary( lm(formula = logcw ~ logcw0 * mat, data = mds[sex == "f", ], 
-    na.action = "na.omit") )
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--0.06112 -0.01220  0.00077  0.01119  0.05588 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)   0.2558     0.0819    3.12   0.0206
-logcw0        1.0167     0.0248   40.93  1.4e-08
-matm         -1.7146     0.3592   -4.77   0.0031
-logcw0:matm   0.4026     0.0929    4.33   0.0049
-
-Residual standard error: 0.0367 on 6 degrees of freedom
-  (4 observations deleted due to missingness)
-Multiple R-squared:  0.997,	Adjusted R-squared:  0.996 
-F-statistic:  779 on 3 and 6 DF,  p-value: 3.67e-08
- 
-```
-
-Male growth of modes  (t vs t-1)
-
-```{output}
-
-summary( lm(formula = logcw ~ logcw0 * mat, data = mds[sex == "m", ], 
-    na.action = "na.omit") )
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--0.07578 -0.01237  0.00164  0.01968  0.05031 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)  0.16958    0.07278    2.33    0.053
-logcw0       1.03569    0.02079   49.81  3.4e-10
-matm        -0.17502    0.37497   -0.47    0.655
-logcw0:matm  0.00467    0.09023    0.05    0.960
-
-Residual standard error: 0.04 on 7 degrees of freedom
-  (5 observations deleted due to missingness)
-Multiple R-squared:  0.998,	Adjusted R-squared:  0.997 
-F-statistic: 1.05e+03 on 3 and 7 DF,  p-value: 1.2e-09
-
-```
- 
-
-The overall growth patterns of snow crab is reasonably well understood. Due to short moult cycles of less than a year in the early stages, growth can be monitored reasonably. However beyond a size range of approximately XX mm, inter-molt periods can be 1 or more years in length. Longevity of snow crab can be from 11 (females) to 15 (males) years. Long term rearing of snow crab is a challenge as living conditions are generally less than ideal or at least different in substantial ways from a natural environment, especially for the larger sized organisms. This can of course create selection biases, such as stunting due to environmental stress (over-crowding, feeding irregularities, water quality, etc.). 
-
-There also seems to exist inter-individual and regional-variability in growth patterns due to the interplay between environmental (especially bottom temperatures and resource availablity) and potentially genetic factors at large geographic scales, depending upon oceanic currents. Mark-recapture studies can inform such inference for many species, however, in snow crab, due to the loss of external tags during molts or difficulty and expense of internal tags, this cannot be used effectively.
-
-Observations in more natural settings are also possible by scuba or remote operated vehicle/camera systems. However, such information is quite costly and resource intensive and also susceptible to selection bias in that recaptured or surviving animals tend to be those in better physiological condition than average and so can result in expectations of overly optimistic growth patterns. When routine sampling occurs, a more cost-effective way to establish or corroborate these growth patterns is to decompose observed size frequency distributions. Though there is also inherent size-selection biases in such data due to size-related behavior (habitat preferences) and capture efficiency (net size, speed, depth) that changes with different size and stages, it is still possible to extract some meaningful information of size modes from such data and infer growth patterns.
-
-Given some set of observations of size frequency, subjective "best guesses" (classification by "eye") and implicit reasoning can be used to establish and classify these growth modes. When groups are distinct, this is reasonable. However, observations of size frequencies often demonstrate a mixture of distributions that are heavily overlapping. Even the most state-of-the-art computational algorithms cannot fit such distributions easily. One of the leading more objective approaches to estimate classification using point estimates of latent parameters became available with the development of the Expectation-Maximization (EM) algorithm operating in an Maximum Likelihood framework (Dempster et al 1977; see also the closely related Kalman Filter (Roweis and Ghahramani 1999) and for distributions in Bayesian frameworks with Variational Inference (Nguyen 2023) and general latent Bayesian Inference. Here we use the latter method, more specifically, Latent *Bayesian Kernel Mixture Model (BKMM)*, using population census-based data to identify growth stanzas using snow crab data derived from the Maritimes Region of Atlantic Canada.  
-
-
-```{table}
-                Coef.  Std. Error      t  Pr(>|t|)  Lower 95%  Upper 95%
-
-(Intercept)  1.05187   0.0430406   24.44    <1e-04   0.932365   1.17136
-instar       0.321978  0.00640426  50.28    <1e-06   0.304196   0.339759
-  
-(Intercept)  1.49157    0.216241    6.90    0.0917  -1.25602     4.23917
-instar       0.268652   0.0221858  12.11    0.0525  -0.0132459   0.550549
-  
-(Intercept)  1.10376   0.0259636   42.51    <1e-08   1.04237    1.16515
-instar       0.308079  0.00308857  99.75    <1e-11   0.300775   0.315382
-  
-(Intercept)  0.335281  0.114697     2.92    0.2098  -1.12208    1.79264
-instar       0.363371  0.00953601  38.11    0.0167   0.242204   0.484537
-```
-
-      
-![image](media/example_modal_classification_2.png)
-
-![image](media/density_2020_1_f_imodes.png)
-
-![image](media/density_2020_f_imodes.png)
-
-![image](media/density_2020_m_imodes.png)
-
-![image](media/density_2021_f_imodes.png)
-
-![image](media/density_2021_m_imodes.png)
-
-![image](media/density_f_imodes.png)
-
-![image](media/density_m_imodes.png)
-
-![image](media/plot_growth_male.png)
-
-![image](media/plot_growth_female.png)
-
- 
- 
-Female mature simple model: cw vs instar
-
-```output
- 
-summary( lm(formula = logcw ~ instar, data = mds[sex == "f" & mat == "m", 
-    ], na.action = "na.omit") )
-
-Residuals:
-      1       2       3 
--0.0253  0.0507 -0.0253 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)  -0.0157     0.4402   -0.04    0.977
-instar        0.4090     0.0439    9.32    0.068
-
-Residual standard error: 0.0621 on 1 degrees of freedom
-Multiple R-squared:  0.989,	Adjusted R-squared:  0.977 
-F-statistic: 86.9 on 1 and 1 DF,  p-value: 0.068
- 
-```
-
-Female immature simple model: cw vs instar
-
-```output
-
-summary( lm(formula = logcw ~ instar, data = mds[sex == "f" & mat == "i", 
-    ], na.action = "na.omit") )
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--0.05154 -0.00868 -0.00699  0.00403  0.06546 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)  1.12368    0.04548    24.7  2.9e-07
-instar       0.31059    0.00593    52.4  3.2e-09
-
-Residual standard error: 0.0355 on 6 degrees of freedom
-  (3 observations deleted due to missingness)
-Multiple R-squared:  0.998,	Adjusted R-squared:  0.997 
-F-statistic: 2.75e+03 on 1 and 6 DF,  p-value: 3.24e-09
-
-```
-
-Male mature simple model: cw vs instar
-
-```output
-
-summary( lm(formula = logcw ~ instar, data = mds[sex == "m" & mat == "m", 
-    ], na.action = "na.omit") )
-
-Residuals:
-       1        2        3 
- 0.00283 -0.00567  0.00283 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)  0.65417    0.05413    12.1   0.0526
-instar       0.33550    0.00491    68.4   0.0093
-
-Residual standard error: 0.00694 on 1 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 4.67e+03 on 1 and 1 DF,  p-value: 0.00931
-
-```
-
-Male immature simple model: cw vs instar
-
-```output
-
-summary( lm(formula = logcw ~ instar, data = mds[sex == "m" & mat == "i", 
-    ], na.action = "na.omit") )
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--0.04238 -0.02548 -0.00584  0.02079  0.08236 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)   1.1912     0.0446    26.7  2.6e-08
-instar        0.2994     0.0053    56.5  1.4e-10
-
-Residual standard error: 0.0411 on 7 degrees of freedom
-  (3 observations deleted due to missingness)
-Multiple R-squared:  0.998,	Adjusted R-squared:  0.997 
-F-statistic: 3.19e+03 on 1 and 7 DF,  p-value: 1.43e-10
- 
-
-
-```
 
 
 ### 3.2 Growth inferred from BKMM

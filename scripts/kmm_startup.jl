@@ -3,9 +3,20 @@
 current_directory =  @__DIR__() 
 print( "Current directory is: ", current_directory, "\n\n" )
 
-if !@isdefined project_directory 
-    project_directory = joinpath( homedir(), "projects", "model_size" )
+if !@isdefined base_directory 
+    @static if Sys.iswindows()
+        base_directory = joinpath( "C:\\", "home", "jae", "projects" )
+    elseif Sys.islinux()
+        base_directory = joinpath(homedir(), "projects" )
+    elseif Sys.isapple()
+    else
+    end
 end
+ 
+if !@isdefined base_directory 
+    project_directory = joinpath( base_directory, "model_size")
+end
+
 
 import Pkg  # or using Pkg
 Pkg.activate(project_directory)  # so now you activate the package
@@ -17,11 +28,12 @@ pkgs = [
     "Revise", 
     "MKL", # "Plots", # "OpenBLAS32", 
     "Logging", "Random", "Setfield",  "ForwardDiff",  
-    "RData",  "RCall",
+    "CodecZstd", "RData",  "RCall",
     "DataFrames", "JLD2", "CSV",
     "PlotThemes", "Colors", "ColorSchemes", "StatsPlots",  "CairoMakie", "MakieExtra",
     "StatsBase", "Statistics", "Distributions", "KernelDensity", "GLM",
     "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
+    "Memoize",
     "Graphs", "Distances", "Peaks", "KernelDensity",
     "Interpolations", "LinearAlgebra", "DynamicHMC", "Turing" 
 ]
@@ -42,7 +54,6 @@ end
 
 
 include( srcdir( "shared_functions.jl") )
-
 
 print( "\nTo (re)-install required packages, run:  install_required_packages() or Pkg.instantiate() \n\n" ) 
 
