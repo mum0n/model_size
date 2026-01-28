@@ -45,5 +45,5 @@ and make use of Julia/Turing and R/INLA for modelling.
 
 ## More info
 
-[See size structure documentation](docs/snowcrab_growth_stanzas_kmm.md)
+[See size structure documentation](docs/size_structured_model_snowcrab.md)
 
