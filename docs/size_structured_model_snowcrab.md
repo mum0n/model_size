@@ -135,7 +135,6 @@ Here as we explore the use of an *aposterori* model-based post-stratification ap
 
 $$
 Y \sim \text{Binomial}(\eta,\theta) \\
-{} \\
 \text{ln}(\theta/(1-\theta)) = \boldsymbol{X}^{T}\boldsymbol{\beta}+\boldsymbol{\epsilon},
 $$
 
