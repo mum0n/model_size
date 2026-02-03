@@ -141,27 +141,19 @@ where $Y$ is the vector of observations, taking values of 0 (absent, success) or
 
 The natural logarithm of the ratio of the probabilities, $\text{ln}(\theta/(1-\theta))$ is also commonly referred to as $logit(\theta)$:
 
-$$
-\text{ln}(\theta/(1-\theta)) = \boldsymbol{X}^{T}\boldsymbol{\beta} + O_i + \boldsymbol{\epsilon}.
-$$
+$$\text{ln}(\theta/(1-\theta)) = \boldsymbol{X}^{T}\boldsymbol{\beta} + O_i + \boldsymbol{\epsilon}.$$
   
 The posterior prediction of the probability $\theta_i$ associated with each sampled observation $i$ describes the likely number of successes for a given number of trials. Being a Bernoulli process, the number of trials is $\eta=1$. As mentioned above, associated with each such trial is the swept-area of the sampling gear, any subsampling and quite often vessel/gear correction factors (though the latter vessel/gear correction does not apply to our case) and accounted in the offset term, $O_i$, for each observation. Thus, $O_i$, can be seen as the effective sampling effort (in our case in units of surface area, $m^2$) that standardizes observations to a common basis (number / $m^2$). The number of successes predicted, $N_i$, for a single binomial trial and a given effective sampling effort is:
 
-$$
-N_i = \theta_i \cdot \eta \cdot O_i \\
-$$
+$$N_i = \theta_i \cdot \eta \cdot O_i$$
 
 Similarly, the posterior prediction of the probability associated with each sampled areal unit (stratum) $a$ is $\theta_a$ and $N_a$ is the predicted number of successes for a single trial for the effective size of the stratum $O_a$ also in units of $m^2$: 
 
-$$
-N_a = \theta_a \cdot \eta \cdot O_a  
-$$
+$$N_a = \theta_a \cdot \eta \cdot O_a$$
 
 Importantly, the ratio of the predicted number of successes predicted in the embedding stratum ($N_a$) to the individual observation ($N_i$) represents the proportionality factor ($\omega_i$) that can be used to rescale each individual observation (e.g., length or weight) to that of the scale of the average of the model-based prediction for the stratum, for each sex, maturity and size class: 
 
-$$
-\omega_i = N_a / N_i \mid \text{sex}_i, \text{maturity}_i, \text{size}_i
-$$
+$$\omega_i = N_a / N_i \mid \text{sex}_i, \text{maturity}_i, \text{size}_i$$
 
 To re-iterate, this quantity ($\omega_i$, which we will refer to as a *Post-stratified weight*) provides a means of re-scaling observations to an expected number that respects the model-derived estimates of each individual's sampling environment as well as those of the larger, embedding areal unit/stratum, while simultaneously, carrying forward the joint error distributions of all factors being considered. As such, this weight, which can be computed from the predicted probabilities and offsets as $\omega_i= \frac{\theta_a O_a}{\theta_i O_i},$ can then be used to construct a size frequency distribution that respects the joint distribution of all modeled parameters and environmental conditions. 
 
@@ -227,7 +219,6 @@ for (ir in 1:length(p$regions_list) ) {
     )
   }
 }
-
 
 ```
 
@@ -395,18 +386,15 @@ The statistical model utilized is usually referred to as a Generalized Linear "m
 
 In our model, there is only a single fixed component, the global intercept (overall mean):
 
-$$
-\boldsymbol{X}^{T}\boldsymbol{\beta} = \text{constant intercept},
-$$
+$$\boldsymbol{X}^{T}\boldsymbol{\beta} = \text{constant intercept},$$
 
 and a multiplicative, structured random component $F(\cdot)$ each scaled to mean of 0 on the  logarithmic scale:
 
-$$
-\boldsymbol{\epsilon} = F( \text{size}, \text{size x year}, \text{size x space}, \\   
+$$\boldsymbol{\epsilon} = F( \text{size}, \text{size x year}, \text{size x space}, \\   
 \text{temperature}, \text{depth}, \text{substrate gain size}, \\ 
-\text{space}, \text{year}, \text{season}, \text{space x year} ).
-$$
-  
+\text{space}, \text{year}, \text{season}, \text{space x year} ).$$
+
+
 Each random spatial component follows a Conditional AutoRegressive (CAR) structure, random time components follow an AutoRegressive structure with lag of 1 year (AR1), and all other covariates follow a Random Walk (RW2) structure. Simpler or more complex forms can be used and ultimately represents a balance between computational resources, complexity, interpretability, time;  information availability; and model stability. The caveat being that there is no definitive truth, but rather a constant and iterative struggle to bring to bear additional relevant information and model structure to improve our understanding of the system. The above random effects are extremely simplistic (there are few constraints and assumptions) and therefore considered more robust.
 
 
@@ -999,44 +987,6 @@ Observations in more natural settings are also possible by scuba or remote opera
 
 Given some set of observations of size frequency, subjective "best guesses" (classification by "eye") and implicit reasoning can be used to establish and classify these growth modes. When groups are distinct, this is reasonable. However, observations of size frequencies often demonstrate a mixture of distributions that are heavily overlapping. Even the most state-of-the-art computational algorithms cannot fit such distributions easily. One of the leading more objective approaches to estimate classification using point estimates of latent parameters became available with the development of the Expectation-Maximization (EM) algorithm operating in an Maximum Likelihood framework (Dempster et al 1977; see also the closely related Kalman Filter (Roweis and Ghahramani 1999) and for distributions in Bayesian frameworks with Variational Inference (Nguyen 2023) and general latent Bayesian Inference. Here we use the latter method, more specifically, Latent *Bayesian Kernel Mixture Model (BKMM)*, using population census-based data to identify growth stanzas using snow crab data derived from the Maritimes Region of Atlantic Canada.  
 
-
-```{table}
-                Coef.  Std. Error      t  Pr(>|t|)  Lower 95%  Upper 95%
-
-(Intercept)  1.05187   0.0430406   24.44    <1e-04   0.932365   1.17136
-instar       0.321978  0.00640426  50.28    <1e-06   0.304196   0.339759
-  
-(Intercept)  1.49157    0.216241    6.90    0.0917  -1.25602     4.23917
-instar       0.268652   0.0221858  12.11    0.0525  -0.0132459   0.550549
-  
-(Intercept)  1.10376   0.0259636   42.51    <1e-08   1.04237    1.16515
-instar       0.308079  0.00308857  99.75    <1e-11   0.300775   0.315382
-  
-(Intercept)  0.335281  0.114697     2.92    0.2098  -1.12208    1.79264
-instar       0.363371  0.00953601  38.11    0.0167   0.242204   0.484537
-```
-
-      
-![image](media/example_modal_classification_2.png)
-
-![image](media/density_2020_1_f_imodes.png)
-
-![image](media/density_2020_f_imodes.png)
-
-![image](media/density_2020_m_imodes.png)
-
-![image](media/density_2021_f_imodes.png)
-
-![image](media/density_2021_m_imodes.png)
-
-![image](media/density_f_imodes.png)
-
-![image](media/density_m_imodes.png)
-
-![image](media/plot_growth_male.png)
-
-![image](media/plot_growth_female.png)
-
  
  
 Female mature simple model: cw vs instar
@@ -1246,6 +1196,46 @@ mds = kernel_density_estimated_modes(Y; toget="summary", yrs=yrs )
 
 
 ```
+
+
+
+
+```{table}
+                Coef.  Std. Error      t  Pr(>|t|)  Lower 95%  Upper 95%
+
+(Intercept)  1.05187   0.0430406   24.44    <1e-04   0.932365   1.17136
+instar       0.321978  0.00640426  50.28    <1e-06   0.304196   0.339759
+  
+(Intercept)  1.49157    0.216241    6.90    0.0917  -1.25602     4.23917
+instar       0.268652   0.0221858  12.11    0.0525  -0.0132459   0.550549
+  
+(Intercept)  1.10376   0.0259636   42.51    <1e-08   1.04237    1.16515
+instar       0.308079  0.00308857  99.75    <1e-11   0.300775   0.315382
+  
+(Intercept)  0.335281  0.114697     2.92    0.2098  -1.12208    1.79264
+instar       0.363371  0.00953601  38.11    0.0167   0.242204   0.484537
+```
+
+      
+![image](media/example_modal_classification_2.png)
+
+![image](media/density_2020_1_f_imodes.png)
+
+![image](media/density_2020_f_imodes.png)
+
+![image](media/density_2020_m_imodes.png)
+
+![image](media/density_2021_f_imodes.png)
+
+![image](media/density_2021_m_imodes.png)
+
+![image](media/density_f_imodes.png)
+
+![image](media/density_m_imodes.png)
+
+![image](media/plot_growth_male.png)
+
+![image](media/plot_growth_female.png)
 
 
 ### 2.2. A Mixture of distributions representation of size structure
